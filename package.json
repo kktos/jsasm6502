@@ -1,0 +1,23 @@
+{
+  "name": "virtual-6502-asm",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "6502 assembler based on virtual assembler by mass:werk",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kktos/virtual-6502-asm.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kktos/virtual-6502-asm/issues"
+  },
+  "homepage": "https://github.com/kktos/virtual-6502-asm#readme",
+  "devDependencies": {
+    "yargs": "^17.3.1"
+  }
+}
