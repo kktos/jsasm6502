@@ -1,4 +1,4 @@
-
+/*
 	function getAsmExpression(sym, ofs) {
 		var s=sym[ofs];
 		while(sym[ofs+1]=='$') s+=(sym[++ofs]||'')+(sym[++ofs]||'');
@@ -157,3 +157,4 @@
 		if(mode==1) return { 'pict': pict, 'v': result, 'error': 'quote expected', 'et': ET_S };
 		return { 'pict': pict, 'v': result,'error': false, 'idx': i };
 	}
+*/

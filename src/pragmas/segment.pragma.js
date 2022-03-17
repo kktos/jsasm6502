@@ -1,3 +1,4 @@
+import { ET_S, logError } from "../log.js";
 
 export function processSegment(ctx, pragma) {
 

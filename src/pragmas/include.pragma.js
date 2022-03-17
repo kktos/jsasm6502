@@ -21,7 +21,7 @@ export function processInclude(ctx, pragma) {
 	ctx.pict+= " "+filename;
 	logLine(ctx);
 
-	const fileSrc= ctx.readFile(filename);
+	const fileSrc= ctx.readFile(filename, ctx.filename);
 
 	if(fileSrc == null) {
 		logError(ctx, ET_C, "Unable to include "+filename);

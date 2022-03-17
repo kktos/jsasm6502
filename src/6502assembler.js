@@ -106,7 +106,7 @@ function startAssembly(mainFilename, opts) {
 
 	// ctx.charEncoding= encodeAscii;
 	ctx.comment= "";
-	ctx.readFile= (filename) => { const src= opts.readFile(filename); return src ? splitSrc(src) : null; };
+	ctx.readFile= (filename, fromFile) => { const src= opts.readFile(filename, fromFile); return src ? splitSrc(src) : null; };
 
 	ctx.codesrc= ctx.readFile(mainFilename);
 	ctx.filename= mainFilename;

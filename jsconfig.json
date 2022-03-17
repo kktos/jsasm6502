@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"incremental": true,
+		"forceConsistentCasingInFileNames": true,
+	},
+	"include": ["src/pragmas/*"],
+}

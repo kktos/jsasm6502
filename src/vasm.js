@@ -1,3 +1,4 @@
+import { load } from "js-yaml";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import yargs from "yargs";
@@ -5,11 +6,22 @@ import yargs from "yargs";
 import { assemble, dumpCode, dumpSymbols } from "./6502assembler.js";
 import { getHexWord } from "./utils.js";
 
-function readFile(filename) {
+function readFile(filename, fromFile) {
 	try {
-		return readFileSync(rootDir +"/"+ filename).toString();
+		let includeDir= fromFile ? dirname(fromFile) : ".";
+		includeDir= rootDir + (includeDir!="." ? "/"+includeDir : "");
+		return readFileSync(includeDir +"/"+ filename).toString();
 	} catch(e) {
 		// console.error("FATAL ERROR: Unable to readFile "+filename);
+		return null;
+	}
+}
+
+function readYAMLFile(filename) {
+	try {
+		return load( readFile(filename) );
+	} catch(e) {
+		console.error("readYAMLFile", filename, e);
 		return null;
 	}
 }
@@ -31,23 +43,28 @@ const argv= yargs(process.argv.splice(2))
 				},
 				out: {
 					describe: "output file name",
+				},
+				conf: {
+					describe: "segments configuration file",
 				}
 			})
 			.demandCommand(1)
 			.argv;
 
+let rootDir= ".";
+const segments= readYAMLFile(argv.conf);
+if(argv.conf && !segments) {
+	console.error("unable to read conf file "+argv.conf);
+	process.exit(-1);
+}
+
 const filename= argv["_"][0];
-const rootDir= dirname(filename);
+rootDir= dirname(filename);
+
 const opts= {
 	readFile,
 	listing: argv.listing === true,
-	segments: {
-		BOOT1: { start: 0x800, end: 0x8FF },
-		LOADER: { start: 0xB700, end: 0xBFFF },
-		BOOT3: { start: 0xB700, end: 0xB7FF },
-		BOOT2: { start: 0x4100, end: 0x45FF },
-		WELCOME: { start: 0x0200, end: 0x03FF },
-	}
+	segments 
 };
 
 assemble(basename(filename), opts)
@@ -64,9 +81,11 @@ assemble(basename(filename), opts)
 				finalCode= finalCode.concat(ctx.code[segmentName]);
 
 			const segment= ctx.segments[segmentName];
-			console.log("segment", segmentName,
-				"$"+getHexWord(segment.start),
-				"len", "$"+getHexWord(segment.end-segment.start+1)
+			console.log(
+				"segment",
+				"addr $" + getHexWord(segment.start),
+				"len $" + getHexWord(segment.end-segment.start+1),
+				segmentName
 			);
 			if(argv.dump) {
 				const dump= dumpCode(ctx, segmentName, true);
