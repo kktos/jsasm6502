@@ -29,7 +29,7 @@ export function processIf(ctx, pragma) {
 	}
 
 	const ifCtx= {
-		lines: readBlock(ctx, "END"),
+		lines: readBlock(ctx),
 		lineIdx: 0
 	};
 

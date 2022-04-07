@@ -1,6 +1,6 @@
 import { getExpression } from "../expression.js";
 import { ET_S, logError, logLine } from "../log.js";
-import { getNSentry } from "../namespace.js";
+import { delNStempEntry, setNStempEntry } from "../namespace.js";
 import { nextLine, registerNextLineHandler } from "../tokenizer.js";
 import { readBlock } from "./block.utils.js";
 
@@ -35,18 +35,23 @@ export function processMacro(ctx, pragma) {
 		logLine(ctx);
 
 	macro.lines= readBlock(ctx);
-	if(macro.lines) {
-		ctx.macros[name]= macro;
-		return true;
-	}
+	if(!macro.lines)
+		macro.lines= [];
 
-	logError(ctx, ET_S,'missing .END');
-	return false;
+	// remove empty lines
+	macro.lines= macro.lines.filter(line=>line.tokens.length);
+	
+	ctx.macros[name]= macro;
+
+	if(macro.lines.length == 0)
+		logError(ctx, "WARNING", `macro ${name} is empty`, true);
+	return true;
 }
 
 function nextMacroLine(ctx, macroCtx) {
 	if(macroCtx.lineIdx >= macroCtx.lines.length) {
-		getNSentry(ctx, "%locals%").v= null;
+		// getNSentry(ctx, "%locals%").v= null;
+		macroCtx.locals.forEach( local => delNStempEntry(ctx, local) );
 		return false;
 	} else {
 		const line= macroCtx.lines[macroCtx.lineIdx++];
@@ -65,7 +70,6 @@ export function expandMacro(ctx, name) {
 			break;
 
 		case 2: {
-
 			const macroCtx= {
 				name,
 				lineIdx: 0,
@@ -75,7 +79,7 @@ export function expandMacro(ctx, name) {
 			};
 			registerNextLineHandler(name, () => nextMacroLine(ctx, macroCtx));
 
-			getNSentry(ctx, "%locals%").v= macroCtx.locals;
+			// getNSentry(ctx, "%locals%").v= macroCtx.locals;
 
 			for(let idx= ctx.ofs; idx< ctx.sym.length; idx++) {
 				const result= getExpression(ctx, ctx.sym[idx]);
@@ -93,6 +97,8 @@ export function expandMacro(ctx, name) {
 			}
 
 			macroCtx.locals.push({ name: ".PARAMCOUNT", value: macroCtx.parmCount})
+
+			macroCtx.locals.forEach( local => setNStempEntry(ctx, local) );
 
 			break;
 		}

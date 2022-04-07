@@ -31,7 +31,7 @@ export function processOrg(ctx, pragma) {
 	ctx.pict+= r.pict;
 
 	if(r.undef) {
-		logError(ctx, r.et||ET_P, 'undefined symbol "'+r.undef+'"');
+		logError(ctx, r.et||ET_P, 'UORG undefined symbol "'+r.undef+'"');
 		return false;
 	}
 

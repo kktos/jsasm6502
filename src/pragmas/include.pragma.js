@@ -21,14 +21,12 @@ export function processInclude(ctx, pragma) {
 	ctx.pict+= " "+filename;
 	logLine(ctx);
 
-	const fileSrc= ctx.readFile(filename, ctx.filename);
+	const {path, content}= ctx.readFile(filename, ctx.filename);
 
-	if(fileSrc == null) {
-		logError(ctx, ET_C, "Unable to include "+filename);
+	if(content == null) {
+		logError(ctx, ET_C, "Unable to include "+path);
 		return false;
 	}
-
-	// console.log({filename, fileSrc});
 
 	const includeCtx= {
 		codeSrc: ctx.codesrc,
@@ -38,8 +36,8 @@ export function processInclude(ctx, pragma) {
 	}
 
 	ctx.srcLineIdx= ctx.srcc= 0;
-	ctx.codesrc= fileSrc;
-	ctx.filename= filename;
+	ctx.codesrc= content;
+	ctx.filename= path;
 
 	registerNextLineHandler(filename, () => nextIncludeLine(ctx, includeCtx));
 

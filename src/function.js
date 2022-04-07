@@ -14,7 +14,7 @@ export function execFunction(ctx, name, parms) {
 }
 
 function isDefined(ctx, parms) {
-	return isNSentryDefined(ctx, parms.toUpperCase());
+	return typeof parms == "string" ? isNSentryDefined(ctx, parms.toUpperCase()) : parms != undefined;
 }
 
 function isUndefined(ctx, parms) {

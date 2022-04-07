@@ -1,15 +1,17 @@
 import { getExpression, getIdentifier } from "../expression.js";
 import { ET_P, ET_S, logError, logLine } from "../log.js";
-import { getNSentry } from "../namespace.js";
+import { delNStempEntry, setNStempEntry } from "../namespace.js";
 import { registerNextLineHandler } from "../tokenizer.js";
 import { readBlock } from "./block.utils.js";
 
 function repeatNextLine(ctx, repeatCtx) {
 	if(repeatCtx.lineIdx >= repeatCtx.lines.length) {
 		repeatCtx.times--;
-		repeatCtx.iterator.value++;
-		if(!repeatCtx.times)
+		repeatCtx.iterator && repeatCtx.iterator.value++;
+		if(!repeatCtx.times) {
+			repeatCtx.iterator && delNStempEntry(ctx, repeatCtx.iterator.name);
 			return false;
+		}
 		repeatCtx.lineIdx= 0;
 	}
 
@@ -33,19 +35,22 @@ export function processRepeat(ctx, pragma) {
 	ctx.pict+= rt.pict;
 	if (rt.error || rt.undef) {
 		if (rt.undef)
-			logError(ctx, ET_P, 'undefined symbol "'+rt.undef+'"');
+			logError(ctx, ET_P, 'UREPEAT undefined symbol "'+rt.undef+'"');
 		else
 			logError(ctx, rt.et||ET_P, rt.error);
 		return false;
 	}
 
-	const iterator= { name: undefined, value: 0 }
+	let iterator= null;
 	if(ctx.ofs+1 < ctx.sym.length) {
 		const { v:name }= getIdentifier(ctx.sym[ctx.ofs+1], 0);
-		if(getNSentry(ctx, "%locals%").v == null)
-			getNSentry(ctx, "%locals%").v= [];
-		getNSentry(ctx, "%locals%").v.push(iterator);
-		iterator.name= name;
+
+		iterator= setNStempEntry(ctx, name, 0);
+
+		// if(getNSentry(ctx, "%locals%").v == null)
+		// 	getNSentry(ctx, "%locals%").v= [];
+		// getNSentry(ctx, "%locals%").v.push(iterator);
+		// iterator.name= name;
 	}
 
 	if(ctx.pass == 1)

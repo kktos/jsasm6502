@@ -1,6 +1,6 @@
 import { execFunction, isFunction } from "./function.js";
 import { ET_C, ET_P, ET_S } from "./log.js";
-import { getNSentry } from "./namespace.js";
+import { getNSentry, getNStempEntry } from "./namespace.js";
 import { getVarValue } from "./variable.js";
 
 const digitCharacters= [
@@ -230,7 +230,7 @@ function resolveExpression(ctx, stack, pict, idx, doubleWord) {
 
 			case 'paren':
 				if(item.stack.length==0)
-					return { v: -1, pict: exp.pict+']', error: 'unexpected token "]"', et: ET_P };
+					return { v: -1, pict: item.pict+']', error: 'unexpected token "]"', et: ET_P };
 
 				const exp= resolveExpression(ctx, item.stack, item.pict, idx, doubleWord);
 
@@ -257,21 +257,37 @@ function resolveExpression(ctx, stack, pict, idx, doubleWord) {
 
 export function getIdentifier(s, fromIdx, stripColon) {
 
-	let idx;
-	for(idx= fromIdx; idx<s.length; idx++) {
-		let c= s.charAt(idx);
-		if((c<'A' || c>'Z') && (c<'0' || c>'9') && c!='_')
-			break;
+	let identifier= "";
+	const matches= s.substring(fromIdx).match(/^[A-Z0-9_.]+:?/);
+
+	// console.log("getIdentifier", s, fromIdx);
+
+	if(matches) {
+		identifier= matches[0];
+		fromIdx+= identifier.length;
+		if(stripColon)
+			identifier= identifier.replace(":","");
 	}
 
-	let end= idx;
+	// console.log("getIdentifier", s, fromIdx, identifier, matches[0]);
 
-	if(stripColon && idx<s.length && s.charAt(idx)==':')
-		idx++;
+	return { v: identifier, idx: fromIdx };
 
-	const l= fromIdx + (end-fromIdx); //Math.min(end-fromIdx, 8);
+	// let idx;
+	// for(idx= fromIdx; idx<s.length; idx++) {
+	// 	let c= s.charAt(idx);
+	// 	if((c<'A' || c>'Z') && (c<'0' || c>'9') && c!='_')
+	// 		break;
+	// }
 
-	return { v: s.substring(fromIdx, l), idx };
+	// let end= idx;
+
+	// if(stripColon && idx<s.length && s.charAt(idx)==':')
+	// 	idx++;
+
+	// const l= fromIdx + (end-fromIdx); //Math.min(end-fromIdx, 8);
+
+	// return { v: s.substring(fromIdx, l), idx };
 }
 
 export function getExpression(ctx, s, doubleWord) {
@@ -343,10 +359,14 @@ export function getExpression(ctx, s, doubleWord) {
 
 					if(isFunction(r.v)) {
 						last= "function "+r.v;
-						// console.log(last, s.slice(idx));
+
+						if(s[idx]!="(") {
+							return { v: -1, pict, error: 'missing (', et: ET_S };
+						}
+
 						const expr= getExpression(ctx, s.slice(idx), doubleWord);
 						stack.push({type: 'fn', v: r.v, parm: expr.v});
-						// console.log(last, "parm=", expr);
+
 						idx+= expr.idx;
 						break;
 					}
@@ -408,12 +428,15 @@ export function getExpression(ctx, s, doubleWord) {
 					r= getIdentifier(s, idx);
 					pict+= r.v;
 
-					if(ctx.opcodes[r.v])
+					if(ctx.opcodes[r.v]) {
 						return {v: -1, pict, error: 'illegal identifier (opcode '+r.v+')', et: ET_P};
+					}
 
 					let isExpr= false;
-					if(ctx.pass==2 && getNSentry(ctx, "%locals%") && getNSentry(ctx, "%locals%").v) {
-						const loc= getNSentry(ctx, "%locals%").v.find(def => def.name == r.v);
+					// if(ctx.pass==2 && getNSentry(ctx, "%locals%") && getNSentry(ctx, "%locals%").v) {
+					if(ctx.pass==2) {
+						// const loc= getNSentry(ctx, "%locals%").v.find(def => def.name == r.v);
+						const loc= getNStempEntry(ctx, r.v);
 						if(isExpr= !!loc) {
 							stack.push({type: "num", v: loc.value});
 							idx= r.idx;
@@ -423,7 +446,7 @@ export function getExpression(ctx, s, doubleWord) {
 
 					if(!isExpr) {
 						if(ctx.pass==2 && typeof getNSentry(ctx, r.v) == 'undefined')
-							return { v: -1, pict, error: 'undefined symbol', undef: r.v, et: ET_C };
+							return { v: -1, pict, error: 'UEXP undefined symbol', undef: r.v, et: ET_C };
 
 						stack.push({type: 'ident', v: r.v});
 						idx= r.idx;

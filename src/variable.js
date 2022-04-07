@@ -1,5 +1,5 @@
 import { ET_C, ET_P } from "./log.js";
-import { getNSentry } from "./namespace.js";
+import { getNStempEntry } from "./namespace.js";
 
 export function getVarValue(ctx, name) {
 
@@ -33,7 +33,8 @@ export function getVarValue(ctx, name) {
 
 		// for macros
 		case "PARAMCOUNT": {
-			const varDef= getNSentry(ctx, "%locals%")?.v?.find(def => def.name == ".PARAMCOUNT");
+			// const varDef= getNSentry(ctx, "%locals%")?.v?.find(def => def.name == ".PARAMCOUNT");
+			const varDef= getNStempEntry(ctx, ".PARAMCOUNT");
 			return { v: varDef?.value, et: "MACRO ERROR", error: !varDef ? "can be use only inside a macro" : false };
 		}
 

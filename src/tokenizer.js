@@ -1,3 +1,4 @@
+import { logMsg } from "./log.js";
 import { commentChar } from "./utils.js";
 
 function getChar(ctx, isQuote) {
@@ -16,7 +17,7 @@ function getChar(ctx, isQuote) {
 				ctx.comment+= c1;
 			}
 		} else {
-			ctx.rawLine+=c;
+			ctx.rawLine+= c;
 		}
 		return c;
 	}
@@ -27,11 +28,12 @@ const parents= ["(", ")"];
 
 export function tokenizeNextLine(ctx) {
 	if(ctx.comment) {
-		ctx.listing+= ctx.comment+'\n';
+		logMsg(ctx.comment+'\n');
 		ctx.comment= '';
 	}
 	ctx.rawLine= '';
-
+	ctx.lineHasLabel= false;
+	
 	ctx.srcLineNumber= ctx.srcLineIdx+1;
 
 	let c= getChar(ctx);
@@ -98,6 +100,9 @@ export function tokenizeNextLine(ctx) {
 		}
 		else {
 			sym[s]+= c.toUpperCase();
+			if(ctx.srcc==1) {
+				ctx.lineHasLabel= true;
+			}
 			m=1;
 		}
 		c= getChar(ctx, m>=2);

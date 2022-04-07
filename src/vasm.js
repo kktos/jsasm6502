@@ -8,9 +8,9 @@ import { getHexWord } from "./utils.js";
 
 function readFile(filename, fromFile) {
 	try {
-		let includeDir= fromFile ? dirname(fromFile) : ".";
-		includeDir= rootDir + (includeDir!="." ? "/"+includeDir : "");
-		return readFileSync(includeDir +"/"+ filename).toString();
+		let includeDir= fromFile ? dirname(fromFile) : "";
+		filename= (includeDir!="" ? includeDir +"/" : "") + filename;
+		return {path: filename, content: readFileSync(rootDir +"/"+ filename).toString()};
 	} catch(e) {
 		// console.error("FATAL ERROR: Unable to readFile "+filename);
 		return null;
@@ -19,7 +19,7 @@ function readFile(filename, fromFile) {
 
 function readYAMLFile(filename) {
 	try {
-		return load( readFile(filename) );
+		return load( readFile(filename).content );
 	} catch(e) {
 		console.error("readYAMLFile", filename, e);
 		return null;
@@ -31,15 +31,22 @@ const argv= yargs(process.argv.splice(2))
 			.options({
 				listing: {
 					describe: "with listing output",
-					boolean: true
+					boolean: true,
+					default: true
 				},
 				dump: {
 					describe: "with hexdump output",
 					boolean: true
 				},
 				symbols: {
-					describe: "with hexdump output",
-					boolean: true
+					describe: "output symbols table",
+					boolean: true,
+					default: false
+				},
+				segments: {
+					describe: "output segments table",
+					boolean: true,
+					default: false
 				},
 				out: {
 					describe: "output file name",
@@ -52,10 +59,13 @@ const argv= yargs(process.argv.splice(2))
 			.argv;
 
 let rootDir= ".";
-const segments= readYAMLFile(argv.conf);
-if(argv.conf && !segments) {
-	console.error("unable to read conf file "+argv.conf);
-	process.exit(-1);
+let segments= null;
+if(argv.conf) {
+	segments= readYAMLFile(argv.conf);
+	if(!segments) {
+		console.error("unable to read conf file "+argv.conf);
+		process.exit(-1);
+	}
 }
 
 const filename= argv["_"][0];
@@ -63,6 +73,7 @@ rootDir= dirname(filename);
 
 const opts= {
 	readFile,
+	YAMLparse: load,
 	listing: argv.listing === true,
 	segments 
 };
@@ -80,16 +91,18 @@ assemble(basename(filename), opts)
 			if(ctx.code[segmentName])
 				finalCode= finalCode.concat(ctx.code[segmentName]);
 
-			const segment= ctx.segments[segmentName];
-			console.log(
-				"segment",
-				"addr $" + getHexWord(segment.start),
-				"len $" + getHexWord(segment.end-segment.start+1),
-				segmentName
-			);
-			if(argv.dump) {
-				const dump= dumpCode(ctx, segmentName, true);
-				console.log( dump ? dump : "<empty>\n" );
+			if(argv.segments) {
+				const segment= ctx.segments[segmentName];
+				console.log(
+					"segment",
+					"addr $" + getHexWord(segment.start),
+					"len $" + getHexWord(segment.end-segment.start+1),
+					segmentName
+				);
+				if(argv.dump) {
+					const dump= dumpCode(ctx, segmentName, true);
+					console.log( dump ? dump : "<empty>\n" );
+				}
 			}
 		});
 

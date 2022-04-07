@@ -3,11 +3,21 @@ export const 	ET_S= 'syntax error',
 				ET_P= 'parse error',
 				ET_C= 'compile error';
 
+let delayedLine= "";
+
 export function logError(ctx, e, message, isWarning) {
-	let s,
-		lines= message.split('\n'),
-		prefix = isWarning? '####  ':'****  ',
-		separator = isWarning? ' ## ':' ** ';
+	// if(!ctx.wannaOutput)
+	// 	return;
+
+	if(delayedLine) {
+		ctx.listing+= delayedLine;
+		delayedLine= "";
+	}
+
+	const lines= message.split('\n');
+	const prefix = isWarning ? '####  ':'****  ';
+	const separator = isWarning ? ' ## ':' ** ';
+	let s;
 
 	while (ctx.addrStr.length<6)
 		ctx.addrStr+=' ';
@@ -31,7 +41,7 @@ export function logError(ctx, e, message, isWarning) {
 	ctx.listing+= s;
 
 	if(isWarning && ctx.comment) {
-		if (pict) ctx.listing+=' ';
+		if (ctx.pict) ctx.listing+=' ';
 		ctx.listing+= ctx.comment;
 		ctx.comment='';
 	}
@@ -50,39 +60,64 @@ export function logError(ctx, e, message, isWarning) {
 	if(isWarning) {
 		ctx.addrStr= ctx.asm= ctx.pict='';
 		ctx.labelStr= '         ';
+		ctx.listing+= "\n";
 	}
 
 	ctx.anonMark='';
 }
 
 export function logLine(ctx, wantCleanLine) {
-	let s;
-	while (ctx.addrStr.length<6) ctx.addrStr+=' ';
-	if (ctx.pass==2) {
-		s= ctx.addrStr + ctx.asm;
-		if (ctx.asm.length<ctx.asmSpace.length)
-			s+= ctx.asmSpace.substr(ctx.asm.length);
+	if(ctx.wannaOutput) {
+		if(delayedLine) {
+			ctx.listing+= delayedLine;
+			delayedLine= "";
+		}
+		
+		let s;
+		while (ctx.addrStr.length<6) ctx.addrStr+=' ';
+		if (ctx.pass==2) {
+			s= ctx.addrStr + ctx.asm;
+			if (ctx.asm.length<ctx.asmSpace.length)
+				s+= ctx.asmSpace.substr(ctx.asm.length);
+		}
+		else {
+			ctx.srcLnStr=''+ctx.srcLineNumber;
+			while (ctx.srcLnStr.length<4) ctx.srcLnStr=' '+ctx.srcLnStr;
+			s= ctx.srcLnStr+'  '+ctx.addrStr+ctx.pass1Spc;
+		}
+		s+= ctx.anonMark? ctx.anonMark+' ':'  ';
+		while (ctx.labelStr.length<9) ctx.labelStr+=' ';
+		s+= ctx.labelStr;
+		if(wantCleanLine) {
+			if(ctx.listing.match(/\n\s+$/))
+				ctx.listing= ctx.listing.replace(/\n\s+$/, "")+"\n";
+		}
+		ctx.listing+= s+' '+ctx.pict;
+		if (ctx.comment) {
+			if (ctx.pict) ctx.listing+=' ';
+			ctx.listing+= ctx.comment;
+			ctx.comment= '';
+		}
+		ctx.listing+= '\n';
 	}
-	else {
-		ctx.srcLnStr=''+ctx.srcLineNumber;
-		while (ctx.srcLnStr.length<4) ctx.srcLnStr=' '+ctx.srcLnStr;
-		s= ctx.srcLnStr+'  '+ctx.addrStr+ctx.pass1Spc;
-	}
-	s+= ctx.anonMark? ctx.anonMark+' ':'  ';
-	while (ctx.labelStr.length<9) ctx.labelStr+=' ';
-	s+= ctx.labelStr;
-	if(wantCleanLine) {
-		if(ctx.listing.match(/\n\s+$/))
-			ctx.listing= ctx.listing.replace(/\n\s+$/, "")+"\n";
-	}
-	ctx.listing+=s+' '+ctx.pict;
-	if (ctx.comment) {
-		if (ctx.pict) ctx.listing+=' ';
-		ctx.listing+= ctx.comment;
-		ctx.comment='';
-	}
-	ctx.listing+='\n';
+
 	ctx.addrStr= ctx.asm= ctx.pict='';
-	ctx.labelStr='         ';
-	ctx.anonMark='';
+	ctx.labelStr= '         ';
+	ctx.anonMark= '';
+}
+
+export function logMsg(ctx, msg, wannaDelay= false) {
+	if(wannaDelay) {
+		delayedLine+= msg+"\n";
+		return;
+	}
+
+	if(!ctx.wannaOutput)
+		return;
+
+	if(delayedLine) {
+		ctx.listing+= delayedLine;
+		delayedLine= "";
+	}
+	ctx.listing+= msg;
 }

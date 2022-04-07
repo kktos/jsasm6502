@@ -1,10 +1,10 @@
-import { logLine } from "../log.js";
+import { logLine, logMsg } from "../log.js";
 import { commentChar } from "../utils.js";
 
 export function ignorePragma(ctx, pragma) {
 	if(ctx.pass==1) {
 		ctx.pict+= ctx.sym.join(' ');
-		labelStr= '-ignored';
+		ctx.labelStr= '-ignored';
 		logLine(ctx);
 	}
 }
@@ -28,10 +28,10 @@ export function processPage(ctx, pragma) {
 		if(ctx.comment)
 			logLine(ctx);
 		else
-			ctx.listing+= '\n';
+			logMsg('\n');
 		if(pragma=='PAGE') {
-			ctx.listing+= '                   '+(ctx.pageHead||commentChar+'page')+'  ';
-			ctx.listing+= '('+(++ctx.pageCnt)+')\n\n';
+			logMsg('                   '+(ctx.pageHead||commentChar+'page')+'  ');
+			logMsg('('+(++ctx.pageCnt)+')\n\n');
 		}
 	}
 }

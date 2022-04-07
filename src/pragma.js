@@ -2,9 +2,11 @@ import { ET_S, logError } from "./log.js";
 import { processAlign } from "./pragmas/align.pragma.js";
 import { c64Start } from "./pragmas/c64start.pragma.js";
 import { hex, processData } from "./pragmas/data.pragma.js";
+import { processDefine } from "./pragmas/define.pragma.js";
 import { processExport } from "./pragmas/export.pragma.js";
 import { processIf } from "./pragmas/if.pragma.js";
 import { processInclude } from "./pragmas/include.pragma.js";
+import { processListing } from "./pragmas/listing.pragma.js";
 import { processMacro } from "./pragmas/macro.pragma.js";
 import { ignorePragma, processEnd, processPage } from "./pragmas/misc.pragma.js";
 import { processNamespace } from "./pragmas/namespace.pragma.js";
@@ -62,6 +64,9 @@ export function parsePragma(pragma) {
 		case "PSTR":
 			return "PSTRING";
 
+		case "LST":
+			return "LISTING";
+
 		default:
 			return pragma[0] == "." ? cmd : null;
 	}
@@ -78,9 +83,11 @@ const pragmaDefs= {};
 addPragmaDef(processIf			,  true, ["IF"]);
 addPragmaDef(processMacro		,  true, ["MACRO"]);
 addPragmaDef(processRepeat		,  true, ["REPEAT"]);
+addPragmaDef(processDefine		,  true, ["DEFINE"]);
 
 addPragmaDef(processEnd			, false, ["END"]);
 addPragmaDef(processASMOuput	, false, ["OUT", "WARNING", "ERROR"]);
+addPragmaDef(processListing		, false, ["LISTING"]);
 addPragmaDef(processSetCPU		, false, ["SETCPU"]);
 addPragmaDef(processOption		, false, ["OPT"]);
 addPragmaDef(c64Start			, false, ["PETSTART", "C64START"]);

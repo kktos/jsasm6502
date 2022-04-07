@@ -10,7 +10,7 @@ export function processOption(ctx, pragma) {
 		return false;
 	}
 
-	var opt= ctx.sym[ctx.ofs];
+	const opt= ctx.sym[ctx.ofs];
 	ctx.pict+= ' '+opt;
 
 	switch(opt) {
@@ -70,8 +70,8 @@ export function processOption(ctx, pragma) {
 
 		case "REDEF":
 		case "NOREDEF":
-			redefSyms= opt=='REDEF';
-			ctx.asm= '-REDEF SYMBOLS '+(redefSyms? 'ON':'OFF');
+			ctx.redefSyms= opt=='REDEF';
+			ctx.asm= '-REDEF SYMBOLS '+(ctx.redefSyms? 'ON':'OFF');
 			break;
 
 		case "XREF":

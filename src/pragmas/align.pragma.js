@@ -1,5 +1,5 @@
 import { getExpression } from "../expression.js";
-import { ET_P, ET_S, logError, logLine } from "../log.js";
+import { ET_C, ET_P, ET_S, logError, logLine } from "../log.js";
 import { getHexByte, getHexWord, hexPrefix } from "../utils.js";
 
 function fill(ctx, len, b) {
