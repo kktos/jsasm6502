@@ -5,7 +5,8 @@
   "description": "6502 assembler based on virtual assembler by mass:werk",
   "main": "index.js",
   "scripts": {
-    "test": "node src/vasm.js test/main.test.asm"
+    "test": "node src/vasm.js test/main.test.asm",
+    "test-lstoff": "node src/vasm.js --no-listing test/main.test.asm"
 
   },
   "repository": {

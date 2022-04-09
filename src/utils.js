@@ -2,7 +2,7 @@ let hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
 
 export const hexPrefix= '$';
 export const pcSymbol= '*';
-export const commentChar=';';
+export const COMMENT_CHAR=';';
 
 export function getHexByte(v) {
 	return ''+hextab[(v>>4)&0x0f]+hextab[v&0x0f];

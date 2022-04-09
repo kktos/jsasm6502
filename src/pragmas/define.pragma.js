@@ -1,13 +1,28 @@
-import { ET_S, logError } from "../log.js";
+import { ET_S, logError, logLine } from "../log.js";
+import { setNSentry } from "../namespace.js";
 import { readBlock } from "./block.utils.js";
 
 /*
-	.define $VARIABLE_NAME
-		$JSON_CONTENT
+	.define <VARIABLE NAME>
+		<YAML/JSON CONTENT>
 	.end
 */
 
 export function processDefine(ctx, pragma) {
+	if(ctx.pass == 1)
+		ctx.pict= "."+pragma+" ";
+
+	if (ctx.sym.length-ctx.ofs < 1) {
+		logError(ctx, ET_S, 'name expected');
+		return false;
+	}
+
+	const name= ctx.sym[ctx.ofs];
+	
+	if(ctx.pass == 1) {
+		ctx.pict+= name;
+		logLine(ctx);		
+	}
 
 	const block= readBlock(ctx);
 	const json= block
@@ -17,7 +32,6 @@ export function processDefine(ctx, pragma) {
 
 	let data;
 	try {
-		// data= JSON.parse(json);
 		data= ctx.YAMLparse(json);
 	}
 	catch (e) {
@@ -25,9 +39,8 @@ export function processDefine(ctx, pragma) {
 		return false;
 	}
 
-	console.log("");
-	console.log("DEFINE", data);
-	console.log("");
+	if(ctx.pass == 2)
+		setNSentry(ctx, name, {v:data, error:false, isWord: false});
 
 	return true;
 }

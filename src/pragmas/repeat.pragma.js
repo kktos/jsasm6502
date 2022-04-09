@@ -42,7 +42,7 @@ export function processRepeat(ctx, pragma) {
 	}
 
 	let iterator= null;
-	if(ctx.ofs+1 < ctx.sym.length) {
+	if(ctx.pass == 2 && ctx.ofs+1 < ctx.sym.length) {
 		const { v:name }= getIdentifier(ctx.sym[ctx.ofs+1], 0);
 
 		iterator= setNStempEntry(ctx, name, 0);

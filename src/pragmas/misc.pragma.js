@@ -1,5 +1,5 @@
 import { logLine, logMsg } from "../log.js";
-import { commentChar } from "../utils.js";
+import { COMMENT_CHAR } from "../utils.js";
 
 export function ignorePragma(ctx, pragma) {
 	if(ctx.pass==1) {
@@ -30,7 +30,7 @@ export function processPage(ctx, pragma) {
 		else
 			logMsg('\n');
 		if(pragma=='PAGE') {
-			logMsg('                   '+(ctx.pageHead||commentChar+'page')+'  ');
+			logMsg('                   '+(ctx.pageHead||COMMENT_CHAR+'page')+'  ');
 			logMsg('('+(++ctx.pageCnt)+')\n\n');
 		}
 	}

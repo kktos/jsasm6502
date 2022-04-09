@@ -7,7 +7,7 @@ import { expandMacro } from "./pragmas/macro.pragma.js";
 import { CPU_CONST, setcpu } from "./pragmas/setcpu.pragma.js";
 import { encodeAscii } from "./pragmas/string.pragma.js";
 import { nextLine, tokenizeNextLine } from "./tokenizer.js";
-import { commentChar, getHexByte, getHexWord, hexPrefix, pcSymbol } from "./utils.js";
+import { COMMENT_CHAR, getHexByte, getHexWord, hexPrefix, pcSymbol } from "./utils.js";
 
 // 6502 assembler
 // n. landsteiner, mass:werk, www.masswerk.at
@@ -133,8 +133,7 @@ function startAssembly(mainFilename, opts) {
 	ctx.listing= "";
 	logMsg(ctx, "\nPASS 1\nLINE  LOC          LABEL     PICT\n\n", true);
 
-	let pass2= false,
-		range;
+	let pass2= false;
 
 	ctx.cbmStartAddr= 0;
 	ctx.pass= 1;
@@ -147,23 +146,10 @@ function startAssembly(mainFilename, opts) {
 	setNSentry(ctx, "CPU_65C02", { v: CPU_CONST["65C02"], isWord: false, pc: 0, isPrivate: true });
 
 	let pass1= asmPass(ctx);
-
 	if(pass1) {
 		logMsg(ctx, '\nPASS 2\nLOC   CODE         LABEL     INSTRUCTION\n\n', true);
 		ctx.pass= 2;
-
 		pass2= asmPass(ctx);
-		if(pass2) {
-			if(ctx.codeStart==0x10000)
-				ctx.codeStart= 0;
-			range= getHexWord(ctx.codeStart)+'..'+getHexWord(ctx.codeEnd);
-
-			const hasCode= Object.keys(ctx.code).some(k => ctx.code[k].length);
-			if(hasCode)
-				logMsg(ctx, '\ndone (code: '+range+').');
-			else
-				logMsg(ctx, '\ndone.\nno code generated.');
-		}
 	}
 
 	if(ctx.options.listing)
@@ -374,13 +360,15 @@ function asmPass(ctx) {
 
 				if(ctx.pass==1) {
 
+console.log("IDENTIFER", {identRaw, r});
+
 					if(r.idx!=identRaw.length) {
 						let parsed= identRaw.substring(0,r.idx),
 							illegalChar= identRaw.charAt(r.idx),
 							message= 'Illegal character "'+illegalChar+'"';
 						ctx.pict+= labelPrefix+parsed+illegalChar;
-						if(parsed=='P' && illegalChar=='%')
-							message+= '\n\nmeant assignment to P%?';
+						// if(parsed=='P' && illegalChar=='%')
+						// 	message+= '\n\nmeant assignment to P%?';
 						logError(ctx, ET_P,message);
 						return false;
 					}
@@ -439,7 +427,7 @@ function asmPass(ctx) {
 
 					if(ctx.sym.length>ctx.ofs) {
 						if(ctx.sym.length==ctx.ofs+1 && ctx.sym[ctx.ofs]=='W') { // ignore 'W' suffix
-							ctx.pict+= ' '+commentChar+'w';
+							ctx.pict+= ' '+COMMENT_CHAR+'w';
 						}
 						else {
 							ctx.pict+= ' '+ctx.sym[ctx.ofs].charAt(0);

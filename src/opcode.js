@@ -1,9 +1,9 @@
 import { getExpression } from "./expression.js";
-import { ET_C, ET_S, logError, logLine } from "./log.js";
+import { ET_C, ET_P, ET_S, logError, logLine } from "./log.js";
 import { ADDRMODE, steptab } from "./tables.js";
 import { compile, getHexByte, getHexWord, hexPrefix } from "./utils.js";
 
-const expressionStartChars = "$%@&'\"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_*-<>[].";
+// const expressionStartChars = "$%@&'\"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_*-<>[].";
 const operatorChars = "+-*/";
 
 function hasZpgMode(ctx, opc) {
@@ -16,28 +16,45 @@ function hasWordMode(ctx, opc) {
 	return instr && (instr[3]>=0 || instr[4]>=0 || instr[5]>=0);
 }
 
-function getAnonymousTarget(ctx, targetSym, anonymousTargets) {
-	let offset=0, pict=ctx.pass==1? targetSym.charAt(0):'!';
+function getAnonymousTarget(ctx, anonymousTargets) {
+	let offset=0;
+	let pict= ctx.pass==1 ? ctx.sym[ctx.ofs] : ':';
 
-	while (targetSym.charAt(0)=='!' || targetSym.charAt(0)==':')
-		targetSym= targetSym.substring(1);
+	ctx.ofs++;
 
-	for (let i=0; i<targetSym.length; i++) {
-		let c= targetSym.charAt(i);
-		pict+= c;
-		if(c=='+') {
-			if(offset<0)
-				return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
-			offset++;
+	for(let idx= ctx.ofs; idx<ctx.sym.length; idx++) {
+		pict+= ctx.sym[ctx.ofs];
+		
+		switch(ctx.sym[ctx.ofs]) {
+			case "+":
+				if(offset<0)
+					return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
+				offset++;
+				break;
+
+			case "-":
+				if(offset>0)
+					return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
+				offset--;
+				break;
+
+			default:
+				return { 'pict': pict, 'error': 'unexpected character in offset operand' };
 		}
-		else if(c=='-') {
-			if(offset>0)
-				return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
-			offset--;
-		}
-		else {
-			return { 'pict': pict, 'error': 'unexpected character in offset operand' };
-		}
+
+		// if(ctx.sym[ctx.ofs]=='+') {
+		// 	if(offset<0)
+		// 		return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
+		// 	offset++;
+		// }
+		// else if(ctx.sym[ctx.ofs]=='-') {
+		// 	if(offset>0)
+		// 		return { 'pict': pict, 'error': 'illegal sign reversal in offset operand' };
+		// 	offset--;
+		// }
+		// else {
+		// 	return { 'pict': pict, 'error': 'unexpected character in offset operand' };
+		// }
 	}
 
 	if(offset==0)
@@ -55,7 +72,7 @@ function getAnonymousTarget(ctx, targetSym, anonymousTargets) {
 	idx--;
 	if(offset<0)
 		offset++;
-	idx+=offset;
+	idx+= offset;
 	if(idx<0 || idx>=anonymousTargets.length) {
 		return { 'pict': pict, 'error': 'anonymous offset out of range (no such anonymous label)' };
 	}
@@ -65,35 +82,29 @@ function getAnonymousTarget(ctx, targetSym, anonymousTargets) {
 export function parseOpcode(ctx, anonymousTargets) {
 
 	// opcode
-	let opc= ctx.sym[ctx.ofs],
-		dot= ctx.sym[ctx.ofs].indexOf('.'),
-		ext= '',
-		opctab,
+	let opctab,
 		instr,
 		addr,
 		mode= 0,
 		oper= 0;
 
-	if(dot>0) {
-		let rsym;
-		[opc, rsym]= opc.split(".");
-		if( (rsym=='B' && hasZpgMode(ctx, opc)) || (rsym=='W' && hasWordMode(ctx, opc)) ) {
-			ext= rsym.toLowerCase();
-			ctx.pict+= (ctx.pass==1) ? opc+'.'+ext : opc;
-		}
-		else {
-			ctx.pict+= opc;
-			if(rsym=='B' || rsym=='W') {
-				logError(ctx, ET_C, 'invalid extension '+rsym+' for opcode '+opc);
-			}
-			else {
-				logError(ctx, ET_S, 'invalid extension format: '+opc);
-			}
+	let [opc, ext]= ctx.sym[ctx.ofs].split(".");
+
+	ctx.pict+= opc;
+	
+	if(ext) {
+		ext= ext.toLowerCase();
+		if( (ext=='b' && hasZpgMode(ctx, opc)) || (ext=='w' && hasWordMode(ctx, opc)) ) {
+			if(ctx.pass==1)
+				ctx.pict+= '.'+ext;
+		} else {
+			ctx.pict+= "."+ext;
+			logError(ctx, ET_S, 'invalid extension format: '+ext+" only valid are .b .w");
 			return false;
 		}
 	}
-	else
-		ctx.pict+= opc;
+
+	console.log("parseOpcode", {opc});
 
 	opctab= ctx.opcodes[opc];
 
@@ -102,7 +113,10 @@ export function parseOpcode(ctx, anonymousTargets) {
 		return false;
 	}
 
-	addr= ctx.sym[ctx.ofs+1];
+	ctx.ofs++;
+	addr= ctx.sym[ctx.ofs];
+
+	console.log("parseOpcode", {addr, sym:ctx.sym.slice(ctx.ofs+1)});
 
 	if(typeof addr=='undefined') {
 		// implied
@@ -119,94 +133,106 @@ export function parseOpcode(ctx, anonymousTargets) {
 		}
 		logLine(ctx);
 		ctx.pc++;
+		return true;
 	}
-	else {
-		let a1= addr.charAt(0),
-			b1= 0,
-			b2= addr.length,
-			coda= '';
 
-		if(addr=='A' && opctab[1]>=0) {
-			ctx.pict+= ' A';
-			b1= 1;
-			mode= 1;
-		}
-		else if(a1=='#') {
+	let r;
+
+	switch(addr) {
+		case ":":
+			r= {pict:' :'};
+			mode= (opctab[ADDRMODE.REL]<0) ? 3 : 12;
+			break;
+
+		case "#":
 			ctx.pict+=' #';
-			b1= 1;
 			mode= 2;
-		}
-		else if(a1=='*') {
-			if((b2>1 && operatorChars.indexOf(addr.charAt(1))<0) || addr=='**') {
-				ctx.pict+= ' *';
-				b1= 1;
-				mode= 6;
-			}
-			else {
-				ctx.pict+= ' ';
-				mode= (opctab[ADDRMODE.REL]<0) ? 3 : 12;
-			}
-		}
-		// else if(a1=='(') {
-		else if(addr == '(') {
+			ctx.ofs++;
+			break;
+
+		case "(":
 			ctx.pict+= ' (';
-			b1= 1;
-			mode= 9;
-		}
-		else {
+			mode= ADDRMODE.IND;
+			ctx.ofs++;
+			break;
+		
+		default:
 			ctx.pict+= ' ';
 			mode= (opctab[ADDRMODE.REL]<0) ? 3 : 12;
-		}
-
-		if(ext) {
-			if(ext=='b' && (mode==3 || mode==6)) {
-				mode=6;
+	}
+	
+	if(!r) {
+		r= getExpression(ctx, "", false, mode==ADDRMODE.IND);
+		if(r.error) {
+			ctx.pict+= r.pict;
+			if(r.undef) {
+				logError(ctx, r.et||ET_C,`U2 undefined symbol in ${ctx.currentNS} : "${r.undef}"`);
 			}
-			else if(mode!=3) {
-				logError(ctx, ET_P,'extension conflicts with operand type');
+			else {
+				logError(ctx, r.et||ET_P,r.error);
+			}
+			return false;
+		}
+		if(ctx.pass==1)
+			ctx.pict+= r.pict;
+	}
+
+	// if(addr=='A' && opctab[1]>=0) {
+	// 	ctx.pict+= ' A';
+	// 	b1= 1;
+	// 	mode= 1;
+	// }
+
+	if(ext) {
+		if(ext=='b' && (mode==3 || mode==6)) {
+			mode=6;
+		}
+		else if(mode!=3) {
+			logError(ctx, ET_P,'extension conflicts with operand type');
+			return false;
+		}
+	}
+
+	// console.log("OPCODE", {mode, r, sym:ctx.sym.slice(ctx.ofs)});
+	
+	let coda= '';
+
+	if(mode== ADDRMODE.IND) {
+
+		// lda ($10,x)
+		// jmp ($1000,x)
+		//   [1]= "(" [2]= address [3]= "X" [4]= ")"
+
+		// lda ($10),y
+		//   [1]= "(" [2]= address [3]= ")" [4]= "Y"
+
+		// jmp ($1000)
+		//   [1]= "(" [2]= address [3]= ")"
+
+		if(ctx.sym[ctx.ofs+1] == ")") {
+
+			if(ctx.sym[ctx.ofs] != "X") {
+				logError(ctx, ET_S,'invalid address format');
 				return false;
 			}
+			mode= opc == "JMP" ? ADDRMODE.ABINX : ADDRMODE.INX;
+			coda= ',X)';
 		}
-
-		if(mode==9) {
-
-			// lda ($10,x)
-			// jmp ($1000,x)
-			//   [1]= "(" [2]= address [3]= "X" [4]= ")"
-
-			// lda ($10),y
-			//   [1]= "(" [2]= address [3]= ")" [4]= "Y"
-
-			// jmp ($1000)
-			//   [1]= "(" [2]= address [3]= ")"
-
-			if(ctx.sym[ctx.ofs+4] == ")") {
-
-				if(ctx.sym[ctx.ofs+3] != "X") {
-					logError(ctx, ET_S,'invalid address format');
-					return false;
-				}
-				mode= opc == "JMP" ? ADDRMODE.ABINX : ADDRMODE.INX;
-				coda=',X)';
-			} else
-			if(ctx.sym[ctx.ofs+3] == ")") {
-
-				if(ctx.sym[ctx.ofs+4] == "Y") {
-					mode= ADDRMODE.INY;
-					coda='),Y';
-				} else {
-					coda= ')';
-				}
+		else
+		if(ctx.sym[ctx.ofs] == ")") {
+			if(ctx.sym[ctx.ofs+1] == "," && ctx.sym[ctx.ofs+2] == "Y") {
+				mode= ADDRMODE.INY;
+				coda='),Y';
+				ctx.ofs+= 3;
+			} else {
+				coda= ')';
+				ctx.ofs+= 1;
 			}
-
-			ctx.ofs++;
-			addr= ctx.sym[ctx.ofs+1];
-			b1= 0;
-			b2= addr.length;
-			ctx.sym.length-= 2;
 		}
-		else if(mode>2) {
-			switch(ctx.sym[ctx.ofs+2]) {
+	}
+	else if(mode>2) {
+		if(ctx.sym[ctx.ofs-1] == ",") {
+			switch(ctx.sym[ctx.ofs]) {
 				case "X":
 					mode+= 1;
 					coda= ',X';
@@ -219,73 +245,44 @@ export function parseOpcode(ctx, anonymousTargets) {
 					break;
 			}
 		}
+	}
 
-		instr= opctab[mode];
-		if(instr<=-10) {
-			// redirect to implicit fallback
-			mode = -instr - 10;
-			instr= opctab[mode];
+	console.log("OPCODE", {mode, coda, sym:ctx.sym.slice(ctx.ofs)});
+
+	// operand
+	// if((mode==12 || (opc=='JMP' && mode==3)) && addr && (addr?.charAt(0)=='!' || addr?.charAt(0)==':')) {
+	if((mode==12 || (opc=='JMP' && mode==3)) && (addr=='!' || addr==':')) {
+		// anonymous target
+		let target= getAnonymousTarget(ctx, anonymousTargets);
+		if(target.error) {
+			ctx.pict+= target.pict;
+			logError(ctx, ctx.pass==1? ET_S:ET_C, target.error);
+			return false;
 		}
-		if(instr<0) {
-			ctx.pict+= addr.substr(b1);
-			logError(ctx, ET_C,'invalid address mode for '+opc);
+		if(ctx.pass==1) {
+			ctx.pict+= " " + target.pict;
+		}
+		else {
+			oper= target.address;
+			ctx.pict+= " " + hexPrefix + getHexWord(oper);
+		}
+	}
+	else if(mode>1) {
+		let autoZpg = ctx.options.autoZpg && !ext && mode>=3 && mode<=5 && hasZpgMode(ctx, opc);
+
+		if(ctx.pass==2 && mode==2 && r.v > 0xFF) {
+			logError(ctx, ET_P, "Immediate value must be 8bits wide");
 			return false;
 		}
 
-		// operand
-		if((mode==12 || (opc=='JMP' && mode==3)) && addr && (addr.charAt(0)=='!' || addr.charAt(0)==':')) {
-			// anonymous target
+		oper= r.v;
+		if(r.isWord)
+			autoZpg= false;
+		if(autoZpg && oper<0x100 && opctab[mode+3]>=0)
+			mode+= 3;
 
-			let target= getAnonymousTarget(ctx, addr, anonymousTargets);
-			if(target.error) {
-				ctx.pict+= target.pict;
-				logError(ctx, ctx.pass==1? ET_S:ET_C, target.error);
-				return false;
-			}
-			if(ctx.pass==1) {
-				ctx.pict+= target.pict;
-			}
-			else {
-				oper= target.address;
-				ctx.pict+= ''+hexPrefix+getHexWord(oper);
-			}
-		}
-		else if(mode>1) {
-			let expr= addr.substring(b1,b2),
-				e0= expr.charAt(0),
-				autoZpg = ctx.options.autoZpg && !ext && mode>=3 && mode<=5 && hasZpgMode(ctx, opc);
-
-			if(expressionStartChars.indexOf(e0)<0) {
-				ctx.pict+= e0;
-				logError(ctx, ET_S,'illegal character');
-				return false;
-			}
-
-			let r= getExpression(ctx, expr);
-			if(r.error) {
-				ctx.pict+= r.pict;
-				if(r.undef) {
-					logError(ctx, r.et||ET_C,`U2 undefined symbol in ${ctx.currentNS} : "${r.undef}"`);
-					// let entries= [];
-					// Object.keys(ctx.namespaces[ctx.currentNS]).forEach(name => entries.push(name));
-					// console.log(entries.join(", "));
-				}
-				else {
-					logError(ctx, r.et||ET_P,r.error);
-				}
-				return false;
-			}
-
-			oper= r.v;
-			if(r.isWord)
-				autoZpg= false;
-
-			if(autoZpg && oper<0x100 && opctab[mode+3]>=0)
-				mode+= 3;
-			if(ctx.pass==1) {
-				ctx.pict+= r.pict;
-			}
-			else if(mode==12) {
+		if(ctx.pass==2) {
+			if(mode==12) {
 				ctx.pict+= hexPrefix+getHexWord(oper);
 			}
 			else {
@@ -296,41 +293,54 @@ export function parseOpcode(ctx, anonymousTargets) {
 						getHexByte(oper)
 				);
 			}
-			ctx.pict+= coda;
 		}
-
-		if(ctx.sym.length>ctx.ofs+2) {
-			ctx.pict+=' '+ctx.sym[ctx.ofs+2].charAt(0);
-			logError(ctx, ET_S,'unexpected extra characters');
-			return false;
-		}
-
-		if(ctx.pass==2) {
-			instr= opctab[mode];
-			if(mode==12) {
-				// rel
-				oper-= ((ctx.pc+2)&0xffff);
-				if(oper>127 || oper<-128) {
-					logError(ctx, ET_C,'branch target out of range');
-					return false;
-				}
-			}
-			// compile
-			compile(ctx, ctx.pc, instr);
-			ctx.asm= getHexByte(instr);
-			if(mode>1) {
-				let op= oper&0xff;
-				compile(ctx, ctx.pc+1, op);
-				ctx.asm+= ' '+getHexByte(op);
-				if(steptab[mode]>2) {
-					op=(oper>>8)&0xff;
-					compile(ctx, ctx.pc+2, op);
-					ctx.asm+= ' '+getHexByte(op);
-				}
-			}
-		}
-		logLine(ctx);
-		ctx.pc+= steptab[mode];
+		ctx.pict+= coda;
 	}
+
+	if(ctx.sym.length>ctx.ofs+2) {
+		ctx.pict+=' '+ctx.sym[ctx.ofs+2].charAt(0);
+		logError(ctx, ET_S,'unexpected extra characters');
+		return false;
+	}
+
+	instr= opctab[mode];
+	if(instr<=-10) {
+		// redirect to implicit fallback
+		mode = -instr - 10;
+		instr= opctab[mode];
+	}
+	if(instr<0) {
+		// ctx.pict+= addr.substr(b1);
+		logError(ctx, ET_C,'invalid address mode for '+opc);
+		return false;
+	}
+
+	if(ctx.pass==2) {
+		instr= opctab[mode];
+		if(mode==12) {
+			// rel
+			oper-= ((ctx.pc+2) & 0xffff);
+			if(oper>127 || oper<-128) {
+				logError(ctx, ET_C,'branch target out of range');
+				return false;
+			}
+		}
+		// compile
+		compile(ctx, ctx.pc, instr);
+		ctx.asm= getHexByte(instr);
+		if(mode>1) {
+			let op= oper&0xff;
+			compile(ctx, ctx.pc+1, op);
+			ctx.asm+= ' '+getHexByte(op);
+			if(steptab[mode]>2) {
+				op= (oper>>8) & 0xff;
+				compile(ctx, ctx.pc+2, op);
+				ctx.asm+= ' '+getHexByte(op);
+			}
+		}
+	}
+	logLine(ctx);
+	ctx.pc+= steptab[mode];
+
 	return true;
 }

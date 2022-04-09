@@ -3,7 +3,7 @@ import { setcpu } from "./setcpu.pragma.js";
 import { encodeAscii, encodeCommodoreScreenCode, encodePetscii } from "./string.pragma.js";
 
 export function processOption(ctx, pragma) {
-	ctx.pict+= '.OPT';
+	ctx.pict+= pragma;
 
 	if (ctx.sym.length-ctx.ofs < 1) {
 		logError(ctx, ET_S, 'option expected');

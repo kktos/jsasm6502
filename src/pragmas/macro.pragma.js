@@ -43,7 +43,7 @@ export function processMacro(ctx, pragma) {
 	
 	ctx.macros[name]= macro;
 
-	if(macro.lines.length == 0)
+	if(ctx.pass == 1 && macro.lines.length == 0)
 		logError(ctx, "WARNING", `macro ${name} is empty`, true);
 	return true;
 }

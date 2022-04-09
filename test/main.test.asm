@@ -1,3 +1,10 @@
+	
+		beq :+
+	:	
+		rts
 
-		.include "macro.test.asm"
-		.include "repeat.test.asm"
+;		.end
+;		.include "variable.test.asm"
+;		.include "macro.test.asm"
+;		.include "repeat.test.asm"
+;		.include "function.test.asm"

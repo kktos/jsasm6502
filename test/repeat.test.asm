@@ -13,10 +13,15 @@
 ;		.end
 
 
+		.out ""
+		.out "-1- define spriteIdx = 10"
+		.out ""
+
 spriteIdx= 10
+.out spriteIdx
 
 		.out ""
-		.out "-1- repeat 3 times with iterator"
+		.out "-2- repeat 3 times with iterator spriteIdx (should be equal to 0,1,2)"
 		.out ""
 
 		.repeat 3 spriteIdx
@@ -33,7 +38,7 @@ spriteIdx= 10
 		.end
 
 		.out ""
-		.out "-3- repeat (expr) times with iterator"
+		.out "-3- repeat (loopCount) times - use var spriteIdx: should be equal to 10"
 		.out ""
 
 loopCount= 2

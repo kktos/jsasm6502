@@ -120,10 +120,12 @@ function getNumber(ctx, s, fromIdx, doubleWord) {
 
 }
 
-function resolveExpression(ctx, stack, pict, idx, doubleWord) {
+function resolveExpression(ctx, stack, pict, idx, doubleWord, id) {
 	let result=0, item, op='', sign=false, mod=false, modSign=false, isWord=!!doubleWord,
 		size= doubleWord ? 0xffffffff : 0xffff,
 		err;
+
+	// console.log(id, "resolveExpression", stack);
 
 	function resolveOperation(pr) {
 
@@ -232,7 +234,7 @@ function resolveExpression(ctx, stack, pict, idx, doubleWord) {
 				if(item.stack.length==0)
 					return { v: -1, pict: item.pict+']', error: 'unexpected token "]"', et: ET_P };
 
-				const exp= resolveExpression(ctx, item.stack, item.pict, idx, doubleWord);
+				const exp= resolveExpression(ctx, item.stack, item.pict, idx, doubleWord, id+"-1");
 
 				if(exp.error || exp.undef)
 					return exp;
@@ -251,6 +253,8 @@ function resolveExpression(ctx, stack, pict, idx, doubleWord) {
 				return { v: -1, pict, error: "invalid expression", isWord: true, undef: item.v, et: ET_S };
 		}
 	}
+
+	// console.log(id, "resolveExpression", {result});
 
 	return { v: result, pict, idx, error: false, isWord, pc: ctx.pc };
 }
@@ -290,8 +294,31 @@ export function getIdentifier(s, fromIdx, stripColon) {
 	// return { v: s.substring(fromIdx, l), idx };
 }
 
-export function getExpression(ctx, s, doubleWord) {
-	let idx=0, c, r, state=0, max=s.length, root=[], stack=root, parent=[], pict='', last='', lvl=0;
+export function getExpression(ctx, s, doubleWord, hasAlreadyOpenParent=false) {
+	let idx=0, c="", r, state=0, root=[], stack=root, parent=[], pict='', last='', lvl=0;
+
+	const ID= (Math.floor(Math.random()*10000)).toString(16).toUpperCase().padStart(4,"0");
+	console.log(ID,"getExpression", {ofs:ctx.ofs, sym:ctx.sym.slice(ctx.ofs).join(" | ")});
+
+	s= ctx.sym[ctx.ofs];
+	let max= s?.length ?? 1;
+	
+	if(hasAlreadyOpenParent)
+		pushOpenParent();
+
+	function pushOpenParent() {
+		pict+= c;
+		parent[lvl]= stack;
+		stack= [];
+		parent[lvl++].push({type: 'paren', stack, pict});
+		state= 0;
+	}
+
+	function nextToken() {
+		s= ctx.sym[++ctx.ofs];
+		max= s?.length ?? 0;
+		idx= 0;
+	}
 
 	function state0() {
 
@@ -303,7 +330,7 @@ export function getExpression(ctx, s, doubleWord) {
 				stack.push({type: 'sign'});
 				idx++;
 				if(idx<max) {
-					c=s.charAt(idx);
+					c= s.charAt(idx);
 					if(c=='>'||c=='<') {
 						stack.push({type: 'mod', v: c});
 						idx++;
@@ -339,19 +366,18 @@ export function getExpression(ctx, s, doubleWord) {
 		switch(c) {
 			case '"':
 			case "'": {
-
 				const matches= s.slice(idx).match(/^"(.*?)"/);
 				if(!matches)
 					break;
 				stack.push({type: 'str', v: matches[1]});
-				idx+= matches[0].length;
+				// idx+= matches[0].length;
+				pict+= c+matches[1]+c;
+				nextToken();
 				last= '';
 				break;
 			}
 
 			case ".": {
-				let value= ctx.pc;
-
 				if(identifierCharacters.includes(s.charAt(idx+1))) {
 					r= getIdentifier(s, idx+1);
 					pict= "."+r.v;
@@ -360,28 +386,31 @@ export function getExpression(ctx, s, doubleWord) {
 					if(isFunction(r.v)) {
 						last= "function "+r.v;
 
-						if(s[idx]!="(") {
-							return { v: -1, pict, error: 'missing (', et: ET_S };
-						}
-
-						const expr= getExpression(ctx, s.slice(idx), doubleWord);
+						nextToken();
+						if(s != "(")
+							return { v: -1, pict, error: 'missing ( for function .'+r.v, et: ET_S };
+						
+						console.log("\n", ID, "FUNCTION: eval parm", s);
+						
+						const expr= getExpression(ctx, "", doubleWord);
 						stack.push({type: 'fn', v: r.v, parm: expr.v});
 
-						idx+= expr.idx;
+						nextToken();
+						state= 2;
+
+						console.log(ID, "FUNCTION: done", s, "\n");
+
 						break;
 					}
 
 					const variable= getVarValue(ctx, r.v);
 					if(variable.error)
 						return variable;
-					value= variable.v;
-				} else {
-					pict+= '.';
-					idx++;
+					stack.push({type: 'num', v: variable.v});
 				}
 
 				last= '';
-				stack.push({type: 'num', v: value});
+				// stack.push({type: 'num', v: value});
 				break;
 			}
 
@@ -394,36 +423,43 @@ export function getExpression(ctx, s, doubleWord) {
 
 			case "[":
 			case "(":
-				pict+= c;
-				parent[lvl]= stack;
-				stack= [];
-				parent[lvl++].push({type: 'paren', stack, pict});
-				state= 0;
-				idx++;
+				pushOpenParent();
+				nextToken()
+				// console.log(ID,"OPEN (", ctx.ofs, ctx.sym[ctx.ofs]);
 				return true;
 
 			default:
-				if(numberCharacters.includes(c)) {
-					r= getNumber(ctx, s, idx, doubleWord);
 
-					pict+= (r.lc && r.lc>0)?
-						s.substring(idx, r.lc)+s.charAt(r.lc).toLowerCase()+s.substring(r.lc+1, r.idx):
-						s.substring(idx, r.idx);
+			console.log(ID, "TYPE", ctx.sym[ctx.ofs], typeof ctx.sym[ctx.ofs]);
 
-					// if (ns && ns.charAt(0)=='"') ns='\''+ns.substring(1,2);
-
-					if(r.error) {
-						if(!(c>='0' && c<='9') && r.idx-idx<=1 && r.idx<s.length)
-							pict+= s.charAt(r.idx);
-						if(c=='\'' && r.v>=0)
-							return { v: -1, pict, error: 'illegal quantity', et: ET_P };
-						return { v: -1, pict, error: 'number character expected', et: ET_P };
-					}
-					stack.push({type: 'num', v: r.v, 'isWord': !!r.isWord});
-					idx= r.idx;
+				if(typeof ctx.sym[ctx.ofs] == "number") {
+					pict+= ctx.sym[ctx.ofs];
+					stack.push({type: 'num', v: ctx.sym[ctx.ofs], isWord: ctx.sym[ctx.ofs]>0xFF});
 					last= 'figure';
-					return false;
+					nextToken();
+					return true;					
 				}
+				// if(numberCharacters.includes(c)) {
+				// 	r= getNumber(ctx, s, idx, doubleWord);
+
+				// 	pict+= (r.lc && r.lc>0)?
+				// 		s.substring(idx, r.lc)+s.charAt(r.lc).toLowerCase()+s.substring(r.lc+1, r.idx):
+				// 		s.substring(idx, r.idx);
+
+				// 	// if (ns && ns.charAt(0)=='"') ns='\''+ns.substring(1,2);
+
+				// 	if(r.error) {
+				// 		if(!(c>='0' && c<='9') && r.idx-idx<=1 && r.idx<s.length)
+				// 			pict+= s.charAt(r.idx);
+				// 		if(c=='\'' && r.v>=0)
+				// 			return { v: -1, pict, error: 'illegal quantity', et: ET_P };
+				// 		return { v: -1, pict, error: 'number character expected', et: ET_P };
+				// 	}
+				// 	stack.push({type: 'num', v: r.v, 'isWord': !!r.isWord});
+				// 	idx= r.idx;
+				// 	last= 'figure';
+				// 	return false;
+				// }
 				if(identifierCharacters.includes(c)) {
 					r= getIdentifier(s, idx);
 					pict+= r.v;
@@ -456,7 +492,7 @@ export function getExpression(ctx, s, doubleWord) {
 				}
 
 				pict+= c;
-				return { v: -1, pict, error: 'number or identifier expected', et: ET_P };
+				return { v: -1, pict, error: 'NIE1 number or identifier expected', et: ET_P };
 		}
 
 		return false;
@@ -466,7 +502,7 @@ export function getExpression(ctx, s, doubleWord) {
 
 		switch(c) {
 			case "!":
-				if(s.charAt(idx+1) == "=") {
+				if(s[idx+1] == "=") {
 					idx++;
 					stack.push({type: 'op', v: "NEQ"});
 					state= 0;
@@ -479,16 +515,25 @@ export function getExpression(ctx, s, doubleWord) {
 			case "=":
 				stack.push({type: 'op', v: c});
 				state= 0;
+				nextToken();
+				idx--;
+				break;
+
+			case ",":
+				nextToken();
+				idx= max;
 				break;
 
 			case "]":
 			case ")":
 				lvl--;
 				if(lvl<0)
-					return { v: -1, pict, error: 'non matching parenthesis "]"', et: ET_P };
+					return { v: -1, pict, error: 'non matching parenthesis ")"', et: ET_P };
 				stack= parent[lvl];
 				stack[stack.length-1].pict= pict;
 				state= 2;
+				if(hasAlreadyOpenParent && lvl==0)
+					c= "";
 				break;
 
 			default: {
@@ -503,14 +548,9 @@ export function getExpression(ctx, s, doubleWord) {
 		return false;
 	}
 
-// const ID= Math.floor((Math.random()*100000)).toString(16);
-// console.log("--->", ID, s);
-
 	while (idx < max) {
-		c= s.charAt(idx);
-
-// console.log("---", ID, {state, idx, c, s:s.slice(idx), root});
-
+		c= typeof s == "string" ? s.charAt(idx) : null;
+		console.log(ID,"LOOP:", {state, lvl, c, s});
 		switch(state) {
 			case 0: {
 				if(state0())
@@ -534,10 +574,17 @@ export function getExpression(ctx, s, doubleWord) {
 		}
 	}
 
-	if (state != 2)
-		return { v: -1, pict, error: 'number or identifier expected', et: ET_P };
-	if (lvl != 0)
-		return { v: -1, pict, error: 'non matching parenthesis, "]" expected.', et: ET_S };
+	if (state != 2) {
+		console.log(ID, {state, stack:root});
+		return { v: -1, pict, error: 'NIE2 number or identifier expected', et: ET_P };
+	}
 
-	return resolveExpression(ctx, root, pict, idx, doubleWord);
+	if (lvl != 0) {
+		return { v: -1, pict, error: 'non matching parenthesis, ")" expected.', et: ET_S };
+	}
+
+	const res= resolveExpression(ctx, root, pict, idx, doubleWord, ID);
+	console.log(ID,"RES", {res, ofs:ctx.ofs, sym: ctx.sym.slice(ctx.ofs)});
+
+	return res;
 }

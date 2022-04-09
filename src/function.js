@@ -1,23 +1,21 @@
-import { isNSentryDefined } from "./namespace.js";
+import { fnDef, fnUndef } from "./functions/def.function.js";
+import { fnLen } from "./functions/len.function.js";
 
-const functions= {
-	DEF: isDefined,
-	UNDEF: isUndefined
-};
+function addFunctionDef(handlerFn, functionNames) {
+	functionNames.forEach(fn => {
+		functionDefs[fn]= {handlerFn};
+	});
+}
+
+const functionDefs= {};
+addFunctionDef(fnDef			, ["DEF"]);
+addFunctionDef(fnUndef			, ["UNDEF"]);
+addFunctionDef(fnLen			, ["LEN"]);
 
 export function isFunction(name) {
-	return functions[name] != undefined;
+	return functionDefs[name] != undefined;
 }
 
 export function execFunction(ctx, name, parms) {
-	return functions[name](ctx, parms);
-}
-
-function isDefined(ctx, parms) {
-	return typeof parms == "string" ? isNSentryDefined(ctx, parms.toUpperCase()) : parms != undefined;
-}
-
-function isUndefined(ctx, parms) {
-	const  isUndef= !isDefined(ctx, parms);
-	return isUndef;
+	return functionDefs[name].handlerFn(ctx, parms);
 }
