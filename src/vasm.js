@@ -1,10 +1,9 @@
 import { load } from "js-yaml";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import yargs from "yargs";
 
-import { assemble, dumpCode, dumpSymbols } from "./6502assembler.js";
-import { getHexWord } from "./utils.js";
+import { assemble } from "./main.js";
 
 function readFile(filename, fromFile) {
 	try {
@@ -59,10 +58,10 @@ const argv= yargs(process.argv.splice(2))
 			.argv;
 
 let rootDir= ".";
-let segments= null;
+let conf= null;
 if(argv.conf) {
-	segments= readYAMLFile(argv.conf);
-	if(!segments) {
+	conf= readYAMLFile(argv.conf);
+	if(!conf) {
 		console.error("unable to read conf file "+argv.conf);
 		process.exit(-1);
 	}
@@ -75,47 +74,48 @@ const opts= {
 	readFile,
 	YAMLparse: load,
 	listing: argv.listing === true,
-	segments 
+	segments: conf.segments
 };
 
-assemble(basename(filename), opts)
-	.then(ctx => {
+assemble(basename(filename), opts);
 
-		if(ctx.error) {
-			console.error(ctx.message);
-			return;
-		}
+	// .then(ctx => {
 
-		let finalCode= [];
-		Object.keys(ctx.segments).forEach( segmentName => {
-			if(ctx.code[segmentName])
-				finalCode= finalCode.concat(ctx.code[segmentName]);
+	// 	if(ctx.error) {
+	// 		console.error(ctx.message);
+	// 		return;
+	// 	}
 
-			if(argv.segments) {
-				const segment= ctx.segments[segmentName];
-				console.log(
-					"segment",
-					"addr $" + getHexWord(segment.start),
-					"len $" + getHexWord(segment.end-segment.start+1),
-					segmentName
-				);
-				if(argv.dump) {
-					const dump= dumpCode(ctx, segmentName, true);
-					console.log( dump ? dump : "<empty>\n" );
-				}
-			}
-		});
+	// 	let finalCode= [];
+	// 	Object.keys(ctx.segments).forEach( segmentName => {
+	// 		if(ctx.code[segmentName])
+	// 			finalCode= finalCode.concat(ctx.code[segmentName]);
 
-		if(argv.symbols === true)
-			console.log( "SYMBOLS:\n"+dumpSymbols().join("\n") );
+	// 		if(argv.segments) {
+	// 			const segment= ctx.segments[segmentName];
+	// 			console.log(
+	// 				"segment",
+	// 				"addr $" + getHexWord(segment.start),
+	// 				"len $" + getHexWord(segment.end-segment.start+1),
+	// 				segmentName
+	// 			);
+	// 			if(argv.dump) {
+	// 				const dump= dumpCode(ctx, segmentName, true);
+	// 				console.log( dump ? dump : "<empty>\n" );
+	// 			}
+	// 		}
+	// 	});
 
-		const outFilename= argv.out ? argv.out : "a.out";
-		if(finalCode.length) {
-			const buffer= Buffer.from( finalCode );
-			writeFileSync(outFilename, buffer);
-			console.log("binary output", outFilename);
-		} else {
-			console.log("no code to save !");
-		}
+	// 	if(argv.symbols === true)
+	// 		console.log( "SYMBOLS:\n"+dumpSymbols().join("\n") );
 
-	});
+	// 	const outFilename= argv.out ? argv.out : "a.out";
+	// 	if(finalCode.length) {
+	// 		const buffer= Buffer.from( finalCode );
+	// 		writeFileSync(outFilename, buffer);
+	// 		console.log("binary output", outFilename);
+	// 	} else {
+	// 		console.log("no code to save !");
+	// 	}
+
+	// });

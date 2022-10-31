@@ -1,44 +1,41 @@
-import { ET_C, ET_P } from "./log.js";
-import { getNStempEntry } from "./namespace.js";
+import { VAExprError } from "./helpers/errors.class.js";
+import { TOKEN_TYPES } from "./lexer/lexer.class.js";
 
 export function getVarValue(ctx, name) {
 
 	switch(name) {
 		case "CPU":
-			return { v: ctx.cpu, error: false };
+			return { type: TOKEN_TYPES.STRING, value: ctx.cpu };
 
 		case "SEGMENTSIZE": {
-			if(!ctx.currentSegment)
-				return { v: null, et: ET_C, error: "No segment defined" };
-
-			const segment= ctx.segments[ctx.currentSegment];
-			return { v: segment.end - segment.start + 1, error: false };
+			const segment= ctx.code.segment();
+			return { type: TOKEN_TYPES.NUMBER, value: segment.end - segment.start + 1 };
 		}
 
 		case "SEGMENTEND": {
-			if(!ctx.currentSegment)
-				return { v: null, et: ET_C, error: "No segment defined" };
-
-			const segment= ctx.segments[ctx.currentSegment];
-			return { v: segment.end, error: false };
+			return { type: TOKEN_TYPES.NUMBER, value: ctx.code.segment().end };
 		}
 
 		case "SEGMENTSTART": {
-			if(!ctx.currentSegment)
-				return { v: null, et: ET_C, error: "No segment defined" };
-
-			const segment= ctx.segments[ctx.currentSegment];
-			return { v: segment.start, error: false };
+			return { type: TOKEN_TYPES.NUMBER, value: ctx.code.segment().start };
 		}
 
-		// for macros
-		case "PARAMCOUNT": {
-			// const varDef= getNSentry(ctx, "%locals%")?.v?.find(def => def.name == ".PARAMCOUNT");
-			const varDef= getNStempEntry(ctx, ".PARAMCOUNT");
-			return { v: varDef?.value, et: "MACRO ERROR", error: !varDef ? "can be use only inside a macro" : false };
+		case "SEGMENTNAME": {
+			return { type: TOKEN_TYPES.STRING, value: ctx.code.segment().name };
 		}
+
+		case "NAMESPACE":
+		case "NS": {
+			return { type: TOKEN_TYPES.STRING, value: ctx.symbols.namespace };
+		}
+
+		// // for macros
+		// case "PARAMCOUNT": {
+		// 	const varDef= getNStempEntry(ctx, ".PARAMCOUNT");
+		// 	return { v: varDef?.value, et: "MACRO ERROR", error: !varDef ? "can be use only inside a macro" : false };
+		// }
 
 		default:
-			return { v: -1, et:ET_P, error: `unknown variable "${name}"` };
+			throw new VAExprError(`Unknown variable "${name}"`);
 	}
 }

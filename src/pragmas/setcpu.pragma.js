@@ -1,35 +1,39 @@
-import { logLine } from "../log.js";
-import { cpu6502, cpu65c02, cpu65x02 } from "../tables.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import { cpu6502, cpu65c02, cpu65x02 } from "../opcodes/all.js";
 
-export const CPU_CONST= {
-	"6502": 1,
-	"65X02": 11,
-	"65C02": 100,
+export const CPU_NAMES= {
+	cpu6502: "6502",
+	cpu65X02: "65X02",
+	cpu65C02: "65C02",
 };
 
-export function setcpu(ctx, cpuName) {
-	switch(cpuName) {
-		case "6502":
-			ctx.opcodes= cpu6502.opcodes;
-			ctx.options.useIllegals= false;
+export function setcpu(ctx, name) {
+	name= name.toUpperCase();
+	switch(name) {
+		case CPU_NAMES.cpu6502:
+			ctx.opcodes= cpu6502;
 			break;
 
-		case "65X02":
-			ctx.opcodes= cpu65x02.opcodes;
-			ctx.options.useIllegals= true;
+		case CPU_NAMES.cpu65X02:
+			ctx.opcodes= cpu65x02;
 			break;
 
-		case "65C02":
-			ctx.opcodes= cpu65c02.opcodes;
-			ctx.options.useIllegals= false;
+		case CPU_NAMES.cpu65C02:
+			ctx.opcodes= cpu65c02;
 			break;
+
+		default:
+			throw new VAParseError("Unknown cpu name");
 	}
-	ctx.cpu= CPU_CONST[cpuName];
+	ctx.cpu= CPU_NAMES["cpu" + name];
 }
 
-export function processSetCPU(ctx, pragma) {
-	setcpu(ctx, ctx.sym[ctx.ofs]);
-	ctx.pict= ".SETCPU " + ctx.cpu;
-	logLine(ctx);
-	return true;
+export function processSetCPU(ctx) {
+	const tok= ctx.lexer.token();
+	if(tok.type != TOKEN_TYPES.STRING)
+		throw new VAParseError("Need cpu name string");
+
+	setcpu(ctx, tok.value);
+	ctx.lexer.next();
 }

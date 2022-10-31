@@ -1,13 +1,14 @@
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+
 export function fnLen(ctx, parms) {
+	const parm= parms[0];
 
-	console.log("fnLen", parms, typeof parms);
+	console.log("fnLen", parm);
 
-	switch(typeof parms) {
-		case "string":
-			return parms.length;
-		case "object":
-			return Array.isArray(parms) ? parms.length : 0;
-		default:
-			return 0;
-	}
+	if(!Array.isArray(parm) && typeof parm != "string")
+		throw new VAParseError("LEN: Invalid Type");
+
+	const value= parm.length;
+	return { value, type: TOKEN_TYPES.NUMBER };
 }

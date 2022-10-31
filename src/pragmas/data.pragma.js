@@ -1,7 +1,6 @@
-import { getExpression } from "../expression.js";
-import { ET_P, ET_S, logError, logLine } from "../log.js";
-import { compile, getHexByte, getHexWord, hexPrefix } from "../utils.js";
-import { readBlock } from "./block.utils.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import { parseExpression } from "../parsers/expression.parser.js";
 
 const DATASIZE= {
 	DB: 1,
@@ -10,42 +9,64 @@ const DATASIZE= {
 	DBYTE: -2,
 	DWORD: -4,
 };
+const hexRe= /[0-9a-fA-F]/;
+const wsRe= /\s/;
 
-function symToArgs(sym, ofs) {
-	let args= [],
-		chunk;
+function readHexLine(hexLine) {
+	const bytes= [];
+	let idx= 0;
+	const getChar= () => {
+		if(idx>=hexLine.length)
+			return false;
 
-	for (let i=ofs; i<sym.length; i++) {
-		let s=sym[i], quote=false, k=0;
-		chunk='';
-		while(k<s.length) {
-			let c= s.charAt(k++);
-			if(c=='"') {
-				chunk+= '"';
-				quote= !quote;
-				if(!quote) {
-					args.push(chunk);
-					chunk='';
-				}
-			} else if(!quote) {
-				if(c==' ' || c=='\t')
-					continue;
-				if(c==',') {
-					if (chunk.length) args.push(chunk);
-					chunk='';
-				}
-				else {
-					chunk+=c;
-				}
-			}
-			else {
-				chunk+=c;
-			}
-		}
-		if(chunk.length)
-			args.push(chunk);
+		const chr= hexLine[idx++];
+		if(wsRe.test(chr))
+			return false;
+		if(!hexRe.test(chr))
+			throw new VAParseError("Invalid character in Hex data");
+
+		return chr;
+	};
+		
+	while(idx<hexLine.length) {
+		let chr0= getChar();
+		if(chr0 === false)
+			continue;
+		let chr1= getChar();
+		let numStr= chr0 + (chr1 !== false ? chr1 : "");
+		bytes.push( Number.parseInt(numStr, 16) );
 	}
-	return args;
+
+	if(bytes.length == 0)
+		throw new VAParseError("Missing Hex data");
+
+	return bytes;
+}
+
+function readHexBlock(ctx) {
+	const bytes= [];
+	while(true) {
+		ctx.lexer.nextLine();
+
+		if(ctx.lexer.eof())
+			throw new VAParseError("Missing .end for .hex");
+
+		if(ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
+			ctx.lexer.next();
+			const tok= ctx.lexer.token();
+			if(tok.type !=TOKEN_TYPES.IDENTIFIER || tok.value != "END")
+				throw new VAParseError("Illegal pragma here");
+			ctx.lexer.next();
+			break;
+		}
+		const hexLine= ctx.lexer.line().trim();
+		bytes.push(...readHexLine(hexLine));
+	}
+
+	if(bytes.length == 0)
+		throw new VAParseError("Missing Hex data");
+		
+	return bytes;
 }
 
 /*
@@ -57,154 +78,81 @@ function symToArgs(sym, ofs) {
 		<hex bytes>
 	.end
  */
-export function hex(ctx, pragma) {
-
-	function processHexLine(numbers) {
-		for(const num of numbers) {
-			ctx.addrStr= getHexWord(ctx.pc);
-			ctx.pict= '.db $'+num;
-			if(!/^[0-9A-F]+$/.test(num)) {
-				logError(ctx, ET_P, "Not a valid hexa number");
-				return false;
-			}
-			if(ctx.pass == 2) {
-				let byte= Number.parseInt(num, 16) & 0xFF;
-				compile(ctx, ctx.pc, byte);
-				ctx.asm= getHexByte(byte);
-				ctx.pict= `.DB ${hexPrefix}${ctx.asm}`;
-			}
-			logLine(ctx);
-			ctx.pc++;
-		}
+export function processHex(ctx, pragma) {
+	// no parm ? so block version
+	if(!ctx.lexer.token()) {
+		ctx.code.emits(ctx.pass, ...readHexBlock(ctx));
+	} else {
+		const hexLine= ctx.lexer.line().slice(ctx.lexer.token().posInLine);
+		ctx.code.emits(ctx.pass, ...readHexLine(hexLine));
+		// as we didn't consume the tokens, we need to skip them
+		while(ctx.lexer.next());
 	}
 
-	if(ctx.sym.length-ctx.ofs<1) {
-		const bytes= readBlock(ctx);
-		bytes.forEach( (hexLine) => {
-			processHexLine(hexLine.tokens);
-		});
-		return true;
-	}
+	// ctx.lexer.nextLine();
 
-	let numbers= symToArgs(ctx.sym, ctx.ofs);
-	processHexLine(numbers);
-	return true;
 }
 
-export function processNumber(ctx, pragma, arg) {
-
-	const endianSize= DATASIZE[pragma];
+function pushNumber(list, parm, endianSize) {
 	const dataSize= Math.abs(endianSize);
-	let numberValue= 0;
+	let numberValue= parm.value;
+	
+	numberValue&= dataSize==4 ? 0xffffffff : 0xffff;
+	const byte3= (numberValue>>24) & 0xff;
+	const byte2= (numberValue>>16) & 0xff;
+	const byte1= (numberValue>>8) & 0xff;
+	const byte0= numberValue & 0xff;
 
-	ctx.addrStr= getHexWord(ctx.pc);
-	ctx.pict= '.'+pragma+' ';
+	switch(endianSize) {
+		// byte
+		case 1:
+			if(parm.value>0xFF)
+				throw new VAParseError("Data Overflow - 8bits expected");
+			list.push(byte0);
+			break;
 
-	arg= arg.replace(/^#/,"");
-	if(arg=="") {
-		logError(ctx, ET_S, 'expression expected');
-		return false;
-	}
+		// word (2 bytes) little endian
+		case 2:
+			if(parm.value>0xFFFF)
+				throw new VAParseError("Data Overflow - 16bits expected");
+			list.push(byte0, byte1);
+			break;
 
-	const r= getExpression(ctx, arg, dataSize==4);
-	ctx.pict+= r.pict;
-	if (r.error) {
-		logError(ctx, r.et||ET_P, r.error);
-		return false;
-	}
-	numberValue= r.v;
+		// long (4 bytes) little endian
+		case 4:
+			list.push(byte0, byte1, byte2, byte3);
+			break;
 
-	if (ctx.pass==2) {
-		numberValue&= dataSize==4 ? 0xffffffff : 0xffff;
-		const lb= (numberValue>>8) & 0xff;
-		const rb= numberValue & 0xff;
+		// long (4 bytes) big endian
+		case -4:
+			list.push(byte3, byte2, byte1, byte0);
+			break;
 
-		switch(endianSize) {
-			// byte
-			case 1:
-				compile(ctx, ctx.pc, rb);
-				ctx.asm= getHexByte(rb);
-				ctx.pict= '.DB '+hexPrefix+getHexByte(rb);
-				break;
-
-			// word (2 bytes) little endian
-			case 2:
-				compile(ctx, ctx.pc, rb);
-				compile(ctx, ctx.pc+1, lb);
-				ctx.asm= getHexByte(rb)+' '+getHexByte(lb);
-				ctx.pict= '.DW '+hexPrefix+getHexWord(numberValue);
-				break;
-
-			// long (4 bytes) little endian
-			case 4: {
-				const	b0= (numberValue>>24) & 0xff,
-						b1= (numberValue>>16) & 0xff;
-
-				compile(ctx, ctx.pc, rb);
-				compile(ctx, ctx.pc+1, lb);
-				ctx.asm= getHexByte(rb)+' '+getHexByte(lb);
-
-				ctx.pict= '.DL '+hexPrefix+getHexByte(b0)+getHexByte(b1)+getHexByte(lb)+getHexByte(rb);
-				logLine(ctx);
-
-				ctx.pc+= 2;
-				ctx.addrStr= getHexWord(ctx.pc);
-				compile(ctx, ctx.pc, b1);
-				compile(ctx, ctx.pc+1, b0);
-				ctx.asm= getHexByte(b1)+' '+getHexByte(b0);
-				ctx.pict= '';
-				break;
-			}
-
-			// long (4 bytes) big endian
-			case -4: {
-				const b0= (numberValue>>24)&0xff, b1=(numberValue>>16)&0xff;
-				compile(ctx, ctx.pc, b0);
-				compile(ctx, ctx.pc+1, b1);
-				ctx.asm= getHexByte(b0)+' '+getHexByte(b1);
-				ctx.pict= '.DWORD '+hexPrefix+getHexByte(b0)+getHexByte(b1)+getHexByte(lb)+getHexByte(rb);
-				logLine(ctx);
-				ctx.pc+= 2;
-				ctx.addrStr= getHexWord(ctx.pc);
-				compile(ctx, ctx.pc, lb);
-				compile(ctx, ctx.pc+1, rb);
-				ctx.asm= getHexByte(lb)+' '+getHexByte(rb);
-				ctx.pict= '';
-				break;
-			}
-
-			// word (2 bytes) big endian
-			case -2:
-				compile(ctx, ctx.pc, lb);
-				compile(ctx, ctx.pc+1, rb);
-				ctx.asm= getHexByte(lb)+' '+getHexByte(rb);
-				ctx.pict= '.DBYTE '+hexPrefix+getHexWord(numberValue);
-				break;
-		}
-
-	}
-	logLine(ctx);
-	ctx.pc+= dataSize;
-	return true;
+		// word (2 bytes) big endian
+		case -2:
+			list.push(byte1, byte0);
+			break;
+	}	
 }
 
 export function processData(ctx, pragma) {
+	const endianSize= DATASIZE[pragma];
+	const list= [];
+	while(true) {
+		const res= parseExpression(ctx);
+		if(res.type != TOKEN_TYPES.NUMBER)
+			break;
 
-	if(ctx.sym.length-ctx.ofs<1) {
-		ctx.addrStr= getHexWord(ctx.pc);
-		ctx.pict+= pragma;
-		logError(ctx, ET_S, 'expression expected');
-		return false;
+		pushNumber(list, res, endianSize);
+
+		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
+			break;
+			
+		ctx.lexer.next();
 	}
 
-	const args= symToArgs(ctx.sym, ctx.ofs);
-	for(let j=0; j<args.length; j++) {
-		const arg= args[j];
-		if(!arg)
-			return true;
-		if(!processNumber(ctx, pragma, arg))
-			return false;
-	}
-
-	return true;
+	if(list.length == 0)
+		throw new VAParseError("Missing data");
+		
+	ctx.code.emits(ctx.pass, ...list);
 }

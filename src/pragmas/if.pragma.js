@@ -1,40 +1,25 @@
-import { getExpression } from "../expression.js";
-import { ET_P, logError, logLine } from "../log.js";
-import { registerNextLineHandler } from "../tokenizer.js";
-import { readBlock } from "./block.utils.js";
-
-function ifNextLine(ctx, ifCtx) {
-	if(ifCtx.lineIdx >= ifCtx.lines.length)
-		return false;
-
-	const line= ifCtx.lines[ifCtx.lineIdx++];
-	ctx.rawLine= line.raw;
-	ctx.sym= [...line.tokens];
-	return true;
-}
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import { readBlock } from "../parsers/block.parser.js";
+import { parseExpression } from "../parsers/expression.parser.js";
 
 export function processIf(ctx, pragma) {
 
-	const expr= ctx.sym.slice(ctx.ofs).join("");
+	const res= parseExpression(ctx);
 
-	const condValue= getExpression(ctx, expr);
-	if(condValue.error) {
-		logError(ctx, condValue.et||ET_P, condValue.error);
-		return false;
-	}
+	if(res.type != TOKEN_TYPES.NUMBER)
+		throw new VAParseError("Need a number");
+		
+	// console.log("processIf", res.value !=0);
 
-	if(ctx.pass == 1) {
-		ctx.pict= "."+pragma+" "+expr;
-		logLine(ctx);
-	}
+	const block= readBlock(ctx);
+	
+	// console.log("processIf [");
+	// console.log(block);
+	// console.log("]");
 
-	const ifCtx= {
-		lines: readBlock(ctx),
-		lineIdx: 0
-	};
-
-	if(ifCtx.lines && condValue.v /*&& ctx.pass == 2*/)
-		registerNextLineHandler(pragma, (ctx) => ifNextLine(ctx, ifCtx));
+	if(res.value !=0)
+		ctx.lexer.pushSource(block);
 
 	return true;
 }

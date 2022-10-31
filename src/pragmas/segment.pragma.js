@@ -1,31 +1,13 @@
-import { ET_S, logError } from "../log.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 
-export function processSegment(ctx, pragma) {
+export function processSegment(ctx) {
 
-	if(ctx.pass == 1)
-		ctx.pict= "."+pragma+" ";
+	const tok= ctx.lexer.token();
+	if(tok.type != TOKEN_TYPES.IDENTIFIER)
+		throw new VAParseError("Need a segment name");
 
-	if(ctx.sym.length <= ctx.ofs) {
-		logError(ctx, ET_S, 'segment name expected');
-		return false;
-	}
-
-	const name= ctx.sym[ctx.ofs];
-
-	if(ctx.pass == 1)
-		ctx.pict+= name;
-
-	if(!ctx.segments[name]) {
-		logError(ctx, ET_S, 'undefined segment');
-		return false;
-	}
-
-	ctx.currentSegment= name;
-
-	if(!ctx.code[name])
-		ctx.code[name]= [];
-
-	ctx.pc= ctx.segments[name].start + ctx.code[name].length;
-
+	ctx.lexer.next();
+	ctx.code.select(tok.value);
 	return true;
 }

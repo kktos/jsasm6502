@@ -1,6 +1,6 @@
-import { ET_S, logError, logLine } from "../log.js";
-import { setNSentry } from "../namespace.js";
-import { readBlock } from "./block.utils.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import { readBlock } from "../parsers/block.parser.js";
 
 /*
 	.define <VARIABLE NAME>
@@ -8,39 +8,33 @@ import { readBlock } from "./block.utils.js";
 	.end
 */
 
-export function processDefine(ctx, pragma) {
-	if(ctx.pass == 1)
-		ctx.pict= "."+pragma+" ";
-
-	if (ctx.sym.length-ctx.ofs < 1) {
-		logError(ctx, ET_S, 'name expected');
-		return false;
-	}
-
-	const name= ctx.sym[ctx.ofs];
-	
-	if(ctx.pass == 1) {
-		ctx.pict+= name;
-		logLine(ctx);		
-	}
-
+export function processDefine(ctx) {
+	const name= ctx.lexer.token().value;
 	const block= readBlock(ctx);
-	const json= block
-					.filter(item=>item.tokens.length)
-					.map(item=>item.raw)
-					.join("\n");
-
-	let data;
+	let value;
 	try {
-		data= ctx.YAMLparse(json);
+		value= ctx.YAMLparse(block.replace(/\t/g," "));
 	}
 	catch (e) {
-		logError(ctx, ET_S, "invalid data " + e.message);
-		return false;
+		throw new VAParseError("Invalid YAML/JSON : "+e.message);
 	}
 
-	if(ctx.pass == 2)
-		setNSentry(ctx, name, {v:data, error:false, isWord: false});
+	// console.log("processDefine", { type, value });
+
+	ctx.symbols.set(name, { type: getValueType(value), value });
 
 	return true;
+}
+
+export function getValueType(value) {
+	switch(typeof value) {
+		case "number":
+			return TOKEN_TYPES.NUMBER;
+		case "string":
+			return TOKEN_TYPES.STRING;
+		case "object":
+			return Array.isArray(value) ? TOKEN_TYPES.ARRAY : TOKEN_TYPES.OBJECT;
+		default:
+			throw new VAParseError("Unknown data type : "+typeof value);
+	}
 }

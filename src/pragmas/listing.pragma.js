@@ -1,22 +1,16 @@
-import { ET_S, logError } from "../log.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 
+export function processListing(ctx) {
+	// const res= parseExpression(ctx);
+	if(!ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
+		throw new VAParseError("Needed a ON or OFF here");
 
-export function processListing(ctx, pragma) {
-
-	const opt= ctx.sym[ctx.ofs];
-
-	switch(opt.toLowerCase()) {
-		case "on": ctx.wannaOutput= true; break;
-		case "off": ctx.wannaOutput= false; break;
-		default: {
-			const v= parseInt(opt);
-			if(isNaN(v)) {
-				logError(ctx, ET_S, "ON/OFF are the only possible options");
-				return false;
-			}
-			ctx.wannaOutput= v!=0;
-		}
+	switch(ctx.lexer.token().value) {
+		case "ON": ctx.wannaListing= true; break;
+		case "OFF": ctx.wannaListing= false; break;
+		default:
+			throw new VAParseError("Needed a ON or OFF here");
 	}
-	
-	return true;
+	ctx.lexer.next();
 }

@@ -1,0 +1,4 @@
+
+segments:
+  BOOT:		{ start: 0x800, end: 0x8FF }
+  LOADER:		{ start: 0xB700, end: 0xBFFF }

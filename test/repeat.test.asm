@@ -17,17 +17,20 @@
 		.out "-1- define spriteIdx = 10"
 		.out ""
 
-spriteIdx= 10
-.out spriteIdx
+		spriteIdx= 10
+		.out "spriteIdx= ", spriteIdx
 
 		.out ""
 		.out "-2- repeat 3 times with iterator spriteIdx (should be equal to 0,1,2)"
 		.out ""
 
-		.repeat 3 spriteIdx
-			lda #spriteIdx
+		.lst on
+		loopCount= 3
+		.repeat loopCount spriteIdx
+			lda #loopCount-spriteIdx
 			sta $c030
 		.end
+		; .lst off
 
 		.out ""
 		.out "-2- repeat 3 times no iterator"
@@ -41,7 +44,7 @@ spriteIdx= 10
 		.out "-3- repeat (loopCount) times - use var spriteIdx: should be equal to 10"
 		.out ""
 
-loopCount= 2
+		loopCount= 2
 		.repeat loopCount
 			lda #spriteIdx
 			sta $c030

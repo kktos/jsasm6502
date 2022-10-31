@@ -1,24 +1,13 @@
-import { getIdentifier } from "../expression.js";
-import { initNS, isNSExists, NS_GLOBAL } from "../namespace.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 
-export function processNamespace(ctx, pragma) {
-	let name;
+export function processNamespace(ctx) {
+	if(!ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
+		throw new VAParseError("Need a namespace name");
 
-	if(ctx.pass == 1)
-		ctx.pict= "."+pragma+" ";
+	ctx.symbols.select( ctx.lexer.token().value );
+	
+	// console.log("processNamespace", ctx.lexer.token().value, ctx.symbols.ns);
 
-	if(ctx.ofs < ctx.sym.length) {
-		const ident= getIdentifier(ctx.sym[ctx.ofs],0);
-		name= ident.v;
-	}
-
-	ctx.currentNS= name ? name : NS_GLOBAL;
-
-	if(!isNSExists(ctx, ctx.currentNS))
-		initNS(ctx, ctx.currentNS);
-
-	if(ctx.pass == 1)
-		ctx.pict+= name;
-
-	return true;
+	ctx.lexer.next();
 }

@@ -2,13 +2,12 @@ import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 
-export function processAlign(ctx) {
+export function processFill(ctx) {
 	const res= parseExpression(ctx);
 	if(res.type != TOKEN_TYPES.NUMBER)
 		throw new VAParseError("Need a number");
 	
-	const alignTo= res.value & 0xFFFF;
-	const alignedPC= ctx.code.pc % alignTo;
+	const byteCount= res.value & 0xFFFF;
 	let fillByte= 0x00;
 
 	if(ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
@@ -19,7 +18,7 @@ export function processAlign(ctx) {
 		fillByte= res.value;
 	}
 
-	const filled= Array.from({length: alignTo - alignedPC}, () => fillByte);
+	const filled= Array.from({length: byteCount}, () => fillByte);
 	ctx.code.emits(ctx.pass, ...filled);
 
 }

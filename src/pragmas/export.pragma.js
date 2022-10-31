@@ -1,24 +1,29 @@
-import { ET_S, logError } from "../log.js";
-import { exportNSentries, exportNSentry } from "../namespace.js";
+import { VAParseError } from "../helpers/errors.class.js";
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 
-export function processExport(ctx, pragma) {
+export function processExport(ctx) {
+	const tok= ctx.lexer.token();
 
-	if(ctx.pass == 1)
-		ctx.pict= "."+pragma+" ";
-
-	if(ctx.sym.length <= ctx.ofs) {
-		logError(ctx, ET_S, 'symbol name expected');
-		return false;
+	if(ctx.pass>1 && !ctx.symbols.isGlobal) {
+		switch(tok.type) {
+			
+			case TOKEN_TYPES.IDENTIFIER: {
+				if(!ctx.symbols.exists(tok.value))
+					throw new VAParseError("Unknown symbol");
+				ctx.symbols.export(tok.value);
+				break;
+			}
+	
+			case TOKEN_TYPES.STRING:
+				const count= ctx.symbols.exportMany(tok.value);
+				if(!count)
+					throw new VAParseError("No match so nothing to export");
+				break;
+	
+			default:
+				throw new VAParseError("Need a symbol name or regex");
+		}
 	}
 
-	const name= ctx.sym[ctx.ofs];
-	if(ctx.pass == 1)
-		ctx.pict+= name;
-
-	if(["'", '"'].includes(name[0])) {
-		exportNSentries(ctx, name.slice(1,-1));
-	} else
-		exportNSentry(ctx, name);
-
-	return true;
+	ctx.lexer.next();
 }
