@@ -24,7 +24,7 @@ export function parseExpression(ctx, endSet, expectedType) {
 
 	parseExpr(exprCtx);
 
-	console.log("parseExpression", exprCtx.stack);
+	// console.log("parseExpression", exprCtx.stack);
 
 	if(exprCtx.stack.length)
 		res= evalExpr(ctx, exprCtx.stack);

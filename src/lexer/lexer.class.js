@@ -123,11 +123,18 @@ export class Lexer {
 		if(!this.ctx.eventHandlers[type])
 			this.ctx.eventHandlers[type]= [];
 		this.ctx.eventHandlers[type].push(listener);
+
+		// console.log("Lexer.addEventListener",type, listener);
+		// console.log("Lexer.eventHandlers",this.ctx.eventHandlers);
 	}
 	removeEventListener(type, listener) {
 		if(!this.ctx.eventHandlers[type])
 			return;
 		const idx= this.ctx.eventHandlers[type].indexOf(listener);
+
+		// console.log("Lexer.removeEventListener",type, listener);
+		// console.log("Lexer.eventHandlers",this.ctx.eventHandlers);
+
         if(idx > -1)
             this.ctx.eventHandlers[type].splice(idx, 1);		
 	}
@@ -149,6 +156,7 @@ export class Lexer {
 			if(this.ctx.lineIdx<this.ctx.lines.length)
 				break;
 
+			// console.log("Lexer.nextLine", this.ctx.eventHandlers);
 			if(this.ctx.eventHandlers[EVENT_TYPES.EOS])
 				this.executeEventListener(EVENT_TYPES.EOS);
 				

@@ -16,27 +16,29 @@ export function processRepeat(ctx) {
 		ctx.lexer.next();
 	}
 
-	const block= readBlock(ctx);
+	const [block]= readBlock(ctx);
 
-	for(let idx= 0; idx<count.value; idx++)
-		ctx.lexer.pushSource(block);
-
-	if(!iterator)
-		return true;
-
-	const IteratorName= iterator.value;
-	const IteratorValue= {type: TOKEN_TYPES.NUMBER, value: 0};
-
-	ctx.symbols.override(IteratorName, IteratorValue);
-
-	const onEndOfBlock= () => {
-		IteratorValue.value++;
-		if(IteratorValue.value>=count.value) {
-			ctx.lexer.removeEventListener(EVENT_TYPES.EOS, onEndOfBlock)
-			ctx.symbols.restore(iterator.value);
+	let onEndOfBlock;
+	if(iterator) {
+		const IteratorName= iterator.value;
+		const IteratorValue= {type: TOKEN_TYPES.NUMBER, value: 0};
+	
+		ctx.symbols.override(IteratorName, IteratorValue);
+	
+		onEndOfBlock= () => {
+			IteratorValue.value++;
+			if(IteratorValue.value>=count.value) {
+				// ctx.lexer.removeEventListener(EVENT_TYPES.EOS, onEndOfBlock)
+				ctx.symbols.restore(iterator.value);
+			}
 		}
 	}
-	ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);			
+
+	for(let idx= 0; idx<count.value; idx++) {
+		ctx.lexer.pushSource(block);
+		iterator && ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);			
+	}
+
 	return true;
 
 }

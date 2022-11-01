@@ -10,7 +10,7 @@ import { readBlock } from "../parsers/block.parser.js";
 
 export function processDefine(ctx) {
 	const name= ctx.lexer.token().value;
-	const block= readBlock(ctx);
+	const [block]= readBlock(ctx);
 	let value;
 	try {
 		value= ctx.YAMLparse(block.replace(/\t/g," "));

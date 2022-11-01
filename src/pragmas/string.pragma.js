@@ -14,7 +14,7 @@ export function processText(ctx, pragma) {
 	while(ctx.lexer.token()) {
 		const buffer= makeString(ctx, ctx.lexer.token().value, opts);
 
-		ctx.code.emits(ctx.pass, buffer);
+		ctx.code.emits(ctx.pass, buffer, true);
 
 		ctx.lexer.next();
 		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))

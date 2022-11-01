@@ -95,14 +95,13 @@ function addPragmaDef(handlerFn, isBlock, pragmaNames) {
 
 const pragmaDefs= {};
 addPragmaDef(processIf			,  true, ["IF"]);
-// addPragmaDef(processMacro		,  true, ["MACRO"]);
+addPragmaDef(null				,  false, ["ELSE"]);
+
 addPragmaDef(processRepeat		,  true, ["REPEAT"]);
 addPragmaDef(processDefine		,  true, ["DEFINE"]);
+// addPragmaDef(processMacro		,  true, ["MACRO"]);
 
 addPragmaDef(processOption		, false, ["OPT", "OPTION"]);
-// addPragmaDef(c64Start			, false, ["PETSTART", "C64START"]);
-// addPragmaDef(ignorePragma		, false, ["DATA"]);
-// addPragmaDef(processPage		, false, ["PAGE", "SKIP"]);
 addPragmaDef(processText		, false, [
 											// no length
 											"TEXT",
@@ -142,6 +141,8 @@ export function parsePragma(ctx) {
 	const pragmaDef= pragmaDefs[token.value];
 	if(!pragmaDef)
 		throw new VAParseError("Unknown pragma");
+	if(!pragmaDef.handlerFn)
+		throw new VAParseError("Syntax Error");
 	
 	ctx.lexer.next();
 

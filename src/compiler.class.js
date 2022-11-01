@@ -54,7 +54,7 @@ export class Compiler {
 		this._output= null;
 	}
 
-	emits(pass, bytes) {
+	emits(pass, bytes, wannaShowChars) {
 		const obj= this.obj[this.currentSegment];
 		if(obj == undefined)
 			throw new VABuildError("No Object Segment set");
@@ -64,19 +64,31 @@ export class Compiler {
 			throw new VABuildError(`Code is out of Segment range ${getHexWord(this.pc)}:${getHexWord(this.pc+ bytes.length)} > ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
 	
 		if(pass>1) {
-			this._output= "";
+			let chars= "";
+			let hex= "";
+			// this._output= "";
 			const offset= this.pc - seg.start;
+			const lines= [];
 			for(let idx= 0; idx < bytes.length; idx++) {
 
-				if(idx % BYTECOUNTPERLINE==0)
-					this._output+= "    " + getHexWord(this.pc+idx)+': ';
+				if(idx%BYTECOUNTPERLINE == 0) {					
+					hex+= "    " + getHexWord(this.pc+idx)+': ';
+				}
 
-				obj[offset + idx] = low(bytes[idx]);
-				this._output+= " " + getHexByte(bytes[idx]);
-				
-				if(idx % BYTECOUNTPERLINE==BYTECOUNTPERLINE-1)
-					this._output+= "\n";
+				obj[offset + idx]= low(bytes[idx]);
+				hex+= " " + getHexByte(bytes[idx]);
+
+				if(wannaShowChars)
+					chars+= String.fromCharCode(bytes[idx]);
+
+				if(idx%BYTECOUNTPERLINE == BYTECOUNTPERLINE-1) {
+					lines.push( hex.padEnd(32) + chars);
+					hex= "";
+					chars= "";
+				}
 			}
+			hex!="" && lines.push( hex.padEnd(32) + chars);
+			this._output= lines.join("\n");
 		}
 
 		this.pc+= bytes.length;

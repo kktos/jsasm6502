@@ -10,9 +10,14 @@ export function processIf(ctx, pragma) {
 	if(res.type != TOKEN_TYPES.NUMBER)
 		throw new VAParseError("Need a number");
 		
-	const block= readBlock(ctx);
-	
-	if(res.value !=0)
+	const line= ctx.lexer.line();
+
+	const [blockTrue, blockFalse]= readBlock(ctx, "ELSE");
+
+	// console.log({line, willdo: !!res.value, blockTrue, blockFalse});
+
+	const block= res.value ? blockTrue : blockFalse;
+	if(block)
 		ctx.lexer.pushSource(block);
 
 	return true;
