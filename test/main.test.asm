@@ -45,9 +45,18 @@ toto=$44
 		.dword "0123", $00, $11
 
 		
+str:
 		.if toto >= $44
 		.text "toto"
 		.end
+
+		; msb
+		lda #>str
+		; lsb
+		lda #<str
+
+		.out "not toto = ", !toto
+		.out "toto = ",toto
 
 		; .cstring "aBC","DEF"
 

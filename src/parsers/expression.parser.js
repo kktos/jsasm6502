@@ -63,8 +63,7 @@ function evalExpr(ctx, stack) {
 				const op1= localStack.pop();
 				if(op1.type != TOKEN_TYPES.NUMBER)
 					throw new VAExprError("Only Numbers are allowed here");
-				op1.value= -op1.value;
-				stack.unshift(op1);
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: -op1.value });
 				break;
 			}
 			case "*": {
@@ -170,8 +169,7 @@ function evalExpr(ctx, stack) {
 				const op1= localStack.pop();
 				if(op1.type != TOKEN_TYPES.NUMBER)
 					throw new VAExprError("Only Numbers are allowed here");
-				op1.value= !op1.value;
-				stack.unshift(op1);
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: !op1.value });
 				break;
 			}
 			case "AND": {
@@ -204,6 +202,21 @@ function evalExpr(ctx, stack) {
 				stack.unshift(res);
 				break;
 			}
+			case "MSB": {
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: (op1.value>>8) & 0xFF });
+				break;
+			}
+			case "LSB": {
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value & 0xFF });
+				break;
+			}
+
 			default:
 				throw new VAExprError("Unknown operation " + item.op);
 		}
@@ -391,6 +404,18 @@ function parse_term(exprCtx) {
 			exprCtx.lexer.next();
 			parse_term(exprCtx);
 			exprCtx.stack.push({ op: "!" });
+			break;
+
+		case TOKEN_TYPES.GREATER:
+			exprCtx.lexer.next();
+			parse_term(exprCtx);
+			exprCtx.stack.push({ op: "MSB" });
+			break;
+
+		case TOKEN_TYPES.LOWER:
+			exprCtx.lexer.next();
+			parse_term(exprCtx);
+			exprCtx.stack.push({ op: "LSB" });
 			break;
 			
 		case TOKEN_TYPES.AT: {

@@ -1,4 +1,3 @@
-// import { getExpression } from "../expression.js";
 import { VAParseError } from "../helpers/errors.class.js";
 import { high, low } from "../helpers/utils.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
@@ -6,7 +5,7 @@ import { ADDRMODE } from "../opcodes/65xxx.addrmodes.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 
 
-export function parseOpcode(ctx, anonymousTargets) {
+export function parseOpcode(ctx) {
 
 	let token= ctx.lexer.token();
 	const opcode= token.value;
@@ -40,9 +39,13 @@ export function parseOpcode(ctx, anonymousTargets) {
 		if(obj == -1)
 			throw new VAParseError("Invalid Address Mode for Opcode "+opcode);
 			
-		ctx.lexer.next();
-
+			ctx.lexer.next();
+			
 		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);		
+
+		if(parm.value > 0xFF)
+			throw new VAParseError("Absolute value must by 8 bits wide");
+
 		ctx.code.emits(ctx.pass, [obj, parm.value]);
 		return true;
 	}
