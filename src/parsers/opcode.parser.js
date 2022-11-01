@@ -28,7 +28,7 @@ export function parseOpcode(ctx, anonymousTargets) {
 		if(obj == -1)
 			throw new VAParseError("Invalid Address Mode for Opcode "+opcode);
 			
-		ctx.code.emits(ctx.pass, obj);
+		ctx.code.emits(ctx.pass, [obj]);
 		return true;
 	}
 		
@@ -43,7 +43,7 @@ export function parseOpcode(ctx, anonymousTargets) {
 		ctx.lexer.next();
 
 		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);		
-		ctx.code.emits(ctx.pass, obj, parm.value);
+		ctx.code.emits(ctx.pass, [obj, parm.value]);
 		return true;
 	}
 
@@ -116,7 +116,7 @@ export function parseOpcode(ctx, anonymousTargets) {
 		if(obj == -1)
 			throw new VAParseError("IAM2 Invalid Address Mode for Opcode "+opcode);
 				
-		ctx.code.emits(ctx.pass, obj, addr.value);
+		ctx.code.emits(ctx.pass, [obj, addr.value]);
 		return true;
 	}
 
@@ -184,12 +184,10 @@ export function parseOpcode(ctx, anonymousTargets) {
 	if(obj == -1)
 		throw new VAParseError("IAM4 Invalid Address Mode for Opcode "+opcode);
 
-	// if(ctx.pass>1) {
-		if(opSize==16)
-			ctx.code.emits(ctx.pass, obj, low(addr.value), high(addr.value));
-		else
-			ctx.code.emits(ctx.pass, obj, low(addr.value));
-	// }
+	if(opSize==16)
+		ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
+	else
+		ctx.code.emits(ctx.pass, [obj, low(addr.value)]);
 	
 	return true;
 

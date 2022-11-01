@@ -20,6 +20,6 @@ export function processAlign(ctx) {
 	}
 
 	const filled= Array.from({length: alignTo - alignedPC}, () => fillByte);
-	ctx.code.emits(ctx.pass, ...filled);
+	ctx.code.emits(ctx.pass, filled);
 
 }

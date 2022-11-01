@@ -5,11 +5,12 @@ import yargs from "yargs";
 
 import { assemble } from "./main.js";
 
-function readFile(filename, fromFile) {
+function readFile(filename, fromFile, asBin) {
 	try {
 		let includeDir= fromFile ? dirname(fromFile) : "";
 		filename= (includeDir!="" ? includeDir +"/" : "") + filename;
-		return {path: filename, content: readFileSync(rootDir +"/"+ filename).toString()};
+		const content= readFileSync(rootDir +"/"+ filename);
+		return {path: filename, content: asBin ? content : content.toString()};
 	} catch(e) {
 		// console.error("FATAL ERROR: Unable to readFile "+filename);
 		return null;

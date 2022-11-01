@@ -10,18 +10,18 @@ import { processIf } from "../pragmas/if.pragma.js";
 import { processInclude } from "../pragmas/include.pragma.js";
 import { processListing } from "../pragmas/listing.pragma.js";
 import { processNamespace } from "../pragmas/namespace.pragma.js";
+import { processOption } from "../pragmas/option.pragma.js";
 import { processOrg } from "../pragmas/org.pragma.js";
 import { processASMOuput } from "../pragmas/out.pragma.js";
 import { processRepeat } from "../pragmas/repeat.pragma.js";
 import { processSegment } from "../pragmas/segment.pragma.js";
 import { processSetCPU } from "../pragmas/setcpu.pragma.js";
+import { processText } from "../pragmas/string.pragma.js";
 
 /*
 import { c64Start } from "../pragmas/c64start.pragma.js";
 import { processMacro } from "../pragmas/macro.pragma.js";
 import { ignorePragma, processEnd, processPage } from "../pragmas/misc.pragma.js";
-import { processOption } from "../pragmas/option.pragma.js";
-import { processText } from "../pragmas/string.pragma.js";
 */
 // export function parsePragma(pragma) {
 
@@ -99,20 +99,31 @@ addPragmaDef(processIf			,  true, ["IF"]);
 addPragmaDef(processRepeat		,  true, ["REPEAT"]);
 addPragmaDef(processDefine		,  true, ["DEFINE"]);
 
-// addPragmaDef(processOption		, false, ["OPT"]);
+addPragmaDef(processOption		, false, ["OPT", "OPTION"]);
 // addPragmaDef(c64Start			, false, ["PETSTART", "C64START"]);
 // addPragmaDef(ignorePragma		, false, ["DATA"]);
 // addPragmaDef(processPage		, false, ["PAGE", "SKIP"]);
-// addPragmaDef(processText		, false, ["TEXT", "ASCII", "PETSCII", "PETSCR", "C64SCR", "CSTRING", "PSTRING"]);
+addPragmaDef(processText		, false, [
+											// no length
+											"TEXT",
+											// zero terminated
+											"CSTRING", "CSTR", "ASCIIZ",
+											// 1str byte is length
+											"PSTRING", "PSTR"
+										]);
 
 addPragmaDef(processEnd			, false, ["END"]);
-addPragmaDef(processASMOuput	, false, ["OUT", "WARNING", "ERROR"]);
-addPragmaDef(processListing		, false, ["LST", "LISTING"]);
-addPragmaDef(processSetCPU		, false, ["SETCPU"]);
+addPragmaDef(processASMOuput	, false, [
+											"OUT", "ECHO", "LOG",
+											"WARNING",
+											"ERROR"
+										]);
+addPragmaDef(processListing		, false, ["LST", "LIST", "LISTING"]);
+addPragmaDef(processSetCPU		, false, ["CPU", "SETCPU", "PROCESSOR"]);
 addPragmaDef(processOrg			, false, ["ORG"]);
 addPragmaDef(processSegment		, false, ["SEGMENT"]);
 addPragmaDef(processAlign		, false, ["ALIGN"]);
-addPragmaDef(processFill		, false, ["FILL"]);
+addPragmaDef(processFill		, false, ["FILL", "RES"]);
 addPragmaDef(processHex			, false, ["HEX"]);
 addPragmaDef(processData		, false, ["DB", "DW", "DL", "DBYTE", "DWORD"]);
 

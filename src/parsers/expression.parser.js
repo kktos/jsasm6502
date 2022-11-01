@@ -24,7 +24,7 @@ export function parseExpression(ctx, endSet, expectedType) {
 
 	parseExpr(exprCtx);
 
-	// console.log("parseExpression", exprCtx.stack);
+	console.log("parseExpression", exprCtx.stack);
 
 	if(exprCtx.stack.length)
 		res= evalExpr(ctx, exprCtx.stack);
@@ -56,19 +56,14 @@ function evalExpr(ctx, stack) {
 		// console.log("evalExpr", item.op);
 
 		switch(item.op) {
+			//
+			// arithmetics
+			//
 			case "NEG": {
 				const op1= localStack.pop();
 				if(op1.type != TOKEN_TYPES.NUMBER)
 					throw new VAExprError("Only Numbers are allowed here");
 				op1.value= -op1.value;
-				stack.unshift(op1);
-				break;
-			}
-			case "!": {
-				const op1= localStack.pop();
-				if(op1.type != TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
-				op1.value= !op1.value;
 				stack.unshift(op1);
 				break;
 			}
@@ -103,6 +98,82 @@ function evalExpr(ctx, stack) {
 				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value - op2.value });
 				break;
 			}
+
+			//
+			// comparaisons
+			//
+			case "<": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value < op2.value });
+				break;
+			}
+			case "<=": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value <= op2.value });
+				break;
+			}
+			case ">": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value > op2.value });
+				break;
+			}
+			case ">=": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value >= op2.value });
+				break;
+			}
+			case "=": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != op2.type) {
+					const validators= [
+						(op1.type == TOKEN_TYPES.NUMBER) && (op2.type == TOKEN_TYPES.STRING),
+						(op1.type == TOKEN_TYPES.STRING) && (op2.type == TOKEN_TYPES.NUMBER)
+					];
+					if(!validators.some(test => test == true))
+						throw new VAExprError("Incompatible types for equality");
+				}
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value == op2.value });
+				break;
+			}
+			case "!=": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != op2.type) {
+					const validators= [
+						(op1.type == TOKEN_TYPES.NUMBER) && (op2.type == TOKEN_TYPES.STRING),
+						(op1.type == TOKEN_TYPES.STRING) && (op2.type == TOKEN_TYPES.NUMBER)
+					];
+					if(!validators.some(test => test == true))
+						throw new VAExprError("Incompatible types for inequality");
+				}
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value != op2.value });
+				break;
+			}
+
+			//
+			// booleans
+			//
+			case "!": {
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				op1.value= !op1.value;
+				stack.unshift(op1);
+				break;
+			}
 			case "AND": {
 				const op2= localStack.pop();
 				const op1= localStack.pop();
@@ -119,6 +190,10 @@ function evalExpr(ctx, stack) {
 				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value || op2.value });
 				break;
 			}
+
+			//
+			// functions
+			//
 			case "FN": {
 				const parms= [];
 				let parmCount= item.parmCount;
@@ -178,44 +253,50 @@ function parse_cmp(exprCtx) {
 
 	// console.log("parse_cmp", {stack: exprCtx.stack});
 
-	return;
-	
-	while(true) {
-		tok= this.lex.token();
-		switch(tok.type) {
-			case TOKEN_TYPES.LT:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.LT + exprLevel );
-				parse_add(exprCtx);
-				break;
-			case TOKEN_TYPES.GT:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.GT + exprLevel );
-				parse_add(exprCtx);
-				break;
-			case TOKEN_TYPES.LTE:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.LTE + exprLevel );
-				parse_add(exprCtx);
-				break;
-			case TOKEN_TYPES.GTE:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.GTE + exprLevel );
-				parse_add(exprCtx);
-				break;
-			case TOKEN_TYPES.EQUALS:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.EQ + exprLevel );
-				parse_add(exprCtx);
-				break;
-			case TOKEN_TYPES.NOTEQUALS:
-				this.lex.next();
-				// this.codeEmitter.emits( TVMInstruction.NE + exprLevel );
-				parse_add(exprCtx);
-				break;
-			default:
-				return;
+	switch(exprCtx.lexer.token().type) {
+		
+		case TOKEN_TYPES.LOWER: {
+			let op= "<";
+			exprCtx.lexer.next();
+			if(exprCtx.lexer.isToken(TOKEN_TYPES.EQUAL)) {
+				op= "<=";
+				exprCtx.lexer.next();
+			}
+			parse_add(exprCtx);
+			exprCtx.stack.push({ op });
+			break;
 		}
+
+		case TOKEN_TYPES.GREATER: {
+			let op= ">";
+			exprCtx.lexer.next();
+			if(exprCtx.lexer.isToken(TOKEN_TYPES.EQUAL)) {
+				op= ">=";
+				exprCtx.lexer.next();
+			}
+			parse_add(exprCtx);
+			exprCtx.stack.push({ op });
+			break;
+		}
+
+		case TOKEN_TYPES.EQUAL:
+			exprCtx.lexer.next();
+			parse_add(exprCtx);
+			exprCtx.stack.push({ op: "=" });
+			break;
+
+		case TOKEN_TYPES.BANG:
+			if(!exprCtx.lexer.isLookahead(TOKEN_TYPES.EQUAL))
+				return;
+				
+			exprCtx.lexer.next();
+			exprCtx.lexer.next();
+			parse_add(exprCtx);
+			exprCtx.stack.push({ op: "!=" });
+			break;
+
+		default:
+			return;
 	}
 
 }

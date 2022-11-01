@@ -36,6 +36,8 @@ export function processASMOuput(ctx, pragma) {
 	
 	switch(pragma) {
 		case "OUT":
+		case "ECHO":
+		case "LOG":
 			ctx.print(msg, true);
 			break;
 

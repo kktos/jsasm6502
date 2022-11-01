@@ -54,7 +54,7 @@ export class Compiler {
 		this._output= null;
 	}
 
-	emits(pass, ...bytes) {
+	emits(pass, bytes) {
 		const obj= this.obj[this.currentSegment];
 		if(obj == undefined)
 			throw new VABuildError("No Object Segment set");
@@ -80,7 +80,6 @@ export class Compiler {
 		}
 
 		this.pc+= bytes.length;
-
 	}
 
 	dump(segmentName, bytePerLine =16) {

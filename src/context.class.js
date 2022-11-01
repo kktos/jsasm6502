@@ -16,6 +16,7 @@ export class Context {
 		this._mainFile= mainFile;
 		this._deferredMsg= "";
 		this.wannaListing= true;
+		this.charMap= null;
 		
 		this.code= new Compiler(opts.segments);
 		this.lexer= new Lexer();

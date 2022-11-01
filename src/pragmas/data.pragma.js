@@ -1,6 +1,7 @@
 import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { parseExpression } from "../parsers/expression.parser.js";
+import { makeString } from "./string.pragma.js";
 
 const DATASIZE= {
 	DB: 1,
@@ -81,10 +82,10 @@ function readHexBlock(ctx) {
 export function processHex(ctx, pragma) {
 	// no parm ? so block version
 	if(!ctx.lexer.token()) {
-		ctx.code.emits(ctx.pass, ...readHexBlock(ctx));
+		ctx.code.emits(ctx.pass, readHexBlock(ctx));
 	} else {
 		const hexLine= ctx.lexer.line().slice(ctx.lexer.token().posInLine);
-		ctx.code.emits(ctx.pass, ...readHexLine(hexLine));
+		ctx.code.emits(ctx.pass, readHexLine(hexLine));
 		// as we didn't consume the tokens, we need to skip them
 		while(ctx.lexer.next());
 	}
@@ -137,13 +138,20 @@ function pushNumber(list, parm, endianSize) {
 
 export function processData(ctx, pragma) {
 	const endianSize= DATASIZE[pragma];
-	const list= [];
+	let list= [];
 	while(true) {
 		const res= parseExpression(ctx);
-		if(res.type != TOKEN_TYPES.NUMBER)
-			break;
 
-		pushNumber(list, res, endianSize);
+		switch(res.type) {
+			case TOKEN_TYPES.NUMBER:
+				pushNumber(list, res, endianSize);
+				break;
+			case TOKEN_TYPES.STRING:
+				list= list.concat(makeString(ctx, res.value, { charSize: endianSize }));
+				break;
+			default:
+				throw new VAParseError("DATA: Invalid Type. Must be a string or a number");
+		}
 
 		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 			break;
@@ -154,5 +162,5 @@ export function processData(ctx, pragma) {
 	if(list.length == 0)
 		throw new VAParseError("Missing data");
 		
-	ctx.code.emits(ctx.pass, ...list);
+	ctx.code.emits(ctx.pass, list);
 }

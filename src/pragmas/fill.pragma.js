@@ -19,6 +19,6 @@ export function processFill(ctx) {
 	}
 
 	const filled= Array.from({length: byteCount}, () => fillByte);
-	ctx.code.emits(ctx.pass, ...filled);
+	ctx.code.emits(ctx.pass, filled);
 
 }

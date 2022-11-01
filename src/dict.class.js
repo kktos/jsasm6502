@@ -34,6 +34,7 @@ export class Dict {
 	}
 
 	set(name, value) {
+		// console.log("Dict.set", this.currentName, name);
 		this.ns[name]= value;
 	}
 

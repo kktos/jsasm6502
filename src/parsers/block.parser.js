@@ -13,12 +13,10 @@ export function readBlock(ctx) {
 	
 	while(!ctx.lexer.eof()) {
 		ctx.lexer.nextLine();
-
-		// console.log(blockLevel, ctx.lexer.line());
 		
-		if(isPragmaToken(ctx) && isPragmaBlock(ctx.lexer.lookahead().value)) {
+		if(isPragmaToken(ctx) && isPragmaBlock(ctx.lexer.lookahead().value))
 			blockLevel++;
-		}
+
 		if(isEnd(ctx.lexer)) {
 			ctx.lexer.next();
 			ctx.lexer.next();
@@ -29,11 +27,5 @@ export function readBlock(ctx) {
 
 		block+= ctx.lexer.line()+"\n";
 	}
-	// ctx.lexer.nextLine();
-
-	// console.log("curr Line", ctx.lexer.line());
-	// console.log("readBlock --------------------");
-	// console.log(block);
-	// console.log("end --------------------------");
 	return block;
 }
