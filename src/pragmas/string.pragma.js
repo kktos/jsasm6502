@@ -40,6 +40,36 @@ export function makeString(ctx, str, opts) {
 		if(char >= 0x100)
 			throw new VAParseError("STRING: Invalid character " + str[idx]);
 
+		if(char == 92) {// \
+			idx++;
+			if(idx >= str.length)
+				throw new VAParseError("STRING: Invalid character " + str[idx-1]);
+
+			switch(str[idx]) {
+				case "\\": char= "\\".charCodeAt(0); break;
+				case "n": char= "\n".charCodeAt(0); break;
+				case "r": char= "\r".charCodeAt(0); break;
+				case "t": char= "\t".charCodeAt(0); break;
+				case "b": char= "\b".charCodeAt(0); break;
+				case "f": char= "\f".charCodeAt(0); break;
+				case "'": char= "'".charCodeAt(0); break;
+				case '"': char= '"'.charCodeAt(0); break;
+				case '0': char= 0; break;
+				case 'x': {
+					idx+=2 ;
+					if(idx >= str.length)
+						throw new VAParseError("STRING: Invalid character " + str[idx-2]);
+					const hex= str.slice(idx-1, idx+1);
+					char= parseInt("0x" + hex, 16);
+					if(isNaN(char))
+						throw new VAParseError("STRING: Invalid hexa value " + hex);
+					break;
+				}
+				default:
+					throw new VAParseError("STRING: Invalid character " + str[idx]);
+			}
+		}
+
 		if(ctx.charMap)
 			char= ctx.charMap[char];
 			
