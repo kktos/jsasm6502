@@ -56,8 +56,10 @@ export class Dict {
 	}
 	restore(name) {
 		const value= this.ns[OVERRIDEN]?.[name]?.pop();
-		if(!value)
+		if(!value) {
+			delete this.ns[name];
 			return;
+		}
 		return this.set(name, value);
 	}
 
