@@ -42,26 +42,19 @@ toto=$44
 		; .text "ABC"
 
 		; .db "0123", $00
-		.dword "0123", $00, $11
 
-		
-str:	.if toto > $44
-		.else
-			.if 0
-				.text "toto is alive"
-			.else
-				.repeat 5 idx
-					.repeat 5 idx2
-					.db idx, idx2
-					.end
-				.end
-			.end
-end		.end
-
-		lda #10
-		.end
+		.macro test x,y
+		ldx #x
+		ldy #y
+		.end			
 
 		rts
+
+		x=$43
+		nop
+		test 0 1
+		nop
+		lda #x
 		.end
 		; ; msb
 		; lda #>str

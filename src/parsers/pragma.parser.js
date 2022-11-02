@@ -9,6 +9,7 @@ import { processFill } from "../pragmas/fill.pragma.js";
 import { processIf } from "../pragmas/if.pragma.js";
 import { processInclude } from "../pragmas/include.pragma.js";
 import { processListing } from "../pragmas/listing.pragma.js";
+import { processMacro } from "../pragmas/macro.pragma.js";
 import { processNamespace } from "../pragmas/namespace.pragma.js";
 import { processOption } from "../pragmas/option.pragma.js";
 import { processOrg } from "../pragmas/org.pragma.js";
@@ -20,7 +21,6 @@ import { processText } from "../pragmas/string.pragma.js";
 
 /*
 import { c64Start } from "../pragmas/c64start.pragma.js";
-import { processMacro } from "../pragmas/macro.pragma.js";
 import { ignorePragma, processEnd, processPage } from "../pragmas/misc.pragma.js";
 */
 // export function parsePragma(pragma) {
@@ -99,7 +99,7 @@ addPragmaDef(null				,  false, ["ELSE"]);
 
 addPragmaDef(processRepeat		,  true, ["REPEAT"]);
 addPragmaDef(processDefine		,  true, ["DEFINE"]);
-// addPragmaDef(processMacro		,  true, ["MACRO"]);
+addPragmaDef(processMacro		,  true, ["MACRO"]);
 
 addPragmaDef(processOption		, false, ["OPT", "OPTION"]);
 addPragmaDef(processText		, false, [

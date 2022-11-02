@@ -88,7 +88,7 @@ export class Context {
 			`\n` + 
 			`${msg} in ${this.filepath} at line ${posInLine}:${lineIdx}` + 
 			`\n` + 
-			`${line.slice(0,posInLine)}<>${line.slice(posInLine+1)}`
+			`${line?.slice(0,posInLine)}<>${line?.slice(posInLine+1)}`
 		);
 	}
 

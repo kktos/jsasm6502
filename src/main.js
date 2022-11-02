@@ -5,6 +5,7 @@ import { parseLabel, parseLocalLabel } from "./parsers/label.parser.js";
 import { parseOpcode } from "./parsers/opcode.parser.js";
 import { parseOrg } from "./parsers/org.parser.js";
 import { isPragmaToken, parsePragma } from "./parsers/pragma.parser.js";
+import { expandMacro, isMacroToken } from "./pragmas/macro.pragma.js";
 import { CPU_NAMES, setcpu } from "./pragmas/setcpu.pragma.js";
 
 export function assemble(mainFilename, opts) {
@@ -76,7 +77,10 @@ function asm(ctx) {
 					
 				// LABEL <id>
 				case TOKEN_TYPES.IDENTIFIER:
-					return ctx.opcodes[token.value] == undefined ? parseLabel(ctx) : null;
+					return ctx.opcodes[token.value] != undefined || isMacroToken(ctx) ?
+							null 
+							: 
+							parseLabel(ctx);
 
 				// CHEAP LABEL <@> <id>
 				case TOKEN_TYPES.AT:
@@ -112,11 +116,19 @@ function asm(ctx) {
 				// console.log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
 				break;
 			}
+
+			//
+			// MACRO
+			//
+			if(isMacroToken(ctx)) {
+				expandMacro(ctx);
+				break;
+			}
 			
 			//
 			// OPCODE
 			//
-			if(ctx.lexer.token().type == TOKEN_TYPES.IDENTIFIER)
+			if(ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 				parseOpcode(ctx);
 			
 			break;

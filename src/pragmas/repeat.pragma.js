@@ -36,7 +36,7 @@ export function processRepeat(ctx) {
 
 	for(let idx= 0; idx<count.value; idx++) {
 		ctx.lexer.pushSource(block);
-		iterator && ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);			
+		iterator && ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);
 	}
 
 	return true;
