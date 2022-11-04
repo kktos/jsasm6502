@@ -92,8 +92,10 @@ function evalExpr(ctx, stack) {
 			case "-": {
 				const op2= localStack.pop();
 				const op1= localStack.pop();
-				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+				if(ctx.pass>1 && (op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)) {
+					console.log("EXPR SUB", op1, op2);
 					throw new VAExprError("Only Numbers are allowed here");
+				}
 				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value - op2.value });
 				break;
 			}
@@ -204,15 +206,15 @@ function evalExpr(ctx, stack) {
 			}
 			case "MSB": {
 				const op1= localStack.pop();
-				if(op1.type != TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+				if(ctx.pass>1 && op1.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("MSB: Only Numbers are allowed here");
 				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: (op1.value>>8) & 0xFF });
 				break;
 			}
 			case "LSB": {
 				const op1= localStack.pop();
-				if(op1.type != TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+				if(ctx.pass>1 && op1.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("LSB: Only Numbers are allowed here");
 				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value & 0xFF });
 				break;
 			}
@@ -365,6 +367,8 @@ function parse_product(exprCtx) {
 function parse_term(exprCtx) {
 	let tok= exprCtx.lexer.token();
 
+	// console.log("parse_term", tok);
+
 	switch(tok.type) {
 	
 		// function call :  <id> "(" <parmList> ")"
@@ -458,6 +462,9 @@ function parse_term(exprCtx) {
 }
 
 function parse_local_label(exprCtx) {
+
+	// console.log("parse_local_label", exprCtx.lexer.pos(), exprCtx.lexer.line());
+
 	if(!exprCtx.lexer.lookahead() || !LLCHARSET.has(exprCtx.lexer.lookahead().type))
 		return false;
 
@@ -473,8 +480,12 @@ function parse_local_label(exprCtx) {
 	if(tokType == TOKEN_TYPES.MINUS)
 		count= -count;
 
+	// console.log("EXPR", exprCtx.pass, exprCtx.code.pc.toString(16), count);
+
 	const addr= exprCtx.symbols.findClosestMarker(exprCtx.code.pc, count);
 	exprCtx.stack.push({ value: addr, type:TOKEN_TYPES.NUMBER });
+
+	// console.log("EXPR", {addr});
 
 	return true;
 }
@@ -482,6 +493,8 @@ function parse_local_label(exprCtx) {
 function parse_number(exprCtx) {
 	let tok= exprCtx.lexer.token();
 	exprCtx.lexer.next();
+
+	// console.log("parse_number", tok);
 
 	switch(tok.type) {
 		case TOKEN_TYPES.NUMBER:
@@ -508,7 +521,7 @@ function parse_number(exprCtx) {
 		}
 
 		default:
-			throw new VAExprError("NUMBER : Syntax Error");
+			throw new VAExprError("NUMBER : Syntax Error " + tok);
 	}
 
 }
@@ -520,18 +533,31 @@ function parse_var_label(exprCtx, tok) {
 	const checkIfExists= exprCtx.pass>1 && !exprCtx.flags?.allowUndef;
 	const tokens= [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
 
+	// exprCtx.lexer.next();
+	
 	if(exprCtx.lexer.isToken(TOKEN_TYPES.DOT)) {
+
+		// console.log("parse_var_label", name, exprCtx.symbols.exists(name), exprCtx.symbols.nsExists(name));
+		
 		// namespace.labelname
 		// not a label, being a namespace
 		if(!exprCtx.symbols.exists(name) && exprCtx.symbols.nsExists(name)) {
 			ns= name;
+			exprCtx.lexer.next();
 			name= exprCtx.lexer.token().value;
 			exprCtx.lexer.next();
 		}		
 	}
 
-	if(checkIfExists && !exprCtx.symbols.exists(name, ns))
-		throw new VAExprError("IDENTIFIER : Unknown identifier "+(ns?ns+".":"")+name);
+	if(checkIfExists && !exprCtx.symbols.exists(name, ns)) {
+		// console.log("----- ", exprCtx.symbols.namespaces[NS_GLOBAL]);
+		const namespaces= exprCtx.symbols.search(name);
+		let msg= `IDENTIFIER : Unknown identifier "${name}" in ${(ns?ns:exprCtx.symbols.namespace)}`;
+		if(namespaces.length)
+			msg+= `\nBut "${name}" exists in ${ namespaces.join(", ")}`;
+
+		throw new VAExprError(msg);
+	}
 
 	let value= exprCtx.symbols.get(name, ns);
 
@@ -542,19 +568,19 @@ function parse_var_label(exprCtx, tok) {
 			case TOKEN_TYPES.DOT: {
 				exprCtx.lexer.next();
 
-				if(value.type != TOKEN_TYPES.OBJECT)
+				if(value && value.type != TOKEN_TYPES.OBJECT)
 					throw new VAExprError(`IDENTIFIER : Not an object: "${name}"`);
 	
 				if(!exprCtx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.lexer.token().text}"`);
 			
 				name= exprCtx.lexer.token().text;
-				const fieldValue= value.value[name];
+				const fieldValue= value?.value[name];
 				
-				if(fieldValue == undefined)
+				if(value && fieldValue == undefined)
 					throw new VAExprError(`IDENTIFIER : Unknown Object field: "${name}"`);
 		
-				value= { type: getValueType(fieldValue), value: fieldValue };		
+				value= { type: value ? getValueType(fieldValue) : TOKEN_TYPES.NUMBER, value: fieldValue };		
 		
 				exprCtx.lexer.next();
 				break;
@@ -562,7 +588,7 @@ function parse_var_label(exprCtx, tok) {
 			
 			case TOKEN_TYPES.LEFT_BRACKET: {
 
-				if(value.type != TOKEN_TYPES.ARRAY)
+				if(value && value.type != TOKEN_TYPES.ARRAY)
 					throw new VAExprError("IDENTIFIER : Not an array "+(ns?ns+".":"")+name);
 
 				exprCtx.lexer.next();
@@ -573,10 +599,10 @@ function parse_var_label(exprCtx, tok) {
 		
 				exprCtx.lexer.next();
 				
-				if(arrayIdx.value >= value.value.length)
+				if(arrayIdx.value >= value?.value.length)
 					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${value.value.length}`);
 			
-				const itemValue= value.value[arrayIdx.value];
+				const itemValue= value?.value[arrayIdx.value];
 				value= { type: getValueType(itemValue), value: itemValue };
 				break;
 			}
@@ -584,7 +610,9 @@ function parse_var_label(exprCtx, tok) {
 		}
 		
 	}
-	exprCtx.stack.push(value ?? {type: TOKEN_TYPES.IDENTIFIER, value});
+
+	// exprCtx.stack.push(value ?? {type: TOKEN_TYPES.IDENTIFIER, value});
+	exprCtx.stack.push(value ? {type: value.type, value: value.value} : {type: TOKEN_TYPES.NUMBER, value: undefined});
 }
 
 // functions
