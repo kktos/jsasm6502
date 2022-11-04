@@ -82,7 +82,7 @@ const SEPARATOR_CHARSET= new Set(Object.keys(SEPARATOR_TOKENS));
 
 class LexerContext {
 	constructor(src) {
-		this.lines= src.split(/\r?\n/);
+		this.lines= src ? src.split(/\r?\n/) : [];
 		this.lineIdx= 0;
 		this.states= [];		
 		this.eventHandlers= {};
@@ -419,6 +419,7 @@ export class Lexer {
 		// COMMENT
 		if(this.ctx.currChar == ";") {
 			this.comment= this.ctx.currLine.slice(startPos+1);
+			this.ctx.currLine= "";
 			return false;
 		}
 

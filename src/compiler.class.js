@@ -55,6 +55,13 @@ export class Compiler {
 	}
 
 	emits(pass, bytes, wannaShowChars) {
+
+		// console.log("emits(%i) SEG:%s", 
+		// 			pass,
+		// 			this.currentSegment,
+		// 			getHexWord(this.pc),
+		// 			bytes);
+
 		const obj= this.obj[this.currentSegment];
 		if(obj == undefined)
 			throw new VABuildError("No Object Segment set");

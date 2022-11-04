@@ -86,7 +86,7 @@ export class Context {
 		const line= this.lexer.line();
 		console.error(
 			`\n` + 
-			`${msg} in ${this.filepath} at line ${posInLine}:${lineIdx}` + 
+			`${msg} in ${this.filepath} at line ${lineIdx} at ${posInLine}` + 
 			`\n` + 
 			`${line?.slice(0,posInLine)}<>${line?.slice(posInLine+1)}`
 		);

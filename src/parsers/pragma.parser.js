@@ -140,9 +140,9 @@ export function parsePragma(ctx) {
 
 	const pragmaDef= pragmaDefs[token.value];
 	if(!pragmaDef)
-		throw new VAParseError("Unknown pragma");
+		throw new VAParseError("PRAGMA: Unknown pragma");
 	if(!pragmaDef.handlerFn)
-		throw new VAParseError("Syntax Error");
+		throw new VAParseError("PRAGMA: Syntax Error");
 	
 	ctx.lexer.next();
 
