@@ -1,15 +1,19 @@
+import { TOKEN_TYPES_ENTRIES } from "./lexer/lexer.class.js";
+
 export const NS_GLOBAL= "GLOBAL";
 
 const NOSYMBOL= Symbol("no symbol");
 const OVERRIDEN= Symbol("overriden");
+const MARKERS= Symbol("markers");
 
 export class Dict {
 
-	static MARKERS= Symbol("markers");
 
 	constructor() {
 		this.namespaces= {};
 		this.select(NS_GLOBAL);
+		this.global= this.namespaces[NS_GLOBAL];
+		this.exports= {};
 	}
 
 	get namespace() {
@@ -21,27 +25,51 @@ export class Dict {
 	}
 
 	export(name) {
-		const ns= this.namespaces[NS_GLOBAL];
-		ns[name]= this.get(name);
+		// if(name =="BOOT3") {
+		// 	console.log("---- EXPORT", this.currentName, name, this.ns[name]);
+		// }		
+		this.global[name]= this.ns[name];
+		this.exports[name]= this.currentName;
 	}
 
 	exportMany(regex) {
-		const globalNS= this.namespaces[NS_GLOBAL];
 		const re= new RegExp(regex, "i");
 		const list= Object.keys(this.ns).filter(name => name.match(re));
-		list.forEach(name => globalNS[name]= this.get(name));
+		list.forEach(name => {
+			this.global[name]= this.ns[name];
+			this.exports[name]= this.currentName;
+		});
 		return list.length;
 	}
 
 	set(name, value) {
-		// console.log("Dict.set", this.currentName, name);
+		// if(name =="BOOT3") {
+		// 	console.log("---- SET", this.currentName, name, value);
+		// }
 		this.ns[name]= value;
+
+		if(this.exports[name] == this.currentName)
+			this.global[name]= value;
 	}
 
 	get(name, ns=null) {
+
+		// if(name =="BOOT3") {
+		// 	console.log("---- GET", this.currentName, name, this.ns[name], this.global[name], this.exports[name]);
+		// }
+
 		if(ns)
 			return this.namespaces[ns]?.[name];		
-		return this.ns[name];
+		return this.ns[name] ? this.ns[name] : this.global[name];
+	}
+
+	search(name) {
+		const matches= [];
+		Object.keys(this.namespaces).forEach(ns => {
+			if(this.namespaces[ns][name])
+				matches.push(ns);
+		});
+		return matches;
 	}
 
 	override(name, value) {
@@ -93,18 +121,30 @@ export class Dict {
 	}
 
 	addMarker(mark) {
-		let markers= this.get(MARKERS);
-		if(!markers) {
-			markers= [];
-			this.set(MARKERS, markers);
-		}
+		const markers= this.get(MARKERS);
 		markers.push(mark);
+		// console.log("addMarker",{ns:this.currentName, markers});
 	}
 
 	findClosestMarker(target, distance) {
 		let markers= this.get(MARKERS);
+
+		// console.log("findClosestMarker",{ns:this.currentName, markers, target, distance});
+
 		let pos= markers.findIndex((marker) => marker>target);
-		pos= distance<0 ? pos+distance : pos-1+distance;
+
+		// console.log("findClosestMarker",{pos});
+
+		if(pos<0) {
+			if(distance>0)
+				return null;
+			pos= markers.length-1;
+		} else
+			pos= distance<0 ? pos+distance : pos-1+distance;
+
+		// console.log("findClosestMarker",{pos});
+		// console.log("findClosestMarker",{marker: markers[pos]});
+		
 		return markers[pos];
 	}
 
@@ -114,16 +154,37 @@ export class Dict {
 
 	exists(name, ns=null) {
 		if(ns)
-			return this.namespaces[ns]?.[name] != undefined;
-		return this.ns[name] != undefined;
+			return this.namespaces[ns]?.hasOwnProperty(name);
+
+		return this.ns.hasOwnProperty(name) || this.global.hasOwnProperty(name);
 	}
 
 	select(name) {
+		name= name ?? NS_GLOBAL;
 		if(!this.namespaces[name]) {
 			this.namespaces[name]= {};
+			this.namespaces[name][MARKERS]= [];
 		}
 		this.currentName= name;
 		this.ns= this.namespaces[this.currentName];
+		// this.ns[MARKERS]= [];
 	}
 
+	dump() {
+		let out= "";
+		Object.keys(this.namespaces).forEach(name => {
+			out+= name + ":\n";
+
+			const ns= this.namespaces[name];
+			Object.keys(ns).forEach(entry => {
+				const val= ns[entry];
+				const ttype= TOKEN_TYPES_ENTRIES.find(([k,v])=>v==val.type)[0];
+				out+= "  " + entry + ": ";
+				out+= ttype.toLowerCase();
+				out+= " = $"+val.value.toString(16).toUpperCase() +"\n";
+
+			});
+		});
+		return out;
+	}
 }
