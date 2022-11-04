@@ -54,14 +54,14 @@ function readHexBlock(ctx) {
 
 		if(ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
 			ctx.lexer.next();
-			const tok= ctx.lexer.token();
-			if(tok.type !=TOKEN_TYPES.IDENTIFIER || tok.value != "END")
+			if(!ctx.lexer.isIdentifier("END"))
 				throw new VAParseError("Illegal pragma here");
 			ctx.lexer.next();
 			break;
 		}
-		const hexLine= ctx.lexer.line().trim();
-		bytes.push(...readHexLine(hexLine));
+		const hexLine= ctx.lexer.line().trim();		
+		if(hexLine.length)
+			bytes.push(...readHexLine(hexLine));
 	}
 
 	if(bytes.length == 0)
@@ -140,7 +140,12 @@ export function processData(ctx, pragma) {
 	const endianSize= DATASIZE[pragma];
 	let list= [];
 	while(true) {
+
+		// console.log("processData", ctx.lexer.token());
+		
 		const res= parseExpression(ctx);
+
+		// console.log("processData", res);
 
 		switch(res.type) {
 			case TOKEN_TYPES.NUMBER:
@@ -150,7 +155,7 @@ export function processData(ctx, pragma) {
 				list= list.concat(makeString(ctx, res.value, { charSize: endianSize }));
 				break;
 			default:
-				throw new VAParseError("DATA: Invalid Type. Must be a string or a number");
+				throw new VAParseError(`DATA: Invalid Type "${res.type}". Must be a string or a number`);
 		}
 
 		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
