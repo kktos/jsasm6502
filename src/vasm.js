@@ -78,7 +78,19 @@ const opts= {
 	segments: conf.segments
 };
 
-assemble(basename(filename), opts);
+const asmRes= assemble(basename(filename), opts);
+
+if(argv.symbols) {
+	console.log( asmRes.symbols.dump() );
+}
+
+if(asmRes?.segments) {
+	Object.keys(asmRes.segments).forEach(name => {
+		console.log("SEGMENT", name);
+		if(asmRes.obj[name])
+		asmRes.dump(name);
+	});
+}
 
 	// .then(ctx => {
 

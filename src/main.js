@@ -25,7 +25,7 @@ export function assemble(mainFilename, opts) {
 
 		throw err;
 	}
-
+	
 	ctx.reset();
 	
 	ctx.pass= 2;
@@ -43,11 +43,12 @@ export function assemble(mainFilename, opts) {
 		throw err;
 	}
 
-	Object.keys(ctx.code.segments).forEach(name => {
-		console.log("SEGMENT", name);
-		if(ctx.code.obj[name])
-			ctx.code.dump(name);
-	});
+	return {
+		symbols: ctx.symbols,
+		segments: ctx.code.segments,
+		obj: ctx.code.obj,
+		dump: ctx.code.dump
+	};
 
 }
 
@@ -77,10 +78,7 @@ function asm(ctx) {
 					
 				// LABEL <id>
 				case TOKEN_TYPES.IDENTIFIER:
-					return ctx.opcodes[token.value] != undefined || isMacroToken(ctx) ?
-							null 
-							: 
-							parseLabel(ctx);
+					return parseLabel(ctx);
 
 				// CHEAP LABEL <@> <id>
 				case TOKEN_TYPES.AT:
@@ -92,10 +90,14 @@ function asm(ctx) {
 		};
 
 		while(true) {
+
+
+			// console.log("LINE", ctx.lexer.line());
+
 			//
 			// ORG as * = xxxx
 			//
-			if(ctx.lexer.token().type == TOKEN_TYPES.STAR) {
+			if(ctx.lexer.isToken(TOKEN_TYPES.STAR)) {
 				parseOrg(ctx);
 				break;
 			}
@@ -125,6 +127,8 @@ function asm(ctx) {
 				break;
 			}
 			
+			// console.log("MAIN", ctx.lexer.token());
+
 			//
 			// OPCODE
 			//
@@ -135,7 +139,7 @@ function asm(ctx) {
 		}
 
 		if(ctx.lexer.token())
-			throw new VAParseError("Syntax Error");
+			throw new VAParseError("Syntax Error on "+ctx.lexer.token().text);
 
 		if(ctx.pass == 2) {
 			if(label)
