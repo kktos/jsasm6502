@@ -1,4 +1,4 @@
-		.setcpu "65c02"
+		.cpu "65c02"
 
 		; .define charmap_petscii
 		; [
@@ -29,9 +29,12 @@
 		; .export "^ta"
 
 		.lst on
-toto=$44
+; toto=$44
+; 		.define obj
+; 		test: 128
+; 		.end
 
-@loop
+; @loop
 		; .include "include.test.asm"
 
 		;  .include "repeat.test.asm"
@@ -43,19 +46,19 @@ toto=$44
 
 		; .db "0123", $00
 
-		.macro test x,y
-		ldx #x
-		ldy #y
-		.end			
+		; .macro test x,y
+		; ldx #x
+		; ldy #y
+		; .end			
 
-		rts
+		; rts
 
-		x=$43
-		nop
-		test 0 1
-		nop
-		lda #x
-		.end
+		; x=$43
+		; nop
+		; test 0 1
+		; nop
+		; lda #x
+		; .end
 		; ; msb
 		; lda #>str
 		; ; lsb
@@ -137,10 +140,25 @@ toto=$44
 
 ; 		.end
 
-; 		lda #$FF
+ 		lda #$FF
+
+		two= 2
+
+		.macro test one,two
+			lda #one
+			ldx #two
+		.end
+
+		.macro test2 two
+			test $FF, two
+		.end
+
+		test2 $55
+
+		.out two
 
 ;		.include "include.test.asm"
 ;		.include "variable.test.asm"
-;		.include "macro.test.asm"
+		; .include "macro.test.asm"
 ;		.include "repeat.test.asm"
 ;		.include "function.test.asm"
