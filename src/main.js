@@ -10,8 +10,12 @@ import { CPU_NAMES, setcpu } from "./pragmas/setcpu.pragma.js";
 
 export function assemble(mainFilename, opts) {
 	const ctx= new Context(opts, mainFilename);
-	setcpu(ctx, CPU_NAMES.cpu6502);
-	
+
+	let cpu= CPU_NAMES.cpu6502;
+	if(opts.cpu && Object.values(CPU_NAMES).includes(opts.cpu.toUpperCase()))
+		cpu= opts.cpu.toUpperCase();
+	setcpu(ctx, cpu);
+
 	// first pass
 	try {
 		asm(ctx);
@@ -20,14 +24,14 @@ export function assemble(mainFilename, opts) {
 		// handle internal errors
 		if(err?.name?.match(/^VA/)) {
 			ctx.error(err.message);
-			return;
+			// return;
 		}
 
 		throw err;
 	}
-	
+
 	ctx.reset();
-	
+
 	ctx.pass= 2;
 	// second pass
 	try {
@@ -37,7 +41,7 @@ export function assemble(mainFilename, opts) {
 		// handle internal errors
 		if(err?.name?.match(/^VA/)) {
 			ctx.error(err.message);
-			return;
+			// return;
 		}
 
 		throw err;
@@ -64,7 +68,7 @@ function asm(ctx) {
 
 		if(token.type == TOKEN_TYPES.INVALID)
 			throw new VAParseError(`Invalid character ${token.value}`);
-	
+
 		const currLine= ctx.lexer.line();
 		let label= null;
 
@@ -75,7 +79,7 @@ function asm(ctx) {
 				case TOKEN_TYPES.BANG:
 				case TOKEN_TYPES.COLON:
 					return parseLocalLabel(ctx);
-					
+
 				// LABEL <id>
 				case TOKEN_TYPES.IDENTIFIER:
 					return parseLabel(ctx);
@@ -101,7 +105,7 @@ function asm(ctx) {
 				parseOrg(ctx);
 				break;
 			}
-	
+
 			//
 			// LABEL
 			//
@@ -126,7 +130,7 @@ function asm(ctx) {
 				expandMacro(ctx);
 				break;
 			}
-			
+
 			// console.log("MAIN", ctx.lexer.token());
 
 			//
@@ -134,7 +138,7 @@ function asm(ctx) {
 			//
 			if(ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 				parseOpcode(ctx);
-			
+
 			break;
 		}
 
@@ -144,26 +148,26 @@ function asm(ctx) {
 		if(ctx.pass == 2) {
 			if(label)
 				ctx.print(label+":");
-	
+
 			let listingLine= "";
-			
+
 			const asmOut = ctx.code.output;
 			const wantAfter= asmOut?.length>21;
 
 			if(asmOut && !wantAfter)
 				listingLine+= asmOut;
-	
+
 			listingLine= listingLine.padEnd(18);
 
 			listingLine+= currLine;
 
 			if(asmOut && wantAfter)
 				listingLine+= "\n" + asmOut;
-	
+
 			ctx.print(listingLine);
 		}
-		
+
 	}
-	
+
 	ctx.wannaStop= false;
 }

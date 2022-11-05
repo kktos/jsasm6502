@@ -13,7 +13,7 @@ const DATASIZE= {
 const hexRe= /[0-9a-fA-F]/;
 const wsRe= /\s/;
 
-function readHexLine(hexLine) {
+export function readHexLine(hexLine) {
 	const bytes= [];
 	let idx= 0;
 	const getChar= () => {
@@ -28,7 +28,7 @@ function readHexLine(hexLine) {
 
 		return chr;
 	};
-		
+
 	while(idx<hexLine.length) {
 		let chr0= getChar();
 		if(chr0 === false)
@@ -59,14 +59,14 @@ function readHexBlock(ctx) {
 			ctx.lexer.next();
 			break;
 		}
-		const hexLine= ctx.lexer.line().trim();		
+		const hexLine= ctx.lexer.line().trim();
 		if(hexLine.length)
 			bytes.push(...readHexLine(hexLine));
 	}
 
 	if(bytes.length == 0)
 		throw new VAParseError("Missing Hex data");
-		
+
 	return bytes;
 }
 
@@ -97,7 +97,7 @@ export function processHex(ctx, pragma) {
 function pushNumber(list, parm, endianSize) {
 	const dataSize= Math.abs(endianSize);
 	let numberValue= parm.value;
-	
+
 	numberValue&= dataSize==4 ? 0xffffffff : 0xffff;
 	const byte3= (numberValue>>24) & 0xff;
 	const byte2= (numberValue>>16) & 0xff;
@@ -133,7 +133,7 @@ function pushNumber(list, parm, endianSize) {
 		case -2:
 			list.push(byte1, byte0);
 			break;
-	}	
+	}
 }
 
 export function processData(ctx, pragma) {
@@ -142,7 +142,7 @@ export function processData(ctx, pragma) {
 	while(true) {
 
 		// console.log("processData", ctx.lexer.token());
-		
+
 		const res= parseExpression(ctx);
 
 		// console.log("processData", res);
@@ -160,12 +160,12 @@ export function processData(ctx, pragma) {
 
 		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 			break;
-			
+
 		ctx.lexer.next();
 	}
 
 	if(list.length == 0)
 		throw new VAParseError("Missing data");
-		
+
 	ctx.code.emits(ctx.pass, list);
 }

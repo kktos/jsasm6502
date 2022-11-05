@@ -10,18 +10,18 @@ export function parseOpcode(ctx) {
 	let valueSize= 8;
 	let token= ctx.lexer.token();
 	const opcode= token.value;
-	
+
 	// console.log("parseOpcode 1",token);
-	
+
 	const opcodeTable= ctx.opcodes[opcode];
 	if(opcodeTable==null)
-		throw new VAParseError("OPCODE: Unknown opcode "+opcode);
+		throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode}`);
 
 	ctx.lexer.next();
 	token= ctx.lexer.token();
 
 	// console.log("parseOpcode 2",token);
-	
+
 	//
 	// ASL (IMPLICIT ADDR MODE)
 	//
@@ -29,11 +29,11 @@ export function parseOpcode(ctx) {
 		const obj= opcodeTable[ADDRMODE.IMPLICIT];
 		if(obj == -1)
 			throw new VAParseError("OPCODE: Invalid Address Mode for Opcode "+opcode);
-			
+
 		ctx.code.emits(ctx.pass, [obj]);
 		return true;
 	}
-	
+
 	//
 	// LDA # parm (ABSOLUTE ADDR MODE)
 	//
@@ -41,10 +41,10 @@ export function parseOpcode(ctx) {
 		const obj= opcodeTable[ADDRMODE.IMMEDIATE];
 		if(obj == -1)
 			throw new VAParseError("OPCODE: Invalid Address Mode for Opcode "+opcode);
-			
+
 			ctx.lexer.next();
-			
-		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);		
+
+		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
 
 		if(parm.value > 0xFF)
 			throw new VAParseError("OPCODE: Absolute value must by 8 bits wide");
@@ -97,14 +97,15 @@ export function parseOpcode(ctx) {
 					throw new VAParseError("OPCODE: Unknown addressing mode");
 
 				ctx.lexer.next();
-				
+
 				obj= opcodeTable[ADDRMODE.INDIRECTZPY];
 				break;
 			}
 
 			case TOKEN_TYPES.COMMA: {
 
-				// LDA ( $00   , X )				
+				// LDA ( $00   , X )
+				// JMP ( $1234 , X )
 				ctx.lexer.next();
 				const token= ctx.lexer.token();
 				if(!token || token.type != TOKEN_TYPES.IDENTIFIER || token.value != "X" )
@@ -114,18 +115,23 @@ export function parseOpcode(ctx) {
 				if(!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
 					throw new VAParseError("OPCODE: missing closing parenthesis");
 				ctx.lexer.next();
-					
-				obj= opcodeTable[ADDRMODE.INDIRECTZPX];
+
+				if(addr.value < 0x100)
+					obj= opcodeTable[ADDRMODE.INDIRECTZPX];
+				else {
+					obj= opcodeTable[ADDRMODE.ABSINDIRECTX];
+					valueSize= 16;
+				}
 				break;
 			}
 
-					
-				
+
+
 		}
 
 		if(obj == -1)
 			throw new VAParseError("OPCODE: IAM2 Invalid Address Mode for Opcode "+opcode);
-		
+
 		const code= [obj];
 		code.push(addr.value & 0xFF);
 		if(valueSize==16)
@@ -141,7 +147,7 @@ export function parseOpcode(ctx) {
 	// LDA parm , X
 	// console.log({ctx});
 	// console.log(token);
-	
+
 	const addr= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
 
 	// console.log("addr", JSON.stringify(addr));
@@ -153,7 +159,7 @@ export function parseOpcode(ctx) {
 
 	let obj= opcodeTable[ADDRMODE.ABSOLUTE];
 	let opSize= 16;
-	
+
 	if(!ctx.lexer.token()) {
 		if(opcodeTable[ADDRMODE.RELATIVE] != -1) {
 			obj= opcodeTable[ADDRMODE.RELATIVE];
@@ -186,14 +192,16 @@ export function parseOpcode(ctx) {
 				if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZPX] != -1) {
 					obj= opcodeTable[ADDRMODE.ZPX];
 					opSize= 8;
-				}
+				} else
+					obj= opcodeTable[ADDRMODE.ABSOLUTEX];
 				break;
 
 			case "Y":				// if 8 bits, check if ZPX allowed
 				if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZPY] != -1) {
 					obj= opcodeTable[ADDRMODE.ZPY];
 					opSize= 8;
-				}
+				} else
+					obj= opcodeTable[ADDRMODE.ABSOLUTEY];
 				break;
 
 			default:
@@ -209,7 +217,7 @@ export function parseOpcode(ctx) {
 		ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
 	else
 		ctx.code.emits(ctx.pass, [obj, low(addr.value)]);
-	
+
 	return true;
 
 }

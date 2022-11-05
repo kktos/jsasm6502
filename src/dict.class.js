@@ -27,7 +27,7 @@ export class Dict {
 	export(name) {
 		// if(name =="BOOT3") {
 		// 	console.log("---- EXPORT", this.currentName, name, this.ns[name]);
-		// }		
+		// }
 		this.global[name]= this.ns[name];
 		this.exports[name]= this.currentName;
 	}
@@ -43,9 +43,8 @@ export class Dict {
 	}
 
 	set(name, value) {
-		// if(name =="BOOT3") {
-		// 	console.log("---- SET", this.currentName, name, value);
-		// }
+		// console.log(`---- SET ${this.currentName}.${name}= ${value.value}`);
+
 		this.ns[name]= value;
 
 		if(this.exports[name] == this.currentName)
@@ -59,7 +58,7 @@ export class Dict {
 		// }
 
 		if(ns)
-			return this.namespaces[ns]?.[name];		
+			return this.namespaces[ns]?.[name];
 		return this.ns[name] ? this.ns[name] : this.global[name];
 	}
 
@@ -144,7 +143,7 @@ export class Dict {
 
 		// console.log("findClosestMarker",{pos});
 		// console.log("findClosestMarker",{marker: markers[pos]});
-		
+
 		return markers[pos];
 	}
 

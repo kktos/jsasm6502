@@ -5,9 +5,10 @@
   "description": "6502 assembler based on virtual assembler by mass:werk",
   "main": "index.js",
   "scripts": {
-    "test": "node src/vasm.js test/main.test.asm --conf test/main.yaml",
-    "test-lstoff": "node src/vasm.js --no-listing test/main.test.asm"
-
+    "test": "vitest",
+    "test-main": "node src/vasm.js test/main.test.asm --conf test/main.yaml",
+    "test-lstoff": "node src/vasm.js --no-listing test/main.test.asm",
+    "generate-test-data": "node test/generate-test-data.js"
   },
   "repository": {
     "type": "git",
@@ -20,9 +21,10 @@
   },
   "homepage": "https://github.com/kktos/virtual-6502-asm#readme",
   "devDependencies": {
-    "@types/node": "^17.0.21",
-    "typescript": "^4.6.2",
-    "yargs": "^17.3.1"
+    "@types/node": "^18.11.9",
+    "typescript": "^4.8.4",
+    "vitest": "^0.24.5",
+    "yargs": "^17.6.2"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

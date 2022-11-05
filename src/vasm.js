@@ -75,10 +75,23 @@ const opts= {
 	readFile,
 	YAMLparse: load,
 	listing: argv.listing === true,
-	segments: conf.segments
+	segments: conf.segments,
+	cpu: "6502"
 };
 
-const asmRes= assemble(basename(filename), opts);
+let asmRes;
+try {
+	asmRes= assemble(basename(filename), opts);
+}
+catch(err) {
+	// handle internal errors
+	// if(err?.name?.match(/^VA/)) {
+	// 	ctx.error(err.message);
+	// }
+
+	console.error(err);
+}
+
 
 if(argv.symbols) {
 	console.log( asmRes.symbols.dump() );
