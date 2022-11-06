@@ -1,3 +1,4 @@
-# virtual-6502-asm
+# jsasm6502
 
-6502 assembler based on virtual assembler by mass:werk
+6502/65C02 assembler in js
+inspired by virtual assembler by mass:werk
