@@ -28,16 +28,16 @@ export const TOKEN_TYPES= {
 
 	DOLLAR: 0x150,
 	PERCENT: 0x151,
-	
+
 	IDENTIFIER: 0x200,
 	NUMBER: 0x300,
 	STRING: 0x400,
 
 	ARRAY: 0x501,
 	OBJECT: 0x502,
-	
+
 	// COMMENT: 0x500,
-	
+
 	LOWER: 0x600,
 	GREATER: 0x601,
 	EQUAL: 0x602,
@@ -84,9 +84,9 @@ class LexerContext {
 	constructor(src) {
 		this.lines= src ? src.split(/\r?\n/) : [];
 		this.lineIdx= 0;
-		this.states= [];		
+		this.states= [];
 		this.eventHandlers= {};
-		
+
 		this.nextLine();
 	}
 
@@ -98,7 +98,7 @@ class LexerContext {
 		this.tokens= [];
 		this.curTokIdx= 0;
 		this.tokCount= 0;
-		this.comment= null;		
+		this.comment= null;
 	}
 
 }
@@ -109,7 +109,7 @@ export class Lexer {
 		this.contexts= [];
 		// this.onEOF= null;
 	}
-	
+
 	pushSource(src) {
 		if(this.ctx)
 			this.contexts.push(this.ctx);
@@ -136,7 +136,7 @@ export class Lexer {
 		// console.log("Lexer.eventHandlers",this.ctx.eventHandlers);
 
         if(idx > -1)
-            this.ctx.eventHandlers[type].splice(idx, 1);		
+            this.ctx.eventHandlers[type].splice(idx, 1);
 	}
 	executeEventListener(type) {
 		for(const handler of this.ctx.eventHandlers[type])
@@ -152,17 +152,17 @@ export class Lexer {
 
 		while(true) {
 			this.ctx.nextLine();
-			
+
 			if(this.ctx.lineIdx<this.ctx.lines.length)
 				break;
 
 			// console.log("Lexer.nextLine", this.ctx.eventHandlers);
 			if(this.ctx.eventHandlers[EVENT_TYPES.EOS])
 				this.executeEventListener(EVENT_TYPES.EOS);
-				
+
 			// if(this.onEOF)
 			// 	this.onEOF();
-				
+
 			this.ctx= this.contexts.pop();
 			if(!this.ctx)
 				return false;
@@ -210,7 +210,7 @@ export class Lexer {
 				return false;
 			return this.ctx.tokens[this.ctx.tokCount-idx];
 		}
-		
+
         if(this.ctx.curTokIdx >= this.ctx.tokCount-idx)
 			return false;
 
@@ -261,7 +261,7 @@ export class Lexer {
 			return this.ctx.currChar= null;
 		this.ctx.currChar= this.ctx.currLine?.[this.ctx.posInLine++] ?? null;
 	}
-	
+
 	_testLookaheadChar(charset) {
 		if(this.ctx.posInLine>=this.ctx.currLine?.length)
 			return false;
@@ -274,13 +274,16 @@ export class Lexer {
 		return this.ctx.currLine?.[this.ctx.posInLine] ?? null;
 	}
 
-	_advance() {	
+	_advance() {
 		this.ctx.currToken= new Token();
 
+		this._nextChar();
+
 		// WHITESPACESs
-		do {
+		while(WS_CHARSET.has(this.ctx.currChar)) {
+			this.ctx.currToken.hasSpaceBefore= true;
 			this._nextChar();
-		} while(WS_CHARSET.has(this.ctx.currChar));
+		}
 
 		if(this.ctx.currChar == null)
 			return false;
@@ -293,7 +296,7 @@ export class Lexer {
 			this.ctx.currToken.text= this.ctx.currChar;
 			return true;
 		}
-	
+
 		let startPos= this.ctx.posInLine-1;
 
 		// IDENTIFIER
@@ -355,7 +358,7 @@ export class Lexer {
 			// if no hexa digits after $, lets have the $ token instead
 			if(endPos-startPos==1) {
 				this.ctx.currToken.type= TOKEN_TYPES.DOLLAR;
-				return true;	
+				return true;
 			}
 
 			this.ctx.currToken.type= TOKEN_TYPES.NUMBER;
@@ -374,7 +377,7 @@ export class Lexer {
 			// if no binary digits after %, lets have the % token instead
 			if(endPos-startPos==1) {
 				this.ctx.currToken.type= TOKEN_TYPES.PERCENT;
-				return true;	
+				return true;
 			}
 
 			this.ctx.currToken.type= TOKEN_TYPES.NUMBER;
@@ -405,7 +408,7 @@ export class Lexer {
 				this.ctx.currToken.type= TOKEN_TYPES.NUMBER;
 				this.ctx.currToken.text= quote+this.ctx.currChar;
 				this.ctx.currToken.value= this.ctx.currChar.charCodeAt(0);
-				return true;				
+				return true;
 			}
 
 			this.popState();
@@ -426,7 +429,7 @@ export class Lexer {
 		this.ctx.currToken.type= TOKEN_TYPES.INVALID;
 		this.ctx.currToken.value= this.ctx.currChar;
 		this.ctx.currToken.text= this.ctx.currChar;
-		return false;	
+		return false;
 	}
 
 }
