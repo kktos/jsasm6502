@@ -7,7 +7,7 @@ import { parseExpression } from "../parsers/expression.parser.js";
 
 export function parseOpcode(ctx) {
 
-	let valueSize= 8;
+	let valueSize= 0;
 	let token= ctx.lexer.token();
 	const opcode= token.value;
 
@@ -19,6 +19,23 @@ export function parseOpcode(ctx) {
 
 	ctx.lexer.next();
 	token= ctx.lexer.token();
+
+	// instr.b forces 8bits
+	// instr.w forces 16bits
+	if(token.type == TOKEN_TYPES.DOT && !token.hasSpaceBefore) {
+		ctx.lexer.next();
+		token= ctx.lexer.token();
+		if(token.type != TOKEN_TYPES.IDENTIFIER)
+			throw new VAParseError(`OPCODE: Invalid data size; needs .w or .b`);
+		switch(token.value) {
+			case "B": valueSize= 8; break;
+			case "W": valueSize= 16; break;
+			default:
+				throw new VAParseError(`OPCODE: Invalid data size; needs .w or .b`);
+		}
+		ctx.lexer.next();
+		token= ctx.lexer.token();
+	}
 
 	// console.log("parseOpcode 2",token);
 
@@ -46,7 +63,7 @@ export function parseOpcode(ctx) {
 
 		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
 
-		if(parm.value > 0xFF)
+		if(parm.value > 0xFF || valueSize==16)
 			throw new VAParseError("OPCODE: Absolute value must by 8 bits wide");
 
 		ctx.code.emits(ctx.pass, [obj, parm.value]);
@@ -76,13 +93,14 @@ export function parseOpcode(ctx) {
 				// if end of line
 				// its either INDIRECT or INDIRECTZP
 				if(!ctx.lexer.token()) {
-					// if 8/16 bits, by default -> INDIRECT
-					obj= opcodeTable[ADDRMODE.INDIRECT]					// if 8 bits, check if INDIRECTZP allowed
-					if(addr.value < 0x100 && opcodeTable[ADDRMODE.INDIRECTZP] != -1)
+					if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.INDIRECTZP] != -1) {
 						obj= opcodeTable[ADDRMODE.INDIRECTZP];
-					else
+						valueSize= 8;
+					}
+					else if(valueSize!=8) {
+						obj= opcodeTable[ADDRMODE.INDIRECT];
 						valueSize= 16;
-
+					}
 					break;
 				}
 
@@ -92,13 +110,15 @@ export function parseOpcode(ctx) {
 
 				ctx.lexer.next();
 
-				const token= ctx.lexer.token();
-				if(!token || token.type != TOKEN_TYPES.IDENTIFIER || token.value != "Y" )
+				if(!ctx.lexer.isIdentifier("Y"))
 					throw new VAParseError("OPCODE: Unknown addressing mode");
 
 				ctx.lexer.next();
 
-				obj= opcodeTable[ADDRMODE.INDIRECTZPY];
+				if(valueSize!=16 && addr.value < 0x100) {
+					obj= opcodeTable[ADDRMODE.INDIRECTZPY];
+					valueSize= 8;
+				}
 				break;
 			}
 
@@ -107,8 +127,7 @@ export function parseOpcode(ctx) {
 				// LDA ( $00   , X )
 				// JMP ( $1234 , X )
 				ctx.lexer.next();
-				const token= ctx.lexer.token();
-				if(!token || token.type != TOKEN_TYPES.IDENTIFIER || token.value != "X" )
+				if(!ctx.lexer.isIdentifier("X"))
 					break;
 
 				ctx.lexer.next();
@@ -116,16 +135,16 @@ export function parseOpcode(ctx) {
 					throw new VAParseError("OPCODE: missing closing parenthesis");
 				ctx.lexer.next();
 
-				if(addr.value < 0x100)
+				if(valueSize!=16 && addr.value < 0x100) {
+					valueSize= 8;
 					obj= opcodeTable[ADDRMODE.INDIRECTZPX];
-				else {
+				}
+				else if(valueSize!=8) {
 					obj= opcodeTable[ADDRMODE.ABSINDIRECTX];
 					valueSize= 16;
 				}
 				break;
 			}
-
-
 
 		}
 
@@ -141,10 +160,10 @@ export function parseOpcode(ctx) {
 		return true;
 	}
 
-	// BNE parm
-	// LDA parm
-	// LDA parm , Y
-	// LDA parm , X
+	// BNE addr
+	// LDA addr
+	// LDA addr , Y
+	// LDA addr , X
 	// console.log({ctx});
 	// console.log(token);
 
@@ -157,26 +176,31 @@ export function parseOpcode(ctx) {
 
 	// console.log({addr});
 
-	let obj= opcodeTable[ADDRMODE.ABSOLUTE];
-	let opSize= 16;
+	let obj= -1;
 
 	if(!ctx.lexer.token()) {
-		if(opcodeTable[ADDRMODE.RELATIVE] != -1) {
-			obj= opcodeTable[ADDRMODE.RELATIVE];
-			opSize= 8;
-			addr.value-= (ctx.code.pc+2) & 0xffff;
-			if(ctx.pass==2 && (addr.value<-128 || addr.value>127)) {
-				throw new VAParseError("OPCODE: Target Address is out of range for Opcode "+opcode+" "+addr.value);
+
+		if(valueSize!=16) {
+			if(opcodeTable[ADDRMODE.RELATIVE] != -1) {
+				obj= opcodeTable[ADDRMODE.RELATIVE];
+				valueSize= 8;
+				addr.value-= (ctx.code.pc+2) & 0xffff;
+				if(ctx.pass==2 && (addr.value<-128 || addr.value>127)) {
+					throw new VAParseError("OPCODE: Target Address is out of range for Opcode "+opcode+" "+addr.value);
+				}
+			}
+			else if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZP] != -1) {
+				obj= opcodeTable[ADDRMODE.ZP];
+				valueSize= 8;
 			}
 		}
-		else {
-			if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZP] != -1) {
-				obj= opcodeTable[ADDRMODE.ZP];
-				opSize= 8;
-			}
+
+		if(valueSize!=8) {
+			obj= opcodeTable[ADDRMODE.ABSOLUTE];
+			valueSize= 16;
 		}
 	}
-
+	else
 	if(ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
 		ctx.lexer.next();
 		const reg= ctx.lexer.token();
@@ -189,34 +213,38 @@ export function parseOpcode(ctx) {
 			// LDA $1000,X
 			// LDA $10,X
 			case "X":				// if 8 bits, check if ZPX allowed
-				if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZPX] != -1) {
+				if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.ZPX] != -1) {
 					obj= opcodeTable[ADDRMODE.ZPX];
-					opSize= 8;
-				} else
+					valueSize= 8;
+				} else if(valueSize!=8) {
 					obj= opcodeTable[ADDRMODE.ABSOLUTEX];
+					valueSize= 16;
+				}
 				break;
 
 			case "Y":				// if 8 bits, check if ZPX allowed
-				if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZPY] != -1) {
+				if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.ZPY] != -1) {
 					obj= opcodeTable[ADDRMODE.ZPY];
-					opSize= 8;
-				} else
+					valueSize= 8;
+				} else if(valueSize!=8) {
 					obj= opcodeTable[ADDRMODE.ABSOLUTEY];
+					valueSize= 16;
+				}
 				break;
 
-			default:
-				obj= -1;
+			// default:
+			// 	obj= -1;
 		}
 		ctx.lexer.next();
 	}
 
 	if(obj == -1)
-		throw new VAParseError("OPCODE: IAM4 Invalid Address Mode for Opcode "+opcode);
+		throw new VAParseError("OPCODE: IAM4 Invalid Address Mode for Opcode "+opcode+" "+valueSize);
 
-	if(opSize==16)
-		ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
-	else
+	if(valueSize==8)
 		ctx.code.emits(ctx.pass, [obj, low(addr.value)]);
+	else
+		ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
 
 	return true;
 

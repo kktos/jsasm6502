@@ -1,173 +1,147 @@
-import { Context } from "./context.class.js";
-import { VAParseError } from "./helpers/errors.class.js";
-import { TOKEN_TYPES } from "./lexer/lexer.class.js";
-import { parseLabel, parseLocalLabel } from "./parsers/label.parser.js";
-import { parseOpcode } from "./parsers/opcode.parser.js";
-import { parseOrg } from "./parsers/org.parser.js";
-import { isPragmaToken, parsePragma } from "./parsers/pragma.parser.js";
-import { expandMacro, isMacroToken } from "./pragmas/macro.pragma.js";
-import { CPU_NAMES, setcpu } from "./pragmas/setcpu.pragma.js";
+import { load } from "js-yaml";
+import { readFileSync } from "node:fs";
+import { basename, dirname } from "node:path";
+import yargs from "yargs";
 
-export function assemble(mainFilename, opts) {
-	const ctx= new Context(opts, mainFilename);
+import { assemble } from "./assembler.js";
 
-	let cpu= CPU_NAMES.cpu6502;
-	if(opts.cpu && Object.values(CPU_NAMES).includes(opts.cpu.toUpperCase()))
-		cpu= opts.cpu.toUpperCase();
-	setcpu(ctx, cpu);
-
-	// first pass
+function readFile(filename, fromFile, asBin) {
 	try {
-		asm(ctx);
+		let includeDir= fromFile ? dirname(fromFile) : "";
+		filename= (includeDir!="" ? includeDir +"/" : "") + filename;
+		const content= readFileSync(rootDir +"/"+ filename);
+		return {path: filename, content: asBin ? content : content.toString()};
+	} catch(e) {
+		// console.error("FATAL ERROR: Unable to readFile "+filename);
+		return null;
 	}
-	catch(err) {
-		// handle internal errors
-		if(err?.name?.match(/^VA/)) {
-			ctx.error(err.message);
-			// return;
-		}
-
-		throw err;
-	}
-
-	ctx.reset();
-
-	ctx.pass= 2;
-	// second pass
-	try {
-		asm(ctx);
-	}
-	catch(err) {
-		// handle internal errors
-		if(err?.name?.match(/^VA/)) {
-			ctx.error(err.message);
-			// return;
-		}
-
-		throw err;
-	}
-
-	return {
-		symbols: ctx.symbols,
-		segments: ctx.code.segments,
-		obj: ctx.code.obj,
-		dump: ctx.code.dump
-	};
-
 }
 
-function asm(ctx) {
-	while(!ctx.wannaStop && ctx.lexer.nextLine()) {
-
-		let token= ctx.lexer.token();
-
-		if(!token)
-			continue;
-
-		// console.log("---- LINE 0", ctx.lexer.line(), token);
-
-		if(token.type == TOKEN_TYPES.INVALID)
-			throw new VAParseError(`Invalid character ${token.value}`);
-
-		const currLine= ctx.lexer.line();
-		let label= null;
-
-		const lblParser= (token) => {
-			switch(token.type) {
-
-				// LOCAL LABEL <!> <:>
-				case TOKEN_TYPES.BANG:
-				case TOKEN_TYPES.COLON:
-					return parseLocalLabel(ctx);
-
-				// LABEL <id>
-				case TOKEN_TYPES.IDENTIFIER:
-					return parseLabel(ctx);
-
-				// CHEAP LABEL <@> <id>
-				case TOKEN_TYPES.AT:
-					if(!ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER))
-						return null;
-					ctx.lexer.next();
-					return parseLabel(ctx, true);
-			}
-		};
-
-		while(true) {
-
-
-			// console.log("LINE", ctx.lexer.line());
-
-			//
-			// ORG as * = xxxx
-			//
-			if(ctx.lexer.isToken(TOKEN_TYPES.STAR)) {
-				parseOrg(ctx);
-				break;
-			}
-
-			//
-			// LABEL
-			//
-			label= lblParser(token);
-			if(label)
-				ctx.lastLabel= label;
-
-			//
-			// PRAGMA
-			//
-			if(isPragmaToken(ctx)) {
-				parsePragma(ctx);
-
-				// console.log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
-				break;
-			}
-
-			//
-			// MACRO
-			//
-			if(isMacroToken(ctx)) {
-				expandMacro(ctx);
-				break;
-			}
-
-			// console.log("MAIN", ctx.lexer.token());
-
-			//
-			// OPCODE
-			//
-			if(ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
-				parseOpcode(ctx);
-
-			break;
-		}
-
-		if(ctx.lexer.token())
-			throw new VAParseError("Syntax Error on "+ctx.lexer.token().text);
-
-		if(ctx.pass == 2) {
-			if(label)
-				ctx.print(label+":");
-
-			let listingLine= "";
-
-			const asmOut = ctx.code.output;
-			const wantAfter= asmOut?.length>21;
-
-			if(asmOut && !wantAfter)
-				listingLine+= asmOut;
-
-			listingLine= listingLine.padEnd(18);
-
-			listingLine+= currLine;
-
-			if(asmOut && wantAfter)
-				listingLine+= "\n" + asmOut;
-
-			ctx.print(listingLine);
-		}
-
+function readYAMLFile(filename) {
+	try {
+		return load( readFile(filename).content );
+	} catch(e) {
+		console.error("readYAMLFile", filename, e);
+		return null;
 	}
-
-	ctx.wannaStop= false;
 }
+
+const argv= yargs(process.argv.splice(2))
+			.usage('Usage: jsasm [--listing] [--out filename] filename')
+			.options({
+				listing: {
+					describe: "with listing output",
+					boolean: true,
+					default: true
+				},
+				dump: {
+					describe: "with hexdump output",
+					boolean: true
+				},
+				symbols: {
+					describe: "output symbols table",
+					boolean: true,
+					default: false
+				},
+				segments: {
+					describe: "output segments table",
+					boolean: true,
+					default: false
+				},
+				out: {
+					describe: "output file name",
+				},
+				conf: {
+					describe: "segments configuration file",
+				}
+			})
+			.demandCommand(1)
+			.argv;
+
+let rootDir= ".";
+let conf= null;
+if(argv.conf) {
+	conf= readYAMLFile(argv.conf);
+	if(!conf) {
+		console.error("unable to read conf file "+argv.conf);
+		process.exit(-1);
+	}
+}
+
+const filename= argv["_"][0];
+rootDir= dirname(filename);
+
+const opts= {
+	readFile,
+	YAMLparse: load,
+	listing: argv.listing === true,
+	segments: conf.segments,
+	cpu: "6502"
+};
+
+let asmRes;
+try {
+	asmRes= assemble(basename(filename), opts);
+}
+catch(err) {
+	// handle internal errors
+	// if(err?.name?.match(/^VA/)) {
+	// 	ctx.error(err.message);
+	// }
+
+	console.error(err);
+}
+
+
+if(argv.symbols) {
+	console.log( asmRes.symbols.dump() );
+}
+
+if(asmRes?.segments) {
+	Object.keys(asmRes.segments).forEach(name => {
+		console.log("SEGMENT", name);
+		if(asmRes.obj[name])
+		asmRes.dump(name);
+	});
+}
+
+	// .then(ctx => {
+
+	// 	if(ctx.error) {
+	// 		console.error(ctx.message);
+	// 		return;
+	// 	}
+
+	// 	let finalCode= [];
+	// 	Object.keys(ctx.segments).forEach( segmentName => {
+	// 		if(ctx.code[segmentName])
+	// 			finalCode= finalCode.concat(ctx.code[segmentName]);
+
+	// 		if(argv.segments) {
+	// 			const segment= ctx.segments[segmentName];
+	// 			console.log(
+	// 				"segment",
+	// 				"addr $" + getHexWord(segment.start),
+	// 				"len $" + getHexWord(segment.end-segment.start+1),
+	// 				segmentName
+	// 			);
+	// 			if(argv.dump) {
+	// 				const dump= dumpCode(ctx, segmentName, true);
+	// 				console.log( dump ? dump : "<empty>\n" );
+	// 			}
+	// 		}
+	// 	});
+
+	// 	if(argv.symbols === true)
+	// 		console.log( "SYMBOLS:\n"+dumpSymbols().join("\n") );
+
+	// 	const outFilename= argv.out ? argv.out : "a.out";
+	// 	if(finalCode.length) {
+	// 		const buffer= Buffer.from( finalCode );
+	// 		writeFileSync(outFilename, buffer);
+	// 		console.log("binary output", outFilename);
+	// 	} else {
+	// 		console.log("no code to save !");
+	// 	}
+
+	// });

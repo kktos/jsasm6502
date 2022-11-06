@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest",
-    "test-main": "node src/vasm.js test/main.test.asm --conf test/main.yaml",
-    "test-lstoff": "node src/vasm.js --no-listing test/main.test.asm",
+    "test-main": "node src/main.js test/asm/main.test.asm --conf test/asm/main.yaml",
+    "test-lstoff": "node src/main.js --no-listing test/asm/main.test.asm",
     "generate-test-data": "node test/generate-test-data.js"
   },
   "repository": {
