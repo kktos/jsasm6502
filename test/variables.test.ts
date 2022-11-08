@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/main.js";
+import { assemble } from "../src/assembler.js";
 
 let output= "";
 

@@ -28,7 +28,7 @@ export function parseExpression(ctx, endSet, expectedType) {
 
 	if(exprCtx.stack.length)
 		res= evalExpr(ctx, exprCtx.stack);
-	
+
 	// console.log({res});
 
 	if(ctx.pass<2)
@@ -47,7 +47,7 @@ function evalExpr(ctx, stack) {
 		while(stack.length) {
 			item= stack.shift();
 			if(Array.isArray(item))
-				item= evalExpr(ctx, item);		
+				item= evalExpr(ctx, item);
 			if(item.op)
 				break;
 			localStack.push(item);
@@ -191,6 +191,34 @@ function evalExpr(ctx, stack) {
 				break;
 			}
 
+						//
+			// bitwise
+			//
+			case "BAND": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value & op2.value });
+				break;
+			}
+			case "BOR": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value | op2.value });
+				break;
+			}
+			case "BXOR": {
+				const op2= localStack.pop();
+				const op1= localStack.pop();
+				if(op1.type != TOKEN_TYPES.NUMBER || op2.type != TOKEN_TYPES.NUMBER)
+					throw new VAExprError("Only Numbers are allowed here");
+				stack.unshift({ type: TOKEN_TYPES.NUMBER, value: op1.value ^ op2.value });
+				break;
+			}
+
 			//
 			// functions
 			//
@@ -232,7 +260,7 @@ function parseExpr(exprCtx) {
 	let tok;
 
 	// console.log(`parseExpr()`);
-	
+
 	parse_cmp(exprCtx);
 
 	while(true) {
@@ -269,7 +297,7 @@ function parse_cmp(exprCtx) {
 	// console.log("parse_cmp", {stack: exprCtx.stack});
 
 	switch(exprCtx.lexer.token().type) {
-		
+
 		case TOKEN_TYPES.LOWER: {
 			let op= "<";
 			exprCtx.lexer.next();
@@ -303,7 +331,7 @@ function parse_cmp(exprCtx) {
 		case TOKEN_TYPES.BANG:
 			if(!exprCtx.lexer.isLookahead(TOKEN_TYPES.EQUAL))
 				return;
-				
+
 			exprCtx.lexer.next();
 			exprCtx.lexer.next();
 			parse_add(exprCtx);
@@ -317,9 +345,9 @@ function parse_cmp(exprCtx) {
 }
 
 function parse_add(exprCtx) {
-	
+
 	parse_product(exprCtx);
-	
+
 	while(true) {
 		switch(exprCtx.lexer.token().type) {
 			case TOKEN_TYPES.PLUS:
@@ -342,7 +370,7 @@ function parse_add(exprCtx) {
 }
 
 function parse_product(exprCtx) {
-	
+
 	parse_term(exprCtx);
 
 	while(true) {
@@ -357,6 +385,21 @@ function parse_product(exprCtx) {
 				parse_term(exprCtx);
 				exprCtx.stack.push({ op: "/" });
 				break;
+			case TOKEN_TYPES.BAND:
+				exprCtx.lexer.next();
+				parse_term(exprCtx);
+				exprCtx.stack.push({ op: "BAND" });
+				break;
+			case TOKEN_TYPES.BOR:
+				exprCtx.lexer.next();
+				parse_term(exprCtx);
+				exprCtx.stack.push({ op: "BOR" });
+				break;
+			case TOKEN_TYPES.BXOR:
+				exprCtx.lexer.next();
+				parse_term(exprCtx);
+				exprCtx.stack.push({ op: "BXOR" });
+				break;
 			default:
 				return;
 		}
@@ -370,7 +413,7 @@ function parse_term(exprCtx) {
 	// console.log("parse_term", tok);
 
 	switch(tok.type) {
-	
+
 		// function call :  <id> "(" <parmList> ")"
 		//           var :  <id>
 		// case TOKEN_TYPES.IDENTIFIER:
@@ -381,10 +424,10 @@ function parse_term(exprCtx) {
 		case TOKEN_TYPES.DOT:
 			exprCtx.lexer.next();
 			return parse_fn_var(exprCtx);
-			
+
 		case TOKEN_TYPES.LEFT_PARENT:
 			exprCtx.lexer.next();
-			
+
 			const ctx= {...exprCtx, stack: []};
 			parseExpr(ctx);
 			exprCtx.stack.push(ctx.stack);
@@ -400,7 +443,7 @@ function parse_term(exprCtx) {
 			parse_term(exprCtx);
 			exprCtx.stack.push({ op: "NEG" });
 			break;
-			
+
 		case TOKEN_TYPES.BANG:
 			if(parse_local_label(exprCtx))
 				break;
@@ -421,7 +464,7 @@ function parse_term(exprCtx) {
 			parse_term(exprCtx);
 			exprCtx.stack.push({ op: "LSB" });
 			break;
-			
+
 		case TOKEN_TYPES.AT: {
 
 			exprCtx.lexer.next();
@@ -438,14 +481,14 @@ function parse_term(exprCtx) {
 			exprCtx.stack.push(value);
 			break;
 		}
-			
+
 		default:
 
 			if(tok.type == TOKEN_TYPES.COLON) {
 				if(parse_local_label(exprCtx))
 					return;
 			}
-			
+
 			// .FN() or .VAR
 			// if(tok.type == TOKEN_TYPES.DOT && exprCtx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER)) {
 			// 	exprCtx.lexer.next();
@@ -455,7 +498,7 @@ function parse_term(exprCtx) {
 			// to handle case like LDA (expr),Y and LDA (expr,X)
 			if(exprCtx.endSet && exprCtx.endSet.has(tok.type))
 				return;
-				
+
 			parse_number(exprCtx);
 	};
 
@@ -476,7 +519,7 @@ function parse_local_label(exprCtx) {
 		count++;
 		exprCtx.lexer.next();
 	}
-	
+
 	if(tokType == TOKEN_TYPES.MINUS)
 		count= -count;
 
@@ -510,7 +553,7 @@ function parse_number(exprCtx) {
 			// console.log("IDENTIFER", name);
 
 			parse_var_label(exprCtx, tok);
-			
+
 			break;
 		}
 
@@ -534,11 +577,11 @@ function parse_var_label(exprCtx, tok) {
 	const tokens= [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
 
 	// exprCtx.lexer.next();
-	
+
 	if(exprCtx.lexer.isToken(TOKEN_TYPES.DOT)) {
 
 		// console.log("parse_var_label", name, exprCtx.symbols.exists(name), exprCtx.symbols.nsExists(name));
-		
+
 		// namespace.labelname
 		// not a label, being a namespace
 		if(!exprCtx.symbols.exists(name) && exprCtx.symbols.nsExists(name)) {
@@ -546,7 +589,7 @@ function parse_var_label(exprCtx, tok) {
 			exprCtx.lexer.next();
 			name= exprCtx.lexer.token().value;
 			exprCtx.lexer.next();
-		}		
+		}
 	}
 
 	if(checkIfExists && !exprCtx.symbols.exists(name, ns)) {
@@ -570,22 +613,22 @@ function parse_var_label(exprCtx, tok) {
 
 				if(value && value.type != TOKEN_TYPES.OBJECT)
 					throw new VAExprError(`IDENTIFIER : Not an object: "${name}"`);
-	
+
 				if(!exprCtx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.lexer.token().text}"`);
-			
+
 				name= exprCtx.lexer.token().text;
 				const fieldValue= value?.value[name];
-				
+
 				if(value && fieldValue == undefined)
 					throw new VAExprError(`IDENTIFIER : Unknown Object field: "${name}"`);
-		
-				value= { type: value ? getValueType(fieldValue) : TOKEN_TYPES.NUMBER, value: fieldValue };		
-		
+
+				value= { type: value ? getValueType(fieldValue) : TOKEN_TYPES.NUMBER, value: fieldValue };
+
 				exprCtx.lexer.next();
 				break;
 			}
-			
+
 			case TOKEN_TYPES.LEFT_BRACKET: {
 
 				if(value && value.type != TOKEN_TYPES.ARRAY)
@@ -593,22 +636,22 @@ function parse_var_label(exprCtx, tok) {
 
 				exprCtx.lexer.next();
 				const arrayIdx= parseExpression(exprCtx, new Set([TOKEN_TYPES.RIGHT_BRACKET]), TOKEN_TYPES.NUMBER);
-					
+
 				if(!exprCtx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET))
 					throw new VAExprError("IDENTIFIER : Missing close bracket "+(ns?ns+".":"")+name);
-		
+
 				exprCtx.lexer.next();
-				
+
 				if(arrayIdx.value >= value?.value.length)
 					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${value.value.length}`);
-			
+
 				const itemValue= value?.value[arrayIdx.value];
 				value= { type: getValueType(itemValue), value: itemValue };
 				break;
 			}
 
 		}
-		
+
 	}
 
 	// exprCtx.stack.push(value ?? {type: TOKEN_TYPES.IDENTIFIER, value});
@@ -631,7 +674,7 @@ function parse_function(exprCtx) {
 
 	if(!isFunctionExists(fnName))
 		throw new VAExprError(`TERM: Unknown function "${fnName}"`);
-	
+
 	exprCtx.lexer.next();
 	exprCtx.lexer.next();
 
@@ -647,7 +690,7 @@ function parse_function(exprCtx) {
 
 	if(!exprCtx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
 		throw new VAExprError('TERM: Syntax Error: Missing ")"');
-		
+
 	if(parmCount != desiredParmCount)
 		throw new VAExprError(`TERM: Wrong number of parameters for function "${fnName}". Expected ${desiredParmCount} Got ${parmCount}`);
 

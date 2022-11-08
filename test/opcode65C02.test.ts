@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/main.js";
+import { assemble } from "../src/assembler.js";
 import { op65c02 } from "../src/opcodes/65C02.opcodes.js";
 import { readHexLine } from "../src/pragmas/data.pragma.js";
 import { test_65C02 } from "./test_65C02.data.js";

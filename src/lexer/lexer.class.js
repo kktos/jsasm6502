@@ -49,6 +49,10 @@ export const TOKEN_TYPES= {
 	AND: 0x607,
 	OR: 0x608,
 
+	BAND: 0x609,
+	BOR: 0x60A,
+	BXOR: 0x60B,
+
 	INVALID: 0xFFF,
 
 	EOF: 0x8000,
@@ -67,8 +71,9 @@ const SEPARATOR_TOKENS= {
 	"[": TOKEN_TYPES.LEFT_BRACKET,
 	"]": TOKEN_TYPES.RIGHT_BRACKET,
 
-	"&": TOKEN_TYPES.AND,
-	"|": TOKEN_TYPES.OR,
+	"&": ["&", TOKEN_TYPES.AND, TOKEN_TYPES.BAND],
+	"|": ["|", TOKEN_TYPES.OR, TOKEN_TYPES.BOR],
+	"^": TOKEN_TYPES.BXOR,
 
 	">": TOKEN_TYPES.GREATER,
 	"<": TOKEN_TYPES.LOWER,
@@ -292,8 +297,19 @@ export class Lexer {
 
 		// SEPARATORS
 		if(SEPARATOR_CHARSET.has(this.ctx.currChar)) {
-			this.ctx.currToken.type= SEPARATOR_TOKENS[this.ctx.currChar];
+			const c= SEPARATOR_TOKENS[this.ctx.currChar];
 			this.ctx.currToken.text= this.ctx.currChar;
+			if(Array.isArray(c)) {
+				const nextChar= c[0];
+				if(this._testLookaheadChar(new Set(nextChar))) {
+					this._nextChar();
+					this.ctx.currToken.text+= this.ctx.currChar;
+					this.ctx.currToken.type= c[1];
+				} else
+					this.ctx.currToken.type= c[2];
+			} else {
+				this.ctx.currToken.type= SEPARATOR_TOKENS[this.ctx.currChar];
+			}
 			return true;
 		}
 
