@@ -1,5 +1,6 @@
 import { Compiler } from "./compiler.class.js";
 import { Dict } from "./dict.class.js";
+import { VAParseError } from "./helpers/errors.class.js";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class.js";
 
 export class Context {
@@ -33,7 +34,12 @@ export class Context {
 
 		// console.log("CONTEXT PUSH", file);
 
-		const {path, content}= this._readFile(file, fromFile);
+		const {path, content, error}= this._readFile(file, fromFile);
+
+		if(error) {
+			throw new VAParseError(error);
+		}
+
 		this.lexerStack.push({
 			filename: this.filename,
 			filepath: this.filepath,

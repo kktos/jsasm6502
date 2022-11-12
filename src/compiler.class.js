@@ -24,7 +24,7 @@ export class Compiler {
 		this._output= null;
 		return res;
 	}
-	
+
 	segment() {
 		if(!this.currentSegment)
 			throw new VAExprError("No segment defined");
@@ -36,7 +36,7 @@ export class Compiler {
 		if(this.segments[this.currentSegment] == undefined)
 			throw new VABuildError("No such segment");
 
-		if(this.obj[this.currentSegment] == undefined)	
+		if(this.obj[this.currentSegment] == undefined)
 			this.obj[this.currentSegment]= [];
 
 		this.pc= this.segments[this.currentSegment].start + this.obj[this.currentSegment].length;
@@ -45,7 +45,7 @@ export class Compiler {
 	setPC(addr) {
 		const seg= this.segments[this.currentSegment];
 		if(addr < seg.start || addr > seg.end)
-			throw new VABuildError(`ORG is out of range ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
+			throw new VABuildError(`ORG is out of Segment "${this.currentSegment}" range ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
 		this.pc= addr;
 	}
 
@@ -56,7 +56,7 @@ export class Compiler {
 
 	emits(pass, bytes, wannaShowChars) {
 
-		// console.log("emits(%i) SEG:%s", 
+		// console.log("emits(%i) SEG:%s",
 		// 			pass,
 		// 			this.currentSegment,
 		// 			getHexWord(this.pc),
@@ -68,8 +68,8 @@ export class Compiler {
 
 		const seg= this.segments[this.currentSegment];
 		if(this.pc + bytes.length > seg.end+1)
-			throw new VABuildError(`Code is out of Segment range ${getHexWord(this.pc)}:${getHexWord(this.pc+ bytes.length)} > ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
-	
+			throw new VABuildError(`Code is out of Segment "${this.currentSegment}" range ${getHexWord(this.pc)}:${getHexWord(this.pc+ bytes.length)} > ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
+
 		if(pass>1) {
 			let chars= "";
 			let hex= "";
@@ -78,7 +78,7 @@ export class Compiler {
 			const lines= [];
 			for(let idx= 0; idx < bytes.length; idx++) {
 
-				if(idx%BYTECOUNTPERLINE == 0) {					
+				if(idx%BYTECOUNTPERLINE == 0) {
 					hex+= "    " + getHexWord(this.pc+idx)+': ';
 				}
 
@@ -105,7 +105,7 @@ export class Compiler {
 		const obj= this.obj[segmentName];
 		if(obj == undefined || !obj.length)
 			throw new VABuildError("No Object Code for Segment "+segmentName);
-			
+
 		let s= "";
 
 		const codeStart= this.segments[segmentName].start;
@@ -124,6 +124,6 @@ export class Compiler {
 		}
 
 		console.log(s);
-		
+
 	}
 }

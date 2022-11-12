@@ -1,5 +1,5 @@
 import { load } from "js-yaml";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import yargs from "yargs";
 
@@ -13,7 +13,7 @@ function readFile(filename, fromFile, asBin) {
 		return {path: filename, content: asBin ? content : content.toString()};
 	} catch(e) {
 		// console.error("FATAL ERROR: Unable to readFile "+filename);
-		return null;
+		return {error: e.message};
 	}
 }
 
@@ -82,28 +82,36 @@ const opts= {
 let asmRes;
 try {
 	asmRes= assemble(basename(filename), opts);
+
+	if(argv.symbols)
+		console.log( asmRes.symbols.dump() );
+
+	let finalCode= [];
+	Object.keys(asmRes.segments).forEach(name => {
+		if(argv.segments)
+			console.log("SEGMENT", name);
+
+		finalCode= finalCode.concat(asmRes.obj[name]);
+
+		if(argv.dump)
+			asmRes.dump(name);
+	});
+
+	const outFilename= argv.out ? argv.out : "a.out";
+	if(finalCode.length) {
+		const buffer= Buffer.from( finalCode );
+		writeFileSync(outFilename, buffer);
+		console.log("binary output", outFilename);
+	} else {
+		console.log("no code to save !");
+	}
+
 }
 catch(err) {
-	// handle internal errors
-	// if(err?.name?.match(/^VA/)) {
-	// 	ctx.error(err.message);
-	// }
-
-	console.error(err);
+	console.error(err.message);
 }
 
 
-if(argv.symbols) {
-	console.log( asmRes.symbols.dump() );
-}
-
-if(asmRes?.segments) {
-	Object.keys(asmRes.segments).forEach(name => {
-		console.log("SEGMENT", name);
-		if(asmRes.obj[name])
-		asmRes.dump(name);
-	});
-}
 
 	// .then(ctx => {
 

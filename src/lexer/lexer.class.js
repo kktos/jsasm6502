@@ -438,7 +438,7 @@ export class Lexer {
 		// COMMENT
 		if(this.ctx.currChar == ";") {
 			this.comment= this.ctx.currLine.slice(startPos+1);
-			this.ctx.currLine= "";
+			// this.ctx.currLine= "";
 			return false;
 		}
 

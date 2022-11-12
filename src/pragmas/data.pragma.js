@@ -12,8 +12,9 @@ const DATASIZE= {
 };
 const hexRe= /[0-9a-fA-F]/;
 const wsRe= /\s/;
+const commentRe= /\s*;.*?$/;
 
-export function readHexLine(hexLine) {
+export function readHexLine(hexLine, isFromBlock) {
 	const bytes= [];
 	let idx= 0;
 	const getChar= () => {
@@ -29,8 +30,12 @@ export function readHexLine(hexLine) {
 		return chr;
 	};
 
+	hexLine= hexLine.replace(commentRe, "");
+
 	while(idx<hexLine.length) {
 		let chr0= getChar();
+		if(chr0 === null)
+			break;
 		if(chr0 === false)
 			continue;
 		let chr1= getChar();
@@ -38,8 +43,8 @@ export function readHexLine(hexLine) {
 		bytes.push( Number.parseInt(numStr, 16) );
 	}
 
-	if(bytes.length == 0)
-		throw new VAParseError("Missing Hex data");
+	if(!isFromBlock && bytes.length == 0)
+		throw new VAParseError(`HEX(1): Missing Hex data`);
 
 	return bytes;
 }
@@ -61,11 +66,11 @@ function readHexBlock(ctx) {
 		}
 		const hexLine= ctx.lexer.line().trim();
 		if(hexLine.length)
-			bytes.push(...readHexLine(hexLine));
+			bytes.push(...readHexLine(hexLine, true));
 	}
 
 	if(bytes.length == 0)
-		throw new VAParseError("Missing Hex data");
+		throw new VAParseError("HEX(2): Missing Hex data");
 
 	return bytes;
 }
@@ -84,8 +89,9 @@ export function processHex(ctx, pragma) {
 	if(!ctx.lexer.token()) {
 		ctx.code.emits(ctx.pass, readHexBlock(ctx));
 	} else {
+
 		const hexLine= ctx.lexer.line().slice(ctx.lexer.token().posInLine);
-		ctx.code.emits(ctx.pass, readHexLine(hexLine));
+		ctx.code.emits(ctx.pass, readHexLine(hexLine, false));
 		// as we didn't consume the tokens, we need to skip them
 		while(ctx.lexer.next());
 	}

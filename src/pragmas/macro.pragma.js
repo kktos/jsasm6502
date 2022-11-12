@@ -21,7 +21,7 @@ export function processMacro(ctx, pragma) {
 		macro.parms.push(parmName);
 
 		ctx.lexer.next();
-		
+
 		if(ctx.lexer.token()) {
 			if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 				throw new VAParseError("MACRO: Syntax Error; Needs a comma beween parameter");
@@ -30,8 +30,8 @@ export function processMacro(ctx, pragma) {
 			if(!ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 				throw new VAParseError("MACRO: Missing a parameter name");
 		}
-		
-	}	
+
+	}
 
 	const [block]= readBlock(ctx);
 	macro.block= block;
@@ -42,7 +42,7 @@ export function processMacro(ctx, pragma) {
 		macros[macroName]= macro;
 		// console.log(macroName, macro);
 	}
-	
+
 
 }
 
@@ -58,14 +58,14 @@ export function isMacroToken(ctx) {
 export function expandMacro(ctx) {
 	const macro= macros[ctx.lexer.token().value];
 	const paramsCount= macro.parms.length;
-	
+
 	ctx.lexer.next();
 
 	macro.parms.forEach((name, idx) => {
 		let parm= null;
 
 		if(ctx.lexer.token()) {
-			
+
 			if(idx>0) {
 				if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 					throw new VAParseError(`MACRO: Syntax Error; Missing comma`);
@@ -85,10 +85,10 @@ export function expandMacro(ctx) {
 		});
 	}
 
-	if(ctx.pass==2) {
+	// if(ctx.pass==2) {
 		ctx.lexer.pushSource(macro.block);
 		if(paramsCount)
 			ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);
-	}
+	// }
 
 }
