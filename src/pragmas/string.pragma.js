@@ -1,5 +1,6 @@
 import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import { parseExpression } from "../parsers/expression.parser.js";
 
 const CSTR_TOKENS= ["CSTRING", "CSTR", "ASCIIZ"];
 const PSTR_TOKENS= ["PSTRING", "PSTR"];
@@ -11,15 +12,21 @@ export function processText(ctx, pragma) {
 		charSize: 1
 	};
 
+	if(!ctx.lexer.token())
+		throw new VAParseError(`STRING: missing a string here`);
+
 	while(ctx.lexer.token()) {
-		const buffer= makeString(ctx, ctx.lexer.token().value, opts);
-
-		ctx.code.emits(ctx.pass, buffer, true);
-
-		ctx.lexer.next();
+		const res= parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
+		switch(res.type) {
+			case TOKEN_TYPES.STRING:
+				const buffer= makeString(ctx, res.value, opts);
+				ctx.code.emits(ctx.pass, buffer, true);
+				break;
+			default:
+				throw new VAParseError(`STRING: Invalid Type "${res.type}". Must be a string`);
+		}
 		if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 			return false;
-
 		ctx.lexer.next();
 	}
 
@@ -32,7 +39,7 @@ export function makeString(ctx, str, opts) {
 	let char;
 
 	for(let idx= 0; idx < str.length; idx++) {
-		if(opts.charSize<0)
+		if(opts?.charSize<0)
 			for(let padIdx= 1; padIdx < -opts.charSize; padIdx++)
 				buffer.push(0);
 
@@ -70,29 +77,24 @@ export function makeString(ctx, str, opts) {
 			}
 		}
 
-		if(ctx.charMap)
+		if(ctx?.charMap)
 			char= ctx.charMap[char];
-			
+
 		buffer.push( char );
 
-		if(opts.charSize>0)
+		if(opts?.charSize>0)
 			for(let padIdx= 1; padIdx < opts.charSize; padIdx++)
 				buffer.push(0);
 	}
-	
-	if(opts.hasTrailingZero)
+
+	if(opts?.hasTrailingZero)
 		buffer.push(0);
 
-	if(opts.hasLeadingLength)
+	if(opts?.hasLeadingLength)
 		buffer.unshift(buffer.length);
 
 	return buffer;
 }
-
-// import { ET_P, ET_S, logError, logLine } from "../log.js";
-// import { nextLine } from "../tokenizer.js";
-// import { compile, getHexByte, getHexWord } from "../utils.js";
-// import { processNumber } from "./data.pragma.js";
 
 // // const reStr= /\s+(".*?")\s*$/i;
 // const quotes= ["'", '"'];
@@ -121,151 +123,3 @@ const petscii= [
 	0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
 	0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
 ];
-
-// export function encodeCommodoreScreenCode(b) {
-// 	if (b >= 0x61 && b <= 0x7A) return b-0x60; // a..z
-// 	if (b >= 0x5B && b <= 0x5F) return b-0x40; // [\]^_
-// 	if (b == 0x60) return 0x40;                // `
-// 	if (b == 0x40) return 0;                   // @
-// 	return b;
-// }
-
-// export function encodeAscii(b) {
-// 	return b;
-// }
-
-// function processString(ctx, text, pragma, options) {
-// 	const cbBuffer= [];
-// 	const txt= text.slice(1,-1);
-// 	let i, tmax;
-
-// 	ctx.pict+= '"';
-// 	for (i=0, tmax=txt.length-1; i<=tmax; i++) {
-// 		let c=txt.charAt(i), cc=c.charCodeAt(0);
-// 		if (options.convertPiLocal && v==0x03C0)
-// 			v= 0xff; //CBM pi
-// 		if (c=='"') {
-// 			if (i!=tmax) {
-// 				ctx.pict+= txt.substring(i+1).replace(/^(\s)?\s*(.).*/,'$1"$2');
-// 				logError(ctx, ET_S,'unexpected extra character');
-// 				return false;
-// 			}
-// 			break;
-// 		}
-// 		ctx.pict+=c;
-// 		if (cc>0xff) {
-// 			logError(ctx, ET_P, 'illegal character');
-// 			return false;
-// 		}
-// 		if (ctx.pass==2) {
-
-// 			if(options.wannaLeadingLen) {
-// 				options.wannaLeadingLen= false;
-// 				compile(ctx, ctx.pc, tmax);
-// 				ctx.addrStr= getHexWord(ctx.pc);
-// 				ctx.pict= '.DB $'+getHexByte(tmax);
-// 				ctx.pc++;
-// 				ctx.asm= getHexByte(tmax);
-// 				logLine(ctx);
-
-// 				ctx.addrStr= getHexWord(ctx.pc);
-// 				ctx.pict+= '.'+pragma+' "';
-// 			}
-
-// 			cc= options.encoder(cc);
-// 			cbBuffer.push(getHexByte(cc));
-// 			compile(ctx, ctx.pc, cc);
-// 			if (cbBuffer.length==3) {
-// 				ctx.asm= cbBuffer.join(' ');
-// 				cbBuffer.length=0;
-// 				if (i==tmax-1 && txt.charAt(tmax)=='"')
-// 					ctx.pict+= '"';
-// 				logLine(ctx);
-// 				ctx.addrStr= getHexWord(ctx.pc);
-// 				ctx.pict+= '.'+pragma+' "';
-// 			}
-// 		}
-// 		else if (i%40==39) {
-// 			logLine(ctx);
-// 			ctx.addrStr= getHexWord(ctx.pc);
-// 			ctx.pict+= '.'+pragma+' "';
-// 		}
-// 		ctx.pc++;
-// 	}
-// 	ctx.pict+= '"';
-
-// 	switch(ctx.pass) {
-// 		case 1:
-// 			if(i%40 != 39)
-// 				logLine(ctx);
-// 			break;
-
-// 		case 2:
-// 			if(cbBuffer.length) {
-// 				ctx.asm= cbBuffer.join(' ');
-// 				logLine(ctx);
-// 			}
-// 			if(options.wannaTrailingZero) {
-// 				compile(ctx, ctx.pc, 0);
-// 				ctx.addrStr= getHexWord(ctx.pc);
-// 				ctx.pict= '.DB $00';
-// 				ctx.pc++;
-// 				ctx.asm= "00";
-// 				logLine(ctx);
-// 			}
-// 			break;
-// 	}
-// }
-
-// export function processText(ctx, pragma) {
-// 	let options= {};
-
-// 	if (ctx.pass==2) {
-
-// 		options.encoder= ctx.charEncoding;
-// 		options.convertPiLocal= ctx.convertPi;
-
-// 		switch(pragma) {
-// 			case "CSTRING":
-// 				options.wannaTrailingZero= true;
-// 				pragma= "TEXT";
-// 				break;
-
-// 			case "PSTRING":
-// 				options.wannaLeadingLen= true;
-// 				pragma= "TEXT";
-// 				break;
-
-// 			case "ASCII":
-// 				options.encoder= encodeAscii;
-// 				options.convertPiLocal= false;
-// 				break;
-// 			case "PETSCII":
-// 				options.encoder= encodePetscii;
-// 				options.convertPiLocal= true;
-// 				break;
-// 			case "PETSCR":
-// 			case "C64SCR":
-// 				options.encoder= encodeCommodoreScreenCode;
-// 				options.convertPiLocal= true;
-// 				break;
-// 		}
-// 	}
-
-// 	let isTextOut= false;
-// 	for(let idx= ctx.ofs; idx<ctx.sym.length; idx++) {
-// 		const arg= ctx.sym[idx];
-// 		if(quotes.includes(arg[0])) {
-// 			if(!isTextOut) {
-// 				isTextOut= true;
-// 				ctx.addrStr= getHexWord(ctx.pc);
-// 				ctx.pict+= "."+pragma+' ';
-// 			}
-// 			processString(ctx, arg, pragma, options);
-// 		} else
-// 			processNumber(ctx, "DB", arg);
-// 	}
-
-// 	nextLine(ctx);
-// 	return true;
-// }
