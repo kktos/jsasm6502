@@ -19,42 +19,49 @@ const opts= {
 	}
 };
 
-describe("Namespace", () => {
+describe("Strings", () => {
 
-	it('loads in Acc ascii of A', () => {
+	it('tests .text with a string', () => {
 		const src= `
-			lda #"A
+			.text "ABCD"
 		`;
 		const asmRes= assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 41"));
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("41 42 43 44"));
 	});
 
-	it('loads in Acc ascii of A | $80 => $C1', () => {
+	it('tests .text without string', () => {
+		const err= /STRING: missing a string here/;
 		const src= `
-			lda #"A|$80
+			.text
+			.text "abcd"
 		`;
-		const asmRes= assemble(src, opts);
-		expect(asmRes).toBeDefined();
-		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 C1"));
+		let asmRes;
+		expect(() => asmRes= assemble(src, opts)).toThrowError(err);
 	});
 
-	it('loads in Acc ascii of $C1 & $7F => $41', () => {
+	it('tests .text with many strings', () => {
 		const src= `
-			lda #$C1 & $7f
+			.text "AB","CD"
 		`;
 		const asmRes= assemble(src, opts);
-		expect(asmRes).toBeDefined();
-		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 41"));
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("41 42 43 44"));
 	});
 
-	it('loads in Acc ascii of %11001110 ^ $FF => $31', () => {
+	it('tests .cstr with many strings', () => {
 		const src= `
-			lda #%11001110 ^ $FF
+			.cstr "AB","CD"
 		`;
 		const asmRes= assemble(src, opts);
-		expect(asmRes).toBeDefined();
-		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 31"));
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("41 42 00 43 44 00"));
+	});
+
+	it('tests .pstr with many strings', () => {
+		const src= `
+			.pstr "ABCD","ABCD"
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("04 41 42 43 44 04 41 42 43 44"));
 	});
 
 });

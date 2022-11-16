@@ -100,7 +100,7 @@ export function processHex(ctx, pragma) {
 
 }
 
-function pushNumber(list, parm, endianSize) {
+export function pushNumber(list, parm, endianSize) {
 	const dataSize= Math.abs(endianSize);
 	let numberValue= parm.value;
 

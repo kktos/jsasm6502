@@ -13,9 +13,9 @@ const opts= {
 	listing: false,
 	segments: null,
 	console: {
-		log: (s) => { output+= s+"\n"; },
-		error: (s) => {output+= s+"\n"; },
-		warn: (s) => { output+= s+"\n"; }
+		log: (s) => { output+= s+"|"; },
+		error: (s) => {output+= s+"|"; },
+		warn: (s) => { output+= s+"|"; }
 	}
 };
 
@@ -49,6 +49,17 @@ describe("Pragma", () => {
 		const asmRes= assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("020304"));
+	});
+
+	it('tests .error "error" will display the err and stop', () => {
+		output= "";
+		const src= `
+		.error "BOOM"
+		.echo "should not be visible"
+		`;
+
+		let asmRes;
+		expect(() => asmRes= assemble(src, opts)).toThrowError(/BOOM/);
 	});
 
 });

@@ -1,5 +1,6 @@
 import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
+import tokens from "../parsers/pragma.tokens.js";
 import { processAlign } from "../pragmas/align.pragma.js";
 import { processData, processHex } from "../pragmas/data.pragma.js";
 import { processDefine } from "../pragmas/define.pragma.js";
@@ -19,65 +20,6 @@ import { processSegment } from "../pragmas/segment.pragma.js";
 import { processSetCPU } from "../pragmas/setcpu.pragma.js";
 import { processText } from "../pragmas/string.pragma.js";
 
-/*
-import { c64Start } from "../pragmas/c64start.pragma.js";
-import { ignorePragma, processEnd, processPage } from "../pragmas/misc.pragma.js";
-*/
-// export function parsePragma(pragma) {
-
-// 	if(typeof pragma != "symbol")
-// 		return null;
-
-// 	const cmd= pragma.description;
-// 	switch(cmd.replace(/^\./,"")) {
-
-// 		case "SRC":
-// 		case "SOURCE":
-// 			return "INCLUDE";
-
-// 		case "PROCESSOR":
-// 			return "SETCPU";
-
-// 		case "RES":
-// 			return "FILL";
-
-// 		case "BYTE":
-// 		case "BYT":
-// 			return "DB";
-
-// 		case "WORD":
-// 			return "DW";
-
-// 		case "LONG":
-// 			return "DL";
-
-// 		case "DBYT":
-// 			return "DBYTE";
-
-// 		case "RORG":
-// 		case "*":
-// 			return "ORG";
-
-// 		case "STRING":
-// 		case "STR":
-// 			return "TEXT";
-
-// 		case "ASCIIZ":
-// 		case "CSTR":
-// 			return "CSTRING";
-
-// 		case "PSTR":
-// 			return "PSTRING";
-
-// 		case "LST":
-// 			return "LISTING";
-
-// 		default:
-// 			return cmd[0] == "." ? cmd : null;
-// 	}
-
-// }
-
 export function isPragmaToken(ctx) {
 	return 	ctx.lexer.token().type == TOKEN_TYPES.DOT &&
 			ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER);
@@ -94,46 +36,51 @@ function addPragmaDef(handlerFn, isBlock, pragmaNames) {
 }
 
 const pragmaDefs= {};
-addPragmaDef(processIf			,  true, ["IF"]);
-addPragmaDef(null				,  false, ["ELSE"]);
+addPragmaDef(processIf			,  true, [tokens.IF]);
+addPragmaDef(null				,  false, [tokens.ELSE]);
 
-addPragmaDef(processRepeat		,  true, ["REPEAT"]);
-addPragmaDef(processDefine		,  true, ["DEFINE"]);
-addPragmaDef(processMacro		,  true, ["MACRO"]);
+addPragmaDef(processRepeat		,  true, [tokens.REPEAT]);
+addPragmaDef(processDefine		,  true, [tokens.DEFINE]);
+addPragmaDef(processMacro		,  true, [tokens.MACRO]);
 
-addPragmaDef(processOption		, false, ["OPT", "OPTION"]);
+addPragmaDef(processOption		, false, [tokens.OPT, tokens.OPTION]);
 addPragmaDef(processText		, false, [
 											// no length
-											"TEXT",
+											tokens.TEXT,
 											// zero terminated
-											"CSTRING", "CSTR", "ASCIIZ",
+											tokens.CSTRING, tokens.CSTR, tokens.ASCIIZ,
 											// 1str byte is length
-											"PSTRING", "PSTR"
+											tokens.PSTRING, tokens.PSTR
 										]);
 
-addPragmaDef(processEnd			, false, ["END"]);
+addPragmaDef(processEnd			, false, [tokens.END]);
 addPragmaDef(processASMOuput	, false, [
-											"OUT", "ECHO", "LOG",
-											"WARNING",
-											"ERROR"
+											tokens.OUT, tokens.ECHO, tokens.LOG,
+											tokens.WARNING,
+											tokens.ERROR
 										]);
-addPragmaDef(processListing		, false, ["LST", "LIST", "LISTING"]);
-addPragmaDef(processSetCPU		, false, ["CPU", "SETCPU", "PROCESSOR"]);
-addPragmaDef(processOrg			, false, ["ORG"]);
-addPragmaDef(processSegment		, false, ["SEGMENT"]);
-addPragmaDef(processAlign		, false, ["ALIGN"]);
-addPragmaDef(processFill		, false, ["FILL", "RES"]);
-addPragmaDef(processHex			, false, ["HEX"]);
-addPragmaDef(processData		, false, ["DB", "DW", "DL", "DBYTE", "DWORD"]);
+addPragmaDef(processListing		, false, [tokens.LST, tokens.LIST, tokens.LISTING]);
+addPragmaDef(processSetCPU		, false, [tokens.CPU, tokens.SETCPU, tokens.PROCESSOR]);
+addPragmaDef(processOrg			, false, [tokens.ORG]);
+addPragmaDef(processSegment		, false, [tokens.SEGMENT]);
+addPragmaDef(processAlign		, false, [tokens.ALIGN]);
+addPragmaDef(processFill		, false, [tokens.FILL, tokens.RES]);
+addPragmaDef(processHex			, false, [tokens.HEX]);
+addPragmaDef(processData		, false, [	tokens.DB,
+											tokens.DW,
+											tokens.DL,
+											tokens.DBYTE,
+											tokens.DWORD
+										]);
 
-addPragmaDef(processInclude		, false, ["INCLUDE"]);
-addPragmaDef(processNamespace	, false, ["NAMESPACE"]);
-addPragmaDef(processExport		, false, ["EXPORT"]);
+addPragmaDef(processInclude		, false, [tokens.INCLUDE]);
+addPragmaDef(processNamespace	, false, [tokens.NAMESPACE]);
+addPragmaDef(processExport		, false, [tokens.EXPORT]);
 
 export function parsePragma(ctx) {
 
 	ctx.lexer.next();
-	
+
 	const token= ctx.lexer.token();
 	if(!token)
 		return false;
@@ -143,7 +90,7 @@ export function parsePragma(ctx) {
 		throw new VAParseError("PRAGMA: Unknown pragma");
 	if(!pragmaDef.handlerFn)
 		throw new VAParseError("PRAGMA: Syntax Error");
-	
+
 	ctx.lexer.next();
 
 	const isOK= pragmaDef.handlerFn(ctx, token.value);

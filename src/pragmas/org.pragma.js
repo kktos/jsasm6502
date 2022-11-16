@@ -5,7 +5,7 @@ import { parseExpression } from "../parsers/expression.parser.js";
 export function processOrg(ctx) {
 	const res= parseExpression(ctx);
 	if(res.type != TOKEN_TYPES.NUMBER)
-		throw new VAParseError("Need an address");
-	
+		throw new VAParseError("ORG: Need an address");
+
 	ctx.code.setPC(res.value);
 }

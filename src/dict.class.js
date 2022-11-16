@@ -14,6 +14,7 @@ export class Dict {
 		this.select(NS_GLOBAL);
 		this.global= this.namespaces[NS_GLOBAL];
 		this.exports= {};
+		this.nsStack= [];
 	}
 
 	get namespace() {
@@ -160,13 +161,23 @@ export class Dict {
 
 	select(name) {
 		name= name ?? NS_GLOBAL;
+
 		if(!this.namespaces[name]) {
 			this.namespaces[name]= {};
 			this.namespaces[name][MARKERS]= [];
 		}
+
+		if(this.currentName)
+			this.nsStack.push(name);
+
 		this.currentName= name;
 		this.ns= this.namespaces[this.currentName];
-		// this.ns[MARKERS]= [];
+	}
+
+	nsPop() {
+		this.nsStack.pop();
+		this.currentName= this.nsStack.slice(-1);
+		this.ns= this.namespaces[this.currentName];
 	}
 
 	dump() {
