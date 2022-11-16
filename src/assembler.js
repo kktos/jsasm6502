@@ -8,6 +8,8 @@ import { isPragmaToken, parsePragma } from "./parsers/pragma.parser.js";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma.js";
 import { CPU_NAMES, setcpu } from "./pragmas/setcpu.pragma.js";
 
+const ASM_BYTES_LEN= 32;
+
 export function assemble(mainFilename, opts) {
 	const ctx= new Context(opts, mainFilename);
 
@@ -152,7 +154,7 @@ function asm(ctx) {
 			let listingLine= "";
 
 			const asmOut = ctx.code.output;
-			const wantAfter= asmOut?.length>21;
+			const wantAfter= asmOut?.length > ASM_BYTES_LEN;
 
 			if(asmOut && !wantAfter)
 				listingLine+= asmOut;

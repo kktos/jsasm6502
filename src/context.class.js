@@ -15,7 +15,6 @@ export class Context {
 		this._readFile= opts.readFile;
 		this.YAMLparse= opts.YAMLparse;
 		this._mainFile= mainFile;
-		this._deferredMsg= "";
 		this.wannaListing= opts.listing;
 		this.charMap= null;
 
@@ -25,9 +24,11 @@ export class Context {
 		this.code= new Compiler(opts.segments);
 		this.lexer= new Lexer();
 		this.symbols= new Dict();
-		this.lastLabel= null;
 
-		this.pushFile(mainFile);
+		// this.lastLabel= null;
+		// this.pushFile(mainFile);
+		// this._deferredMsg= "";
+		this.reset();
 	}
 
 	pushFile(file, fromFile) {
@@ -88,7 +89,7 @@ export class Context {
 	}
 
 	warn(msg) {
-		this.console.warn("WARNING",msg);
+		this.console.warn("WARNING", msg);
 	}
 
 	error(msg) {
@@ -100,6 +101,7 @@ export class Context {
 			`\n` +
 			`${line?.slice(0,posInLine)}<>${line?.slice(posInLine+1)}`
 		);
+		// this.lexer.stopSource();
 	}
 
 }

@@ -50,7 +50,7 @@ export class Compiler {
 	}
 
 	reset() {
-		this.pc= this.segments[this.currentSegment].start;
+		this.pc= this.currentSegment ? this.segments[this.currentSegment].start : 0;
 		this._output= null;
 	}
 
