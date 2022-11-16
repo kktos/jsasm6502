@@ -16,9 +16,9 @@ const opts= {
 	listing: false,
 	segments: null,
 	console: {
-		log: (s) => { output+= s+"\n"; },
-		error: (s) => {output+= s+"\n"; },
-		warn: (s) => { output+= s+"\n"; }
+		log: (s) => { output+= s+" | "; },
+		error: (s) => {output+= s+" | "; },
+		warn: (s) => { output+= s+" | "; }
 	}
 };
 
@@ -35,6 +35,44 @@ describe("Namespace", () => {
 		const asmRes= assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 02"));
+	});
+
+	it('shows nested NS work', () => {
+		const src= `
+			.namespace one
+			.log "one=",.ns
+			count= 2
+
+			.namespace two
+			.log "two=",.ns
+			count= 3
+			.end namespace
+
+			.log "one=",.ns
+		`;
+		output= "";
+		const asmRes= assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(output.trim()).toBe("one=ONE | two=TWO | one=ONE |");
+	});
+
+	it('shows nested NS have their local labels', () => {
+		const src= `
+			.namespace one
+			count= 2
+			.echo count
+
+			.namespace two
+			count= 3
+			.echo count
+			.end namespace
+
+			.echo count
+		`;
+		output= "";
+		const asmRes= assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(output.trim()).toBe("2 | 3 | 2 |");
 	});
 
 });
