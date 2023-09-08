@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assemble } from "../src/assembler.js";
 import { readHexLine } from "../src/pragmas/data.pragma.js";
 import { beforeEach } from "node:test";
-import { load } from "js-yaml";
+import { load } from "../src/helpers/asm-yaml";
 
 let output = "";
 

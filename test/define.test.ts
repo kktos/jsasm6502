@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { load } from "js-yaml";
+import { load } from "../src/helpers/asm-yaml";
 import { assemble } from "../src/assembler.js";
 import { readHexLine } from "../src/pragmas/data.pragma.js";
 
@@ -10,7 +10,7 @@ const opts = {
 	readFile: (filename, fromFile, asBin) => {
 		return { path: "", content: filename };
 	},
-	YAMLparse: (s) => load(s),
+	YAMLparse: (s) =>load(s),
 	listing: false,
 	segments: null,
 	console: {
@@ -67,10 +67,14 @@ describe("Define", () => {
 
 	it("tests define array of object", () => {
 		const src = `
+		base = $a0
+
 		.define spritesTable
-		- { id: 0xaa, x: 0xa0, y: 0x10}
-		- { id: 0xbb, x: 0xb0, y: 0x20}
+		- { id: $aa, x: base, y: $10}
+		- { id: $bb, x: $b0, y: $20}
 		.end
+
+		.log "LOG" spritesTable
 
 		.repeat .len(spritesTable) spriteIdx
 
