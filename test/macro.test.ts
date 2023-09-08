@@ -3,26 +3,31 @@ import { describe, expect, it } from "vitest";
 import { assemble } from "../src/assembler.js";
 import { readHexLine } from "../src/pragmas/data.pragma.js";
 
-let output= "";
+let output = "";
 
-const opts= {
+const opts = {
 	readFile: (filename, fromFile, asBin) => {
-		return {path: "", content: filename};
+		return { path: "", content: filename };
 	},
 	YAMLparse: () => "",
 	listing: false,
 	segments: null,
 	console: {
-		log: (s) => { output+= s+"\n"; },
-		error: (s) => {output+= s+"\n"; },
-		warn: (s) => { output+= s+"\n"; }
-	}
+		log: (s) => {
+			output += `${s}\n`;
+		},
+		error: (s) => {
+			output += `${s}\n`;
+		},
+		warn: (s) => {
+			output += `${s}\n`;
+		},
+	},
 };
 
 describe("Macro", () => {
-
-	it('tests that labels work with expanded macro', () => {
-		const src= `
+	it("tests that labels work with expanded macro", () => {
+		const src = `
 			.macro test a,x,y
 			lda.w a
 			ldx.w x
@@ -38,17 +43,47 @@ describe("Macro", () => {
 			jmp end
 			.out .hex(start)," ", .hex(end)
 		`;
-		const asmRes= assemble(src, opts);
+		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(output.trim()).toStrictEqual("$1000 $100A");
 		expect(asmRes.obj.CODE).toStrictEqual(
-			readHexLine(
-				"EA AD 01 00 AE 02 00 AC 03 00 EA 4C 00 10 4C 0A 10"
-				)
-			);
+			readHexLine("EA AD 01 00 AE 02 00 AC 03 00 EA 4C 00 10 4C 0A 10"),
+		);
 	});
 
+	it("tests macro with strings", () => {
+		const src = `
+			.macro log fmt, parm1
+				.db $42,$FF
+				.cstr fmt
+				.db 1
+				.dw parm1
+			.end
+
+			mem:
+			log "ABCD", mem
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("42 FF 41 42 43 44 00 01 00 10"),
+		);
+	});
+
+	it("tests macro with variable numbers of params", () => {
+		const src = `
+			.macro toto id, ...parms
+				.dw id
+				.repeat .len(parms) idx
+				.dw parms[idx]
+				.end
+			.end
+			toto $CAFE, "ABCD", $1234
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("FE CA 41 00 42 00 43 00 44 00 34 12"),
+		);
+	});
 });
-
-
-

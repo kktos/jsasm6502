@@ -24,7 +24,7 @@
 		.segment boot
 
 		* = $800
-		
+
 		.namespace boot
 		; .export "^ta"
 
@@ -49,7 +49,7 @@
 		; .macro test x,y
 		; ldx #x
 		; ldy #y
-		; .end			
+		; .end
 
 		; rts
 
@@ -90,7 +90,7 @@
 		; 	ldx #spritesTable[spriteIdx].x
 		; 	ldy #spritesTable[spriteIdx].y
 		; 	lda #spritesTable[spriteIdx].id
-		; 	; jsr spritelib.drawSprite			
+		; 	; jsr spritelib.drawSprite
 		; 	; jsr Sa35e
 		; .end
 		; .end

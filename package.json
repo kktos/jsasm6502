@@ -2,13 +2,19 @@
   "name": "virtual-6502-asm",
   "version": "1.0.0",
   "type": "module",
+
   "description": "6502 assembler based on virtual assembler by mass:werk",
   "main": "index.js",
   "scripts": {
     "test": "vitest",
     "test-main": "node src/main.js test/asm/main.test.asm --conf test/asm/main.yaml",
     "test-lstoff": "node src/main.js --no-listing test/asm/main.test.asm",
-    "generate-test-data": "node test/generate-test-data.js"
+    "generate-test-data": "node test/generate-test-data.js",
+    "format": "biome format ./src",
+    "lint": "biome check ./src",
+    "lint:ci": "biome ci ./src",
+    "lint:fix": "biome check --apply-unsafe ./src",
+    "format:fix": "biome format --write ./src"
   },
   "repository": {
     "type": "git",
@@ -21,13 +27,15 @@
   },
   "homepage": "https://github.com/kktos/virtual-6502-asm#readme",
   "devDependencies": {
-    "@types/node": "^18.11.9",
-    "typescript": "^4.8.4",
-    "vite": "^3.2.4",
-    "vitest": "^0.24.5",
-    "yargs": "^17.6.2"
+    "@biomejs/biome": "1.1.2",
+    "@types/node": "^20.5.9",
+    "@vitest/ui": "^0.34.4",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9",
+    "vitest": "^0.34.4"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "yargs": "^17.7.2"
   }
 }

@@ -4,27 +4,27 @@ import { TOKEN_TYPES } from "./lexer/lexer.class.js";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser.js";
 import { parseOpcode } from "./parsers/opcode.parser.js";
 import { parseOrg } from "./parsers/org.parser.js";
-import { isPragmaToken, parsePragma } from "./parsers/pragma.parser.js";
+import { parsePragma } from "./parsers/pragma.parser.js";
+import { isPragmaToken } from "./parsers/pragma.tokens.js";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma.js";
 import { CPU_NAMES, setcpu } from "./pragmas/setcpu.pragma.js";
 
-const ASM_BYTES_LEN= 32;
+const ASM_BYTES_LEN = 32;
 
 export function assemble(mainFilename, opts) {
-	const ctx= new Context(opts, mainFilename);
+	const ctx = new Context(opts, mainFilename);
 
-	let cpu= CPU_NAMES.cpu6502;
-	if(opts.cpu && Object.values(CPU_NAMES).includes(opts.cpu.toUpperCase()))
-		cpu= opts.cpu.toUpperCase();
+	let cpu = CPU_NAMES.cpu6502;
+	if (opts.cpu && Object.values(CPU_NAMES).includes(opts.cpu.toUpperCase()))
+		cpu = opts.cpu.toUpperCase();
 	setcpu(ctx, cpu);
 
 	// first pass
 	try {
 		asm(ctx);
-	}
-	catch(err) {
+	} catch (err) {
 		// handle internal errors
-		if(err?.name?.match(/^VA/)) {
+		if (err?.name?.match(/^VA/)) {
 			ctx.error(err.message);
 			// return;
 		}
@@ -34,14 +34,13 @@ export function assemble(mainFilename, opts) {
 
 	ctx.reset();
 
-	ctx.pass= 2;
+	ctx.pass = 2;
 	// second pass
 	try {
 		asm(ctx);
-	}
-	catch(err) {
+	} catch (err) {
 		// handle internal errors
-		if(err?.name?.match(/^VA/)) {
+		if (err?.name?.match(/^VA/)) {
 			ctx.error(err.message);
 			// return;
 		}
@@ -53,30 +52,26 @@ export function assemble(mainFilename, opts) {
 		symbols: ctx.symbols,
 		segments: ctx.code.segments,
 		obj: ctx.code.obj,
-		dump: ctx.code.dump
+		dump: ctx.code.dump,
 	};
-
 }
 
 function asm(ctx) {
-	while(!ctx.wannaStop && ctx.lexer.nextLine()) {
+	while (!ctx.wannaStop && ctx.lexer.nextLine()) {
+		const token = ctx.lexer.token();
 
-		let token= ctx.lexer.token();
-
-		if(!token)
-			continue;
+		if (!token) continue;
 
 		// console.log("---- LINE 0", ctx.lexer.line(), token);
 
-		if(token.type == TOKEN_TYPES.INVALID)
+		if (token.type === TOKEN_TYPES.INVALID)
 			throw new VAParseError(`Invalid character ${token.value}`);
 
-		const currLine= ctx.lexer.line();
-		let label= null;
+		const currLine = ctx.lexer.line();
+		let label = null;
 
-		const lblParser= (token) => {
-			switch(token.type) {
-
+		const lblParser = (token) => {
+			switch (token.type) {
 				// LOCAL LABEL <!> <:>
 				case TOKEN_TYPES.BANG:
 				case TOKEN_TYPES.COLON:
@@ -88,22 +83,19 @@ function asm(ctx) {
 
 				// CHEAP LABEL <@> <id>
 				case TOKEN_TYPES.AT:
-					if(!ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER))
-						return null;
+					if (!ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER)) return null;
 					ctx.lexer.next();
 					return parseLabel(ctx, true);
 			}
 		};
 
-		while(true) {
-
-
+		while (true) {
 			// console.log("LINE", ctx.lexer.line());
 
 			//
 			// ORG as * = xxxx
 			//
-			if(ctx.lexer.isToken(TOKEN_TYPES.STAR)) {
+			if (ctx.lexer.isToken(TOKEN_TYPES.STAR)) {
 				parseOrg(ctx);
 				break;
 			}
@@ -111,14 +103,13 @@ function asm(ctx) {
 			//
 			// LABEL
 			//
-			label= lblParser(token);
-			if(label)
-				ctx.lastLabel= label;
+			label = lblParser(token);
+			if (label) ctx.lastLabel = label;
 
 			//
 			// PRAGMA
 			//
-			if(isPragmaToken(ctx)) {
+			if (isPragmaToken(ctx)) {
 				parsePragma(ctx);
 
 				// console.log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
@@ -128,7 +119,7 @@ function asm(ctx) {
 			//
 			// MACRO
 			//
-			if(isMacroToken(ctx)) {
+			if (isMacroToken(ctx)) {
 				expandMacro(ctx);
 				break;
 			}
@@ -138,38 +129,35 @@ function asm(ctx) {
 			//
 			// OPCODE
 			//
-			if(ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
-				parseOpcode(ctx);
+			if (ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) parseOpcode(ctx);
 
 			break;
 		}
 
-		if(ctx.lexer.token())
-			throw new VAParseError("Syntax Error on "+ctx.lexer.token().text);
+		// console.log("LOOP", ctx.lexer.token(), ctx.pass);
 
-		if(ctx.pass == 2) {
-			if(label)
-				ctx.print(label+":");
+		if (ctx.lexer.token())
+			throw new VAParseError(`Syntax Error on ${ctx.lexer.token().text}`);
 
-			let listingLine= "";
+		if (ctx.pass === 2) {
+			if (label) ctx.print(`${label}:`);
+
+			let listingLine = "";
 
 			const asmOut = ctx.code.output;
-			const wantAfter= asmOut?.length > ASM_BYTES_LEN;
+			const wantAfter = asmOut?.length > ASM_BYTES_LEN;
 
-			if(asmOut && !wantAfter)
-				listingLine+= asmOut;
+			if (asmOut && !wantAfter) listingLine += asmOut;
 
-			listingLine= listingLine.padEnd(18);
+			listingLine = listingLine.padEnd(18);
 
-			listingLine+= currLine;
+			listingLine += currLine;
 
-			if(asmOut && wantAfter)
-				listingLine+= "\n" + asmOut;
+			if (asmOut && wantAfter) listingLine += `\n${asmOut}`;
 
 			ctx.print(listingLine);
 		}
-
 	}
 
-	ctx.wannaStop= false;
+	ctx.wannaStop = false;
 }

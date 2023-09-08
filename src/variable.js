@@ -2,14 +2,16 @@ import { VAExprError } from "./helpers/errors.class.js";
 import { TOKEN_TYPES } from "./lexer/lexer.class.js";
 
 export function getVarValue(ctx, name) {
-
-	switch(name) {
+	switch (name) {
 		case "CPU":
 			return { type: TOKEN_TYPES.STRING, value: ctx.cpu };
 
 		case "SEGMENTSIZE": {
-			const segment= ctx.code.segment();
-			return { type: TOKEN_TYPES.NUMBER, value: segment.end - segment.start + 1 };
+			const segment = ctx.code.segment();
+			return {
+				type: TOKEN_TYPES.NUMBER,
+				value: segment.end - segment.start + 1,
+			};
 		}
 
 		case "SEGMENTEND": {

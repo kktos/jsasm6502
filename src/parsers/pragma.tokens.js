@@ -1,5 +1,6 @@
+import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 
-const tokens= {
+export const tokens = {
 	IF: "IF",
 	ELSE: "ELSE",
 	REPEAT: "REPEAT",
@@ -13,6 +14,8 @@ const tokens= {
 	ASCIIZ: "ASCIIZ",
 	PSTR: "PSTR",
 	PSTRING: "PSTRING",
+	PSTRL: "PSTRL",
+	PSTRINGL: "PSTRINGL",
 	END: "END",
 	OUT: "OUT",
 	ECHO: "ECHO",
@@ -29,16 +32,31 @@ const tokens= {
 	SEGMENT: "SEGMENT",
 	ALIGN: "ALIGN",
 	FILL: "FILL",
+	DS: "DS",
 	RES: "RES",
 	HEX: "HEX",
 	DB: "DB",
+	BYTE: "BYTE",
 	DW: "DW",
+	WORD: "WORD",
 	DL: "DL",
+	LONG: "LONG",
 	DBYTE: "DBYTE",
 	DWORD: "DWORD",
 	INCLUDE: "INCLUDE",
 	NAMESPACE: "NAMESPACE",
-	EXPORT: "EXPORT"
+	EXPORT: "EXPORT",
 };
 
-export default tokens;
+export const pragmaDefs = {};
+
+export function isPragmaToken(ctx) {
+	return (
+		ctx.lexer.token().type === TOKEN_TYPES.DOT &&
+		ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER)
+	);
+}
+
+export function isPragmaBlock(pragma) {
+	return pragmaDefs[pragma] ? pragmaDefs[pragma].isBlock : false;
+}

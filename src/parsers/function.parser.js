@@ -1,23 +1,25 @@
 import { fnDef, fnUndef } from "../functions/def.function.js";
 import { fnHex } from "../functions/hex.function.js";
 import { fnLen } from "../functions/len.function.js";
+import { fnType } from "../functions/type.function.js";
 
-const ALLOW_UNDEF= { allowUndef: true};
+const ALLOW_UNDEF = { allowUndef: true };
 
 function addFunctionDef(handlerFn, parmCount, flags, functionNames) {
-	functionNames.forEach(fn => {
-		functionDefs[fn]= { handlerFn, parmCount, flags };
+	functionNames.forEach((fn) => {
+		functionDefs[fn] = { handlerFn, parmCount, flags };
 	});
 }
 
-const functionDefs= {};
-addFunctionDef(fnDef			, 1, ALLOW_UNDEF,	["DEF"]);
-addFunctionDef(fnUndef			, 1, ALLOW_UNDEF,	["UNDEF"]);
-addFunctionDef(fnHex			, 1, {},			["HEX"]);
-addFunctionDef(fnLen			, 1, {},			["LEN"]);
+const functionDefs = {};
+addFunctionDef(fnDef, 1, ALLOW_UNDEF, ["DEF"]);
+addFunctionDef(fnUndef, 1, ALLOW_UNDEF, ["UNDEF"]);
+addFunctionDef(fnHex, 1, {}, ["HEX"]);
+addFunctionDef(fnLen, 1, {}, ["LEN"]);
+addFunctionDef(fnType, 1, {}, ["TYPE"]);
 
 export function isFunctionExists(name) {
-	return functionDefs[name] != undefined;
+	return functionDefs[name] !== undefined;
 }
 
 export function fnParmCount(name) {

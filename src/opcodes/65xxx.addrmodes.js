@@ -1,19 +1,18 @@
-
 export const ADDRMODELEN = [
-	1,	// IMPLICIT
-	2,	// IMMEDIATE
-	3,	// ABSOLUTE
-	3,	// ABSOLUTEX
-	3,	// ABSOLUTEY
-	2,	// ZP
-	2,	// ZPX
-	2,	// ZPY
-	3,	// INDIRECT
-	2,	// INDIRECTX
-	2,	// INDIRECTY
-	2,	// RELATIVE
-	3,	// ABSINDIRECTX
-	2	// INDIRECTZP
+	1, // IMPLICIT
+	2, // IMMEDIATE
+	3, // ABSOLUTE
+	3, // ABSOLUTEX
+	3, // ABSOLUTEY
+	2, // ZP
+	2, // ZPX
+	2, // ZPY
+	3, // INDIRECT
+	2, // INDIRECTX
+	2, // INDIRECTY
+	2, // RELATIVE
+	3, // ABSINDIRECTX
+	2, // INDIRECTZP
 ];
 
 export const ADDRMODE = {
@@ -38,5 +37,5 @@ export const ADDRMODE = {
 
 	// 65c02
 	ABSINDIRECTX: 12,
-	INDIRECTZP: 13
+	INDIRECTZP: 13,
 };

@@ -4,37 +4,41 @@ import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { ADDRMODE } from "../opcodes/65xxx.addrmodes.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 
-
 export function parseOpcode(ctx) {
-
-	let valueSize= 0;
-	let token= ctx.lexer.token();
-	const opcode= token.value;
+	let valueSize = 0;
+	let token = ctx.lexer.token();
+	const opcode = token.value;
 
 	// console.log("parseOpcode 1",token);
 
-	const opcodeTable= ctx.opcodes[opcode];
-	if(opcodeTable==null)
-		throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode}`);
+	const opcodeTable = ctx.opcodes[opcode];
+	if (opcodeTable == null)
+		throw new VAParseError(
+			`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel}`,
+		);
 
 	ctx.lexer.next();
-	token= ctx.lexer.token();
+	token = ctx.lexer.token();
 
 	// instr.b forces 8bits
 	// instr.w forces 16bits
-	if(token.type == TOKEN_TYPES.DOT && !token.hasSpaceBefore) {
+	if (token.type === TOKEN_TYPES.DOT && !token.hasSpaceBefore) {
 		ctx.lexer.next();
-		token= ctx.lexer.token();
-		if(token.type != TOKEN_TYPES.IDENTIFIER)
-			throw new VAParseError(`OPCODE: Invalid data size; needs .w or .b`);
-		switch(token.value) {
-			case "B": valueSize= 8; break;
-			case "W": valueSize= 16; break;
+		token = ctx.lexer.token();
+		if (token.type !== TOKEN_TYPES.IDENTIFIER)
+			throw new VAParseError("OPCODE: Invalid data size; needs .w or .b");
+		switch (token.value) {
+			case "B":
+				valueSize = 8;
+				break;
+			case "W":
+				valueSize = 16;
+				break;
 			default:
-				throw new VAParseError(`OPCODE: Invalid data size; needs .w or .b`);
+				throw new VAParseError("OPCODE: Invalid data size; needs .w or .b");
 		}
 		ctx.lexer.next();
-		token= ctx.lexer.token();
+		token = ctx.lexer.token();
 	}
 
 	// console.log("parseOpcode 2",token);
@@ -42,10 +46,12 @@ export function parseOpcode(ctx) {
 	//
 	// ASL (IMPLICIT ADDR MODE)
 	//
-	if(!token) {
-		const obj= opcodeTable[ADDRMODE.IMPLICIT];
-		if(obj == -1)
-			throw new VAParseError("OPCODE: Invalid Address Mode for Opcode "+opcode);
+	if (!token) {
+		const obj = opcodeTable[ADDRMODE.IMPLICIT];
+		if (obj === -1)
+			throw new VAParseError(
+				`OPCODE: Invalid Address Mode for Opcode ${opcode}`,
+			);
 
 		ctx.code.emits(ctx.pass, [obj]);
 		return true;
@@ -54,16 +60,18 @@ export function parseOpcode(ctx) {
 	//
 	// LDA # parm (ABSOLUTE ADDR MODE)
 	//
-	if(token.type == TOKEN_TYPES.HASH) {
-		const obj= opcodeTable[ADDRMODE.IMMEDIATE];
-		if(obj == -1)
-			throw new VAParseError("OPCODE: Invalid Address Mode for Opcode "+opcode);
+	if (token.type === TOKEN_TYPES.HASH) {
+		const obj = opcodeTable[ADDRMODE.IMMEDIATE];
+		if (obj === -1)
+			throw new VAParseError(
+				`OPCODE: Invalid Address Mode for Opcode ${opcode}`,
+			);
 
-			ctx.lexer.next();
+		ctx.lexer.next();
 
-		const parm= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
+		const parm = parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
 
-		if(parm.value > 0xFF || valueSize==16)
+		if (parm.value > 0xff || valueSize === 16)
 			throw new VAParseError("OPCODE: Absolute value must by 8 bits wide");
 
 		ctx.code.emits(ctx.pass, [obj, parm.value]);
@@ -76,85 +84,86 @@ export function parseOpcode(ctx) {
 	// LDA ( $00   ) , Y
 	// LDA ( $00   , X )
 	//
-	if(token.type == TOKEN_TYPES.LEFT_PARENT) {
-
+	if (token.type === TOKEN_TYPES.LEFT_PARENT) {
 		ctx.lexer.next();
-		const addr= parseExpression(ctx, new Set([TOKEN_TYPES.COMMA, TOKEN_TYPES.RIGHT_PARENT]), TOKEN_TYPES.NUMBER);
-		let obj= -1;
+		const addr = parseExpression(
+			ctx,
+			new Set([TOKEN_TYPES.COMMA, TOKEN_TYPES.RIGHT_PARENT]),
+			TOKEN_TYPES.NUMBER,
+		);
+		let obj = -1;
 
-		switch(ctx.lexer.token().type) {
-
+		switch (ctx.lexer.token().type) {
 			case TOKEN_TYPES.RIGHT_PARENT: {
-
 				ctx.lexer.next();
 
 				// LDA ( $00   )
 				// JMP ( $0000 )
 				// if end of line
 				// its either INDIRECT or INDIRECTZP
-				if(!ctx.lexer.token()) {
-					if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.INDIRECTZP] != -1) {
-						obj= opcodeTable[ADDRMODE.INDIRECTZP];
-						valueSize= 8;
-					}
-					else if(valueSize!=8) {
-						obj= opcodeTable[ADDRMODE.INDIRECT];
-						valueSize= 16;
+				if (!ctx.lexer.token()) {
+					if (
+						valueSize !== 16 &&
+						addr.value < 0x100 &&
+						opcodeTable[ADDRMODE.INDIRECTZP] !== -1
+					) {
+						obj = opcodeTable[ADDRMODE.INDIRECTZP];
+						valueSize = 8;
+					} else if (valueSize !== 8) {
+						obj = opcodeTable[ADDRMODE.INDIRECT];
+						valueSize = 16;
 					}
 					break;
 				}
 
 				// LDA ( $00   ) , Y
-				if(!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
+				if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 					throw new VAParseError("OPCODE: Unknown addressing mode");
 
 				ctx.lexer.next();
 
-				if(!ctx.lexer.isIdentifier("Y"))
+				if (!ctx.lexer.isIdentifier("Y"))
 					throw new VAParseError("OPCODE: Unknown addressing mode");
 
 				ctx.lexer.next();
 
-				if(valueSize!=16 && addr.value < 0x100) {
-					obj= opcodeTable[ADDRMODE.INDIRECTZPY];
-					valueSize= 8;
+				if (valueSize !== 16 && addr.value < 0x100) {
+					obj = opcodeTable[ADDRMODE.INDIRECTZPY];
+					valueSize = 8;
 				}
 				break;
 			}
 
 			case TOKEN_TYPES.COMMA: {
-
 				// LDA ( $00   , X )
 				// JMP ( $1234 , X )
 				ctx.lexer.next();
-				if(!ctx.lexer.isIdentifier("X"))
-					break;
+				if (!ctx.lexer.isIdentifier("X")) break;
 
 				ctx.lexer.next();
-				if(!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
+				if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
 					throw new VAParseError("OPCODE: missing closing parenthesis");
 				ctx.lexer.next();
 
-				if(valueSize!=16 && addr.value < 0x100) {
-					valueSize= 8;
-					obj= opcodeTable[ADDRMODE.INDIRECTZPX];
-				}
-				else if(valueSize!=8) {
-					obj= opcodeTable[ADDRMODE.ABSINDIRECTX];
-					valueSize= 16;
+				if (valueSize !== 16 && addr.value < 0x100) {
+					valueSize = 8;
+					obj = opcodeTable[ADDRMODE.INDIRECTZPX];
+				} else if (valueSize !== 8) {
+					obj = opcodeTable[ADDRMODE.ABSINDIRECTX];
+					valueSize = 16;
 				}
 				break;
 			}
-
 		}
 
-		if(obj == -1)
-			throw new VAParseError("OPCODE: IAM2 Invalid Address Mode for Opcode "+opcode);
+		if (obj === -1)
+			throw new VAParseError(
+				`OPCODE: IAM2 Invalid Address Mode for Opcode ${opcode}`,
+			);
 
-		const code= [obj];
-		code.push(addr.value & 0xFF);
-		if(valueSize==16)
-			code.push(addr.value>>8 & 0xFF);
+		const code = [obj];
+		code.push(addr.value & 0xff);
+		if (valueSize === 16) code.push((addr.value >> 8) & 0xff);
 
 		ctx.code.emits(ctx.pass, code);
 		return true;
@@ -167,68 +176,77 @@ export function parseOpcode(ctx) {
 	// console.log({ctx});
 	// console.log(token);
 
-	const addr= parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
+	const addr = parseExpression(ctx, null, TOKEN_TYPES.NUMBER);
 
 	// console.log("addr", JSON.stringify(addr));
 
-	if(ctx.pass==2 && addr.value == undefined)
-		throw new VAParseError(`OPCODE(${ctx.pass}): Target Address is undefined for Opcode ${opcode}`);
+	if (ctx.pass === 2 && addr.value === undefined)
+		throw new VAParseError(
+			`OPCODE(${ctx.pass}): Target Address is undefined for Opcode ${opcode}`,
+		);
 
 	// console.log({addr});
 
-	let obj= -1;
+	let obj = -1;
 
-	if(!ctx.lexer.token()) {
-
-		if(valueSize!=16) {
-			if(opcodeTable[ADDRMODE.RELATIVE] != -1) {
-				obj= opcodeTable[ADDRMODE.RELATIVE];
-				valueSize= 8;
-				addr.value-= (ctx.code.pc+2) & 0xffff;
-				if(ctx.pass==2 && (addr.value<-128 || addr.value>127)) {
-					throw new VAParseError("OPCODE: Target Address is out of range for Opcode "+opcode+" "+addr.value);
+	if (!ctx.lexer.token()) {
+		if (valueSize !== 16) {
+			if (opcodeTable[ADDRMODE.RELATIVE] !== -1) {
+				obj = opcodeTable[ADDRMODE.RELATIVE];
+				valueSize = 8;
+				addr.value -= (ctx.code.pc + 2) & 0xffff;
+				if (ctx.pass === 2 && (addr.value < -128 || addr.value > 127)) {
+					throw new VAParseError(
+						`OPCODE: Target Address is out of range for Opcode ${opcode} ${addr.value}`,
+					);
 				}
-			}
-			else if(addr.value < 0x100 && opcodeTable[ADDRMODE.ZP] != -1) {
-				obj= opcodeTable[ADDRMODE.ZP];
-				valueSize= 8;
+			} else if (addr.value < 0x100 && opcodeTable[ADDRMODE.ZP] !== -1) {
+				obj = opcodeTable[ADDRMODE.ZP];
+				valueSize = 8;
 			}
 		}
 
-		if(valueSize!=8) {
-			obj= opcodeTable[ADDRMODE.ABSOLUTE];
-			valueSize= 16;
+		if (valueSize !== 8) {
+			obj = opcodeTable[ADDRMODE.ABSOLUTE];
+			valueSize = 16;
 		}
-	}
-	else
-	if(ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
+	} else if (ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
 		ctx.lexer.next();
-		const reg= ctx.lexer.token();
+		const reg = ctx.lexer.token();
 
-		if(reg.type != TOKEN_TYPES.IDENTIFIER)
-			throw new VAParseError("OPCODE: IAM3 Invalid Address Mode for Opcode "+opcode);
+		if (reg.type !== TOKEN_TYPES.IDENTIFIER)
+			throw new VAParseError(
+				`OPCODE: IAM3 Invalid Address Mode for Opcode ${opcode}`,
+			);
 
-		switch(reg.value) {
-
+		switch (reg.value) {
 			// LDA $1000,X
 			// LDA $10,X
-			case "X":				// if 8 bits, check if ZPX allowed
-				if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.ZPX] != -1) {
-					obj= opcodeTable[ADDRMODE.ZPX];
-					valueSize= 8;
-				} else if(valueSize!=8) {
-					obj= opcodeTable[ADDRMODE.ABSOLUTEX];
-					valueSize= 16;
+			case "X": // if 8 bits, check if ZPX allowed
+				if (
+					valueSize !== 16 &&
+					addr.value < 0x100 &&
+					opcodeTable[ADDRMODE.ZPX] !== -1
+				) {
+					obj = opcodeTable[ADDRMODE.ZPX];
+					valueSize = 8;
+				} else if (valueSize !== 8) {
+					obj = opcodeTable[ADDRMODE.ABSOLUTEX];
+					valueSize = 16;
 				}
 				break;
 
-			case "Y":				// if 8 bits, check if ZPX allowed
-				if(valueSize!=16 && addr.value < 0x100 && opcodeTable[ADDRMODE.ZPY] != -1) {
-					obj= opcodeTable[ADDRMODE.ZPY];
-					valueSize= 8;
-				} else if(valueSize!=8) {
-					obj= opcodeTable[ADDRMODE.ABSOLUTEY];
-					valueSize= 16;
+			case "Y": // if 8 bits, check if ZPX allowed
+				if (
+					valueSize !== 16 &&
+					addr.value < 0x100 &&
+					opcodeTable[ADDRMODE.ZPY] !== -1
+				) {
+					obj = opcodeTable[ADDRMODE.ZPY];
+					valueSize = 8;
+				} else if (valueSize !== 8) {
+					obj = opcodeTable[ADDRMODE.ABSOLUTEY];
+					valueSize = 16;
 				}
 				break;
 
@@ -238,14 +256,13 @@ export function parseOpcode(ctx) {
 		ctx.lexer.next();
 	}
 
-	if(obj == -1)
-		throw new VAParseError("OPCODE: IAM4 Invalid Address Mode for Opcode "+opcode+" "+valueSize);
+	if (obj === -1)
+		throw new VAParseError(
+			`OPCODE: IAM4 Invalid Address Mode for Opcode ${opcode} ${valueSize}`,
+		);
 
-	if(valueSize==8)
-		ctx.code.emits(ctx.pass, [obj, low(addr.value)]);
-	else
-		ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
+	if (valueSize === 8) ctx.code.emits(ctx.pass, [obj, low(addr.value)]);
+	else ctx.code.emits(ctx.pass, [obj, low(addr.value), high(addr.value)]);
 
 	return true;
-
 }
