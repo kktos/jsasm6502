@@ -2,12 +2,14 @@ import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 
+const log= console.log;
+
 export function processASMOuput(ctx, pragma) {
 	let msg = "";
 
 	do {
 		const res = parseExpression(ctx);
-		msg += res.value;
+		msg += (typeof res.value === "object" ? JSON.stringify(res.value) : res.value);
 		if (ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
 			ctx.lexer.next();
 			if (!ctx.lexer.token()) throw new VAParseError("OUT: Missing value here");
@@ -27,7 +29,5 @@ export function processASMOuput(ctx, pragma) {
 
 		case "ERROR":
 			throw new VAParseError(msg);
-		// ctx.error(msg);
-		// break;
 	}
 }

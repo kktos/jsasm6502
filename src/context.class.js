@@ -18,8 +18,10 @@ export class Context {
 		this.wannaListing = opts.listing;
 		this.charMap = null;
 
+		this.macros = {};
+
 		this.console = opts.console ? opts.console : console;
-		global.console = this.console;
+		globalThis.console = this.console;
 
 		this.code = new Compiler(opts.segments);
 		this.lexer = new Lexer();

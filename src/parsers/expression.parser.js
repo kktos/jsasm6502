@@ -26,15 +26,9 @@ export function parseExpression(ctx, endSet, expectedType) {
 		endSet,
 	};
 
-	// console.log("parseExpression", ctx.lexer.line());
-
 	parseExpr(exprCtx);
 
-	// console.log("parseExpression", exprCtx.stack);
-
 	if (exprCtx.stack.length) res = evalExpr(ctx, exprCtx.stack);
-
-	// console.log({res});
 
 	if (ctx.pass < 2) return res;
 
@@ -339,7 +333,6 @@ function parseExpr(exprCtx) {
 }
 
 function parse_cmp(exprCtx) {
-	let tok;
 
 	// console.log(`parse_cmp()`);
 

@@ -2,9 +2,9 @@ import { Type } from "js-yaml";
 
 function isHexCode(c) {
 	return (
-		(0x30 /* 0 */ <= c && c <= 0x39 /* 9 */) ||
-		(0x41 /* A */ <= c && c <= 0x46 /* F */) ||
-		(0x61 /* a */ <= c && c <= 0x66 /* f */)
+		(0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ ||
+		(0x41 /* A */ <= c && c <= 0x46) /* F */ ||
+		(0x61 /* a */ <= c && c <= 0x66) /* f */
 	);
 }
 
@@ -34,8 +34,7 @@ function resolveYamlInteger(data) {
 	}
 
 	if (ch === "$") {
-
-		console.log("hexa");
+		// console.log("hexa");
 
 		// base 16
 		index++;

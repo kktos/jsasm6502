@@ -452,6 +452,7 @@ export class Lexer {
 
 		if (QUOTES_CHARSET.has(this.ctx.currChar)) {
 			this.saveState();
+
 			const quote = this.ctx.currChar;
 			while (this._lookaheadChar() != null && this._lookaheadChar() !== quote)
 				this._nextChar();
@@ -483,6 +484,7 @@ export class Lexer {
 				this.ctx.posInLine - 1,
 			);
 			this.ctx.currToken.text = quote + this.ctx.currToken.value + quote;
+
 			return true;
 		}
 

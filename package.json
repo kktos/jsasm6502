@@ -2,10 +2,10 @@
   "name": "virtual-6502-asm",
   "version": "1.0.0",
   "type": "module",
-
   "description": "6502 assembler based on virtual assembler by mass:werk",
-  "main": "index.js",
+  "exports": "./index.js",
   "scripts": {
+    "build": "rollup -c",
     "test": "vitest",
     "test-main": "node src/main.js test/asm/main.test.asm --conf test/asm/main.yaml",
     "test-lstoff": "node src/main.js --no-listing test/asm/main.test.asm",
@@ -28,11 +28,12 @@
   "homepage": "https://github.com/kktos/virtual-6502-asm#readme",
   "devDependencies": {
     "@biomejs/biome": "1.1.2",
+    "@rollup/plugin-terser": "^0.4.3",
     "@types/node": "^20.5.9",
     "@vitest/ui": "^0.34.4",
+    "rollup": "^3.29.3",
     "typescript": "^5.2.2",
-    "vite": "^4.4.9",
-    "vitest": "^0.34.4"
+    "vitest": "^0.34.6"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

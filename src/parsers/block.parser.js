@@ -58,6 +58,10 @@ export function readBlock(ctx, splitToken) {
 
 		block += `${ctx.lexer.line()}\n`;
 	}
+
+	if(blockLevel>0)
+		throw new VAParseError("BLOCK: Missing .end");
+
 	blocks.push(block === "" ? undefined : block);
 
 	return blocks;

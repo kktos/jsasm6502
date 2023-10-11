@@ -3,7 +3,7 @@ import { EVENT_TYPES, TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { readBlock } from "../parsers/block.parser.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 
-const macros = {};
+// const macros = {};
 
 export function processMacro(ctx, pragma) {
 	const macro = { parms: [], block: null, hasRestParm: false };
@@ -44,9 +44,9 @@ export function processMacro(ctx, pragma) {
 	macro.block = block;
 
 	if (ctx.pass === 1) {
-		if (macros[macroName] !== undefined)
+		if (ctx.macros[macroName] !== undefined)
 			throw new VAParseError(`MACRO: "${macroName}" is already defined`);
-		macros[macroName] = macro;
+		ctx.macros[macroName] = macro;
 	}
 }
 
@@ -55,12 +55,12 @@ export function isMacroToken(ctx) {
 
 	return (
 		currTok.type === TOKEN_TYPES.IDENTIFIER &&
-		macros[currTok.value] !== undefined
+		ctx.macros[currTok.value] !== undefined
 	);
 }
 
 export function expandMacro(ctx) {
-	const macro = macros[ctx.lexer.token().value];
+	const macro = ctx.macros[ctx.lexer.token().value];
 	const paramsCount = macro.parms.length;
 
 	ctx.lexer.next();

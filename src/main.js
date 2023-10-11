@@ -6,6 +6,8 @@ import { assemble } from "./assembler.js";
 import { pushNumber } from "./pragmas/data.pragma.js";
 import { makeString } from "./pragmas/string.pragma.js";
 
+let rootDir;
+
 function readFile(filename, fromFile, asBin) {
 	try {
 		const includeDir = fromFile ? dirname(fromFile) : "";
@@ -24,6 +26,107 @@ function readYAMLFile(filename) {
 	} catch (e) {
 		console.error("readYAMLFile", filename, e);
 		return null;
+	}
+}
+
+function main(argv) {
+	rootDir = ".";
+
+	let conf = null;
+	if (argv.conf) {
+		conf = readYAMLFile(argv.conf);
+		if (!conf) {
+			console.error(`unable to read conf file ${argv.conf}`);
+			process.exit(-1);
+		}
+	}
+
+	const filename = argv._[0];
+	rootDir = dirname(filename);
+
+	const opts = {
+		readFile,
+		YAMLparse: load,
+		listing: argv.listing === true,
+		segments: conf?.segments ?? {},
+		cpu: "6502",
+	};
+
+	const hexa = (v, len = 4) => {
+		return `$${v.toString(16).padStart(len, "0").toUpperCase()}`;
+	};
+
+	let asmRes;
+	try {
+		asmRes = assemble(basename(filename), opts);
+
+		if (argv.symbols) console.log(asmRes.symbols.dump());
+
+		let finalCode = [];
+		const segmentsDir = [];
+		Object.keys(asmRes.segments).forEach((name) => {
+			const segObj = asmRes.obj[name];
+
+			const currPos = finalCode.length;
+
+			if (segObj) finalCode = finalCode.concat(segObj);
+
+			const seg = asmRes.segments[name];
+			const segLen = seg.end - seg.start + 1;
+			let padLen = 0;
+			if ((segObj?.length ?? 0) < segLen && Object.hasOwn(seg, "pad")) {
+				padLen = segLen - segObj.length;
+				const padBuffer = Array.from({ length: padLen }, () => seg.pad);
+				finalCode = finalCode.concat(padBuffer);
+			}
+
+			if (argv.segments)
+				console.log(
+					hexa(currPos, 8),
+					": SEGMENT",
+					name,
+					hexa(segObj?.length ?? 0),
+					padLen ? `PAD ${hexa(padLen)}` : "",
+				);
+
+			if (argv.segdir) {
+				segmentsDir.push([
+					name,
+					currPos,
+					(segObj?.length ?? 0) + padLen,
+					seg.start,
+				]);
+			}
+
+			if (argv.dump) asmRes.dump(name);
+		});
+
+		if (argv.segdir) {
+			const lenBeforeDir = finalCode.length;
+			segmentsDir.forEach(([name, offset, len, org]) => {
+				const recordBuffer = makeString(null, name, { hasLeadingLength: true });
+				pushNumber(recordBuffer, { value: offset }, -4);
+				pushNumber(recordBuffer, { value: len }, -4);
+				pushNumber(recordBuffer, { value: org }, -4);
+				const recordSize = [];
+				pushNumber(recordSize, { value: recordBuffer.length + 1 }, 1);
+				finalCode = finalCode.concat(recordSize.concat(recordBuffer));
+			});
+			const dirOffset = [];
+			pushNumber(dirOffset, { value: lenBeforeDir }, -4);
+			finalCode = finalCode.concat(dirOffset, makeString(null, "DISK"));
+		}
+
+		const outFilename = argv.out ? argv.out : "a.out";
+		if (finalCode.length) {
+			const buffer = Buffer.from(finalCode);
+			writeFileSync(outFilename, buffer);
+			console.log("binary output", outFilename);
+		} else {
+			console.log("no code to save !");
+		}
+	} catch (err) {
+		console.error("ERROR:", err);
 	}
 }
 
@@ -63,100 +166,11 @@ const argv = yargs(process.argv.splice(2))
 	})
 	.demandCommand(1).argv;
 
-let rootDir = ".";
-let conf = null;
-if (argv.conf) {
-	conf = readYAMLFile(argv.conf);
-	if (!conf) {
-		console.error(`unable to read conf file ${argv.conf}`);
-		process.exit(-1);
-	}
-}
 
-const filename = argv._[0];
-rootDir = dirname(filename);
+// console.time("asm");
+// for (let index = 0; index < 1000; index++) {
+// 	main(argv);
+// }
+// console.timeEnd("asm");
 
-const opts = {
-	readFile,
-	YAMLparse: load,
-	listing: argv.listing === true,
-	segments: conf?.segments ?? {},
-	cpu: "6502",
-};
-
-const hexa = (v, len = 4) => {
-	return `$${v.toString(16).padStart(len, "0").toUpperCase()}`;
-};
-
-let asmRes;
-try {
-	asmRes = assemble(basename(filename), opts);
-
-	if (argv.symbols) console.log(asmRes.symbols.dump());
-
-	let finalCode = [];
-	const segmentsDir = [];
-	Object.keys(asmRes.segments).forEach((name) => {
-		const segObj = asmRes.obj[name];
-
-		const currPos = finalCode.length;
-
-		if (segObj) finalCode = finalCode.concat(segObj);
-
-		const seg = asmRes.segments[name];
-		const segLen = seg.end - seg.start + 1;
-		let padLen = 0;
-		if ((segObj?.length ?? 0) < segLen && Object.hasOwn(seg, "pad")) {
-			padLen = segLen - segObj.length;
-			const padBuffer = Array.from({ length: padLen }, () => seg.pad);
-			finalCode = finalCode.concat(padBuffer);
-		}
-
-		if (argv.segments)
-			console.log(
-				hexa(currPos, 8),
-				": SEGMENT",
-				name,
-				hexa(segObj?.length ?? 0),
-				padLen ? `PAD ${hexa(padLen)}` : "",
-			);
-
-		if (argv.segdir) {
-			segmentsDir.push([
-				name,
-				currPos,
-				(segObj?.length ?? 0) + padLen,
-				seg.start,
-			]);
-		}
-
-		if (argv.dump) asmRes.dump(name);
-	});
-
-	if (argv.segdir) {
-		const lenBeforeDir = finalCode.length;
-		segmentsDir.forEach(([name, offset, len, org]) => {
-			const recordBuffer = makeString(null, name, { hasLeadingLength: true });
-			pushNumber(recordBuffer, { value: offset }, -4);
-			pushNumber(recordBuffer, { value: len }, -4);
-			pushNumber(recordBuffer, { value: org }, -4);
-			const recordSize = [];
-			pushNumber(recordSize, { value: recordBuffer.length + 1 }, 1);
-			finalCode = finalCode.concat(recordSize.concat(recordBuffer));
-		});
-		const dirOffset = [];
-		pushNumber(dirOffset, { value: lenBeforeDir }, -4);
-		finalCode = finalCode.concat(dirOffset, makeString(null, "DISK"));
-	}
-
-	const outFilename = argv.out ? argv.out : "a.out";
-	if (finalCode.length) {
-		const buffer = Buffer.from(finalCode);
-		writeFileSync(outFilename, buffer);
-		console.log("binary output", outFilename);
-	} else {
-		console.log("no code to save !");
-	}
-} catch (err) {
-	console.error("ERROR:", err);
-}
+main(argv);
