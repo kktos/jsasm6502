@@ -1,3 +1,4 @@
+import { TOKEN_TYPES } from "./lexer/lexer.class.js";
 import { getTypeName } from "./lexer/token.class.js";
 
 export const NS_GLOBAL = "GLOBAL";
@@ -5,6 +6,8 @@ export const NS_GLOBAL = "GLOBAL";
 const NOSYMBOL = Symbol("no symbol");
 const OVERRIDEN = Symbol("overriden");
 const MARKERS = Symbol("markers");
+
+// const log= console.log;
 
 export class Dict {
 	constructor() {
@@ -24,9 +27,6 @@ export class Dict {
 	}
 
 	export(name) {
-		// if(name =="BOOT3") {
-		// 	console.log("---- EXPORT", this.currentName, name, this.ns[name]);
-		// }
 		this.global[name] = this.ns[name];
 		this.exports[name] = this.currentName;
 	}
@@ -42,7 +42,7 @@ export class Dict {
 	}
 
 	set(name, value) {
-		// console.log(`---- SET ${this.currentName}.${name}= ${value.value}`);
+		// log(`---- SET ${this.currentName}.${name}= ${value.value}`);
 
 		this.ns[name] = value;
 
@@ -50,10 +50,6 @@ export class Dict {
 	}
 
 	get(name, ns = null) {
-		// if(name =="BOOT3") {
-		// 	console.log("---- GET", this.currentName, name, this.ns[name], this.global[name], this.exports[name]);
-		// }
-
 		if (ns) return this.namespaces[ns]?.[name];
 		return this.ns[name] ? this.ns[name] : this.global[name];
 	}
@@ -160,7 +156,7 @@ export class Dict {
 
 	nsPop() {
 		this.nsStack.pop();
-		this.currentName = this.nsStack.slice(-1);
+		this.currentName = this.nsStack.slice(-1).shift();
 		this.ns = this.namespaces[this.currentName];
 	}
 
@@ -174,7 +170,13 @@ export class Dict {
 				const val = ns[entry];
 				out += `  ${entry}: `;
 				out += getTypeName(val.type).toLowerCase();
-				out += ` = $${val.value.toString(16).toUpperCase()}\n`;
+				switch(val.type) {
+					case TOKEN_TYPES.ARRAY:
+						out += ` = ${val.value}\n`;
+						break;
+					default:
+						out += ` = $${val.value.toString(16).toUpperCase()}\n`;
+				}
 			});
 		});
 		return out;

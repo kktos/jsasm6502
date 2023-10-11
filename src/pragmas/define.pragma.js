@@ -12,6 +12,9 @@ export function processDefine(ctx) {
 		throw new VAParseError(`Invalid YAML/JSON : ${e.message}`);
 	}
 
+	if(ctx.pass === 1 && ctx.symbols.exists(name))
+		throw new VAParseError(`Duplicate Symbol : ${name}`);
+
 	ctx.symbols.set(name, { type: getValueType(value), value });
 
 	return true;

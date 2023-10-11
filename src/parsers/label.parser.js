@@ -1,6 +1,7 @@
 import { TOKEN_TYPES } from "../lexer/lexer.class.js";
 import { parseExpression } from "../parsers/expression.parser.js";
 import { isMacroToken } from "../pragmas/macro.pragma.js";
+import { VAParseError } from "../helpers/errors.class.js";
 
 export function parseLocalLabel(ctx) {
 	ctx.lexer.next();
@@ -51,13 +52,21 @@ export function parseLabel(ctx, isCheap = false) {
 		case TOKEN_TYPES.COLON:
 			ctx.lexer.next();
 			ctx.lexer.next();
-			if (ctx.pass === 1) ctx.symbols.set(name, value);
+			if (ctx.pass === 1) {
+				if(ctx.symbols.exists(name))
+					throw new VAParseError(`Duplicate Symbol : ${name}`);
+				ctx.symbols.set(name, value);
+			}
 			return name;
 
 		default:
 			if (ctx.opcodes[name] !== undefined || isMacroToken(ctx)) return null;
 
-			if (ctx.pass === 1) ctx.symbols.set(name, value);
+			if (ctx.pass === 1) {
+				if(ctx.symbols.exists(name))
+					throw new VAParseError(`Duplicate Symbol : ${name}`);
+				ctx.symbols.set(name, value);
+			}
 
 			ctx.lexer.next();
 			return name;

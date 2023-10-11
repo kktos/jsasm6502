@@ -39,9 +39,8 @@ describe("Define", () => {
 		.end
 		.log var_yaml
 		`;
-		const asmRes = assemble(src, opts);
-		expect(output.trim()).toStrictEqual("one,two");
-		// expect(asmRes.obj.CODE).toStrictEqual(readHexLine("EA AD"));
+		assemble(src, opts);
+		expect(output.trim()).toStrictEqual('["one","two"]');
 	});
 
 	it("tests define array", () => {
@@ -60,21 +59,20 @@ describe("Define", () => {
 		.end
 		.log .type(var_yaml.prop), .len(var_yaml.prop)
 		`;
-		const asmRes = assemble(src, opts);
+		assemble(src, opts);
 		expect(output.trim()).toStrictEqual("array9");
-		// expect(asmRes.obj.CODE).toStrictEqual(readHexLine("EA AD"));
 	});
 
-	it("tests define array of object", () => {
+	it("tests define array of object with $hexa", () => {
 		const src = `
 		base = $a0
 
 		.define spritesTable
-		- { id: $aa, x: base, y: $10}
+		- { id: $aa, x: $A0, y: $10}
 		- { id: $bb, x: $b0, y: $20}
 		.end
 
-		.log "LOG" spritesTable
+		.log spritesTable
 
 		.repeat .len(spritesTable) spriteIdx
 
@@ -87,7 +85,7 @@ describe("Define", () => {
 		.end
 		`;
 		const asmRes = assemble(src, opts);
-		// expect(output.trim()).toStrictEqual("array9");
+		expect(output.trim()).toStrictEqual('[{"id":170,"x":160,"y":16},{"id":187,"x":176,"y":32}]');
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -124,4 +122,20 @@ describe("Define", () => {
 			),
 		);
 	});
+
+	it("should throw an error on duplicate define", () => {
+		const src = `
+		.define spritesTable
+		- { id: 0xaa, x: 0xa0, y: 0x10}
+		- { id: 0xbb, x: 0xb0, y: 0x20}
+		.end
+		.define spritesTable
+		- { id: 0xaa, x: 0xa0, y: 0x10}
+		- { id: 0xbb, x: 0xb0, y: 0x20}
+		.end
+		`;
+		let asmRes;
+		expect(() => asmRes === assemble(src, opts)).toThrowError("Duplicate Symbol : SPRITESTABLE");
+	});
+
 });
