@@ -120,9 +120,10 @@ class LexerContext {
 }
 
 export class Lexer {
-	constructor() {
+	constructor(helpers) {
 		this.ctx = null;
 		this.contexts = [];
+		this.helpers = helpers;
 		// this.onEOF= null;
 	}
 
@@ -457,7 +458,7 @@ export class Lexer {
 			while (this._lookaheadChar() != null && this._lookaheadChar() !== quote)
 				this._nextChar();
 
-			// if no end quote, let's assume it's a number as char ( 'A = $41 or "A = $81)
+			// if no end quote, let's assume it's a number as char
 			if (this._lookaheadChar() == null) {
 				this.restoreState();
 
@@ -472,7 +473,7 @@ export class Lexer {
 				this._nextChar();
 				this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 				this.ctx.currToken.text = quote + this.ctx.currChar;
-				this.ctx.currToken.value = this.ctx.currChar.charCodeAt(0);
+				this.ctx.currToken.value = this.helpers.charMapManager.convertChar(this.ctx.currChar.charCodeAt(0));
 				return true;
 			}
 

@@ -63,4 +63,15 @@ describe("Charmaps", () => {
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A0 B1 B2 B3 C1 C2 C3 C4"));
 	});
 
+	it("loads in Acc ascii of A with Apple CharMap", () => {
+		const src = `
+			${charmap_apple}
+			.option charmap apple
+			lda #"A
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 C1"));
+	});
+
 });

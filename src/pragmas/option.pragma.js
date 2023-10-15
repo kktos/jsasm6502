@@ -17,22 +17,24 @@ export function processOption(ctx, pragma) {
 			const parm = ctx.lexer.token().value;
 			ctx.lexer.next();
 
-			if (parm === "NONE") {
-				ctx.charMap = null;
-				break;
-			}
+			ctx.charMapManager.map= parm !== "NONE" ? parm : null;
 
-			const name = `CHARMAP_${parm}`;
-			let value = ctx.symbols.get(name);
-			if (!value) value = ctx.symbols.get(name, NS_GLOBAL);
-			if (!value) throw new VAParseError(`OPTION: unknown charmap ${parm}`);
-			if (value.type !== TOKEN_TYPES.ARRAY) {
-				throw new VAParseError(`OPTION: invalid charmap ${getHexWord(value.type)}, need an array`);
-			}
-			if (value.value.length !== 256)
-				throw new VAParseError("OPTION: invalid charmap, need 256 values");
+			// if (parm === "NONE") {
+			// 	ctx.charMap = null;
+			// 	break;
+			// }
 
-			ctx.charMap = value.value;
+			// const name = `CHARMAP_${parm}`;
+			// let value = ctx.symbols.get(name);
+			// if (!value) value = ctx.symbols.get(name, NS_GLOBAL);
+			// if (!value) throw new VAParseError(`OPTION: unknown charmap ${parm}`);
+			// if (value.type !== TOKEN_TYPES.ARRAY) {
+			// 	throw new VAParseError(`OPTION: invalid charmap ${getHexWord(value.type)}, need an array`);
+			// }
+			// if (value.value.length !== 256)
+			// 	throw new VAParseError("OPTION: invalid charmap, need 256 values");
+
+			// ctx.charMap = value.value;
 			break;
 		}
 

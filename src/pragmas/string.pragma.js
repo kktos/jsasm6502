@@ -98,7 +98,7 @@ export function makeString(ctx, str, opts) {
 			}
 		}
 
-		if (ctx?.charMap) char = ctx.charMap[char];
+		char = ctx.charMapManager.convertChar(char);
 
 		buffer.push(char);
 

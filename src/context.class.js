@@ -1,5 +1,6 @@
 import { Compiler } from "./compiler.class.js";
 import { Dict } from "./dict.class.js";
+import { CharMapManager } from "./helpers/charMapManager.js";
 import { VAParseError } from "./helpers/errors.class.js";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class.js";
 
@@ -16,7 +17,6 @@ export class Context {
 		this.YAMLparse = opts.YAMLparse;
 		this._mainFile = mainFile;
 		this.wannaListing = opts.listing;
-		this.charMap = null;
 
 		this.macros = {};
 
@@ -24,8 +24,11 @@ export class Context {
 		globalThis.console = this.console;
 
 		this.code = new Compiler(opts.segments);
-		this.lexer = new Lexer();
 		this.symbols = new Dict();
+
+		this.charMapManager = new CharMapManager(this.symbols);
+
+		this.lexer = new Lexer({charMapManager:this.charMapManager});
 
 		// this.lastLabel= null;
 		// this.pushFile(mainFile);
