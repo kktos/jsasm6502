@@ -1,33 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", content: filename };
-	},
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}|`;
-		},
-		error: (s) => {
-			output += `${s}|`;
-		},
-		warn: (s) => {
-			output += `${s}|`;
-		},
-	},
-};
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { opts } from "./shared/options";
 
 describe("Pragma", () => {
 	beforeEach(() => {
-		output = "";
+		opts.output = "";
 	});
 
 	it("tests .hex on a single line", () => {

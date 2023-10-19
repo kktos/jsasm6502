@@ -1,34 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/assembler.js";
-import { load } from "../src/helpers/asm-yaml/index.js";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", content: filename };
-	},
-	YAMLparse: (s) =>load(s),
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-};
+import { opts } from "./shared/options";
 
 describe("log", () => {
 
 	beforeEach(() => {
-		output = "";
+		opts.output = "";
 	});
 
 	it("tests .log string", () => {
@@ -37,7 +15,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(output.trim()).toStrictEqual("test one");
+		expect(opts.output.trim()).toStrictEqual("test one");
 	});
 
 	it("tests .log array", () => {
@@ -51,7 +29,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(output.trim()).toStrictEqual("array [1,2,3]");
+		expect(opts.output.trim()).toStrictEqual("array [1,2,3]");
 	});
 
 	it("tests .log object", () => {
@@ -63,7 +41,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(output.trim()).toStrictEqual(`object {"key":"value"}`);
+		expect(opts.output.trim()).toStrictEqual(`object {"key":"value"}`);
 	});
 
 

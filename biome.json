@@ -10,6 +10,7 @@
 		}
 	},
 	"formatter": {
+		"lineWidth": 120,
 		"enabled": true
 	}
 }

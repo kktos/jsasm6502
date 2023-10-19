@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { cpu6502 } from "../src/opcodes/6502.opcodes.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
-import { test_6502 } from "./test_6502.data.js";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => ({ path: "", content: filename }),
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-};
+import { assemble } from "../src/assembler";
+import { cpu6502 } from "../src/opcodes/6502.opcodes";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { test_6502 } from "./test_6502.data";
+import { opts } from "./shared/options";
 
 it("tests all instructions", () => {
 	expect(Object.keys(test_6502).length).toEqual(Object.keys(cpu6502).length);

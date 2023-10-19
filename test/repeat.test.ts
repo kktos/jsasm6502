@@ -1,33 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
 import { beforeEach } from "node:test";
-import { load } from "../src/helpers/asm-yaml";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => ({ path: "", content: filename }),
-	YAMLparse: (s) => load(s),
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-};
+import { opts } from "./shared/options";
 
 describe("REPEAT PRAGMA", () => {
 	beforeEach(() => {
-		output = "";
+		opts.output = "";
 	});
 
 	it("check repeat count", () => {

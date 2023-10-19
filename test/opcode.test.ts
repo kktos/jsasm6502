@@ -1,28 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { opts } from "./shared/options";
 
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => ({ path: "", content: filename }),
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-	cpu: "65c02",
-};
 
 describe("Opcodes Address Size", () => {
 	it("assembles JMP ($32) as 16bits addr", () => {

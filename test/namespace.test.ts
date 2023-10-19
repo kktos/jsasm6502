@@ -1,32 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { opts } from "./shared/options";
 
-let output = "";
+opts.readFile= (filename, fromFile, asBin) => {
+	if (filename === "inc1")
+		return { path: "", content: ".namespace two\nlda #count", error:"" };
 
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		if (filename === "inc1")
-			return { path: "", content: ".namespace two\nlda #count" };
-
-		return { path: "", content: filename };
-	},
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s} | `;
-		},
-		error: (s) => {
-			output += `${s} | `;
-		},
-		warn: (s) => {
-			output += `${s} | `;
-		},
-	},
-};
+	return { path: "", content: filename, error:"" };
+},
 
 describe("Namespace", () => {
 	it("get exported value from included file", () => {
@@ -55,10 +38,10 @@ describe("Namespace", () => {
 
 			.log "one=",.ns
 		`;
-		output = "";
+		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(output.trim()).toBe("one=ONE | two=TWO | one=ONE |");
+		expect(opts.output.trim()).toBe("one=ONE\ntwo=TWO\none=ONE");
 	});
 
 	it("shows nested NS have their local labels", () => {
@@ -74,9 +57,9 @@ describe("Namespace", () => {
 
 			.echo count
 		`;
-		output = "";
+		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(output.trim()).toBe("2 | 3 | 2 |");
+		expect(opts.output.trim()).toBe("2\n3\n2");
 	});
 });

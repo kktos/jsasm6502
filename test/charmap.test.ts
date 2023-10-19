@@ -1,26 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
-import { load } from "../src/helpers/asm-yaml/index.js";
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { load } from "../src/helpers/asm-yaml/index";
+import { Options } from "../src/types/Options";
 
 let output = "";
 
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", content: filename };
+const opts: Options = {
+	readFile: (filename: string, fromFile?: string, asBin?: boolean) => {
+		return { path: "", content: filename, error:"" };
 	},
 	YAMLparse: (s) =>load(s),
 	listing: false,
 	segments: null,
 	console: {
-		log: (s) => {
+		log: (s?: string | null) => {
 			output += `${s}\n`;
 		},
-		error: (s) => {
+		error: (s?: string | null) => {
 			output += `${s}\n`;
 		},
-		warn: (s) => {
+		warn: (s?: string | null) => {
 			output += `${s}\n`;
 		},
 	},

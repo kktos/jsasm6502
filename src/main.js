@@ -64,7 +64,7 @@ function main(argv) {
 
 		let finalCode = [];
 		const segmentsDir = [];
-		Object.keys(asmRes.segments).forEach((name) => {
+		for (const name of Object.keys(asmRes.segments)) {
 			const segObj = asmRes.obj[name];
 
 			const currPos = finalCode.length;
@@ -90,20 +90,15 @@ function main(argv) {
 				);
 
 			if (argv.segdir) {
-				segmentsDir.push([
-					name,
-					currPos,
-					(segObj?.length ?? 0) + padLen,
-					seg.start,
-				]);
+				segmentsDir.push([name, currPos, (segObj?.length ?? 0) + padLen, seg.start]);
 			}
 
 			if (argv.dump) asmRes.dump(name);
-		});
+		}
 
 		if (argv.segdir) {
 			const lenBeforeDir = finalCode.length;
-			segmentsDir.forEach(([name, offset, len, org]) => {
+			for (const [name, offset, len, org] of segmentsDir) {
 				const recordBuffer = makeString(null, name, { hasLeadingLength: true });
 				pushNumber(recordBuffer, { value: offset }, -4);
 				pushNumber(recordBuffer, { value: len }, -4);
@@ -111,7 +106,7 @@ function main(argv) {
 				const recordSize = [];
 				pushNumber(recordSize, { value: recordBuffer.length + 1 }, 1);
 				finalCode = finalCode.concat(recordSize.concat(recordBuffer));
-			});
+			}
 			const dirOffset = [];
 			pushNumber(dirOffset, { value: lenBeforeDir }, -4);
 			finalCode = finalCode.concat(dirOffset, makeString(null, "DISK"));
@@ -165,7 +160,6 @@ const argv = yargs(process.argv.splice(2))
 		},
 	})
 	.demandCommand(1).argv;
-
 
 // console.time("asm");
 // for (let index = 0; index < 1000; index++) {

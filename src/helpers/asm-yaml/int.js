@@ -149,9 +149,7 @@ function constructYamlInteger(data) {
 
 function isInteger(object) {
 	return (
-		Object.prototype.toString.call(object) === "[object Number]" &&
-		object % 1 === 0 &&
-		!common.isNegativeZero(object)
+		Object.prototype.toString.call(object) === "[object Number]" && object % 1 === 0 && !common.isNegativeZero(object)
 	);
 }
 
@@ -162,23 +160,17 @@ export const intType = new Type("tag:yaml.org,2002:int", {
 	predicate: isInteger,
 	represent: {
 		binary: function (obj) {
-			return obj >= 0
-				? `0b${obj.toString(2)}`
-				: `-0b${obj.toString(2).slice(1)}`;
+			return obj >= 0 ? `0b${obj.toString(2)}` : `-0b${obj.toString(2).slice(1)}`;
 		},
 		octal: function (obj) {
-			return obj >= 0
-				? `0o${obj.toString(8)}`
-				: `-0o${obj.toString(8).slice(1)}`;
+			return obj >= 0 ? `0o${obj.toString(8)}` : `-0o${obj.toString(8).slice(1)}`;
 		},
 		decimal: function (obj) {
 			return obj.toString(10);
 		},
 		/* eslint-disable max-len */
 		hexadecimal: function (obj) {
-			return obj >= 0
-				? `0x${obj.toString(16).toUpperCase()}`
-				: `-0x${obj.toString(16).toUpperCase().slice(1)}`;
+			return obj >= 0 ? `0x${obj.toString(16).toUpperCase()}` : `-0x${obj.toString(16).toUpperCase().slice(1)}`;
 		},
 	},
 	defaultStyle: "hexadecimal",

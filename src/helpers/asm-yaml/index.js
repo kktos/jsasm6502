@@ -25,7 +25,6 @@ schema.implicit[idx] = intType;
 schema.compiledTypeMap.scalar["tag:yaml.org,2002:int"] = intType;
 schema.compiledTypeMap.fallback["tag:yaml.org,2002:int"] = intType;
 
-
 // const log = console.log;
 const error = console.error;
 

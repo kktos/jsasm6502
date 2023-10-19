@@ -1,48 +1,32 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => ({ path: "", content: filename }),
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-};
+import { assemble } from "../src/assembler";
+import { opts } from "./shared/options";
 
 describe("Variables", () => {
+	beforeEach(() => {
+		opts.output = "";
+		opts.segments= null;
+	});
+
 	it("sets var value", () => {
-		const src = "var_spriteIdx= 10*2\n.out var_spriteIdx";
-		output = "";
+		const src = "var_dummy= 10*2\n.out var_dummy";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 
-		expect(output.trim()).toStrictEqual("20");
+		expect(opts.output.trim()).toStrictEqual("20");
 	});
 
 	it("adds 2 vars value", () => {
 		const src = `
 				var_spriteIdx= 10*2
-				test= 9
+				test= 19
 				.out test+var_spriteIdx
 			`;
-		output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 
-		expect(output.trim()).toStrictEqual("29");
+		expect(opts.output.trim()).toStrictEqual("39");
 	});
 
 	it("namespaces", () => {
@@ -50,20 +34,19 @@ describe("Variables", () => {
 				var_spriteIdx= 10*2
 				label2 = $100
 				.namespace test
-				test= 9
+				label_in_test= $DECA
 			`;
-		output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 
-		expect(asmRes.symbols.namespaces).toHaveProperty("GLOBAL");
-		expect(asmRes.symbols.global).toHaveProperty("VAR_SPRITEIDX");
-		expect(asmRes.symbols.global).toHaveProperty("LABEL2");
-		expect(asmRes.symbols.global).not.toHaveProperty("TEST");
+		expect(asmRes.symbols.dump()).toStrictEqual([
+		"GLOBAL:",
+		"  LABEL2: number = $100",
+		"  VAR_SPRITEIDX: number = $14",
+		"TEST:",
+		"  LABEL_IN_TEST: number = $DECA",
+		""
+		].join("\n"));
 
-		expect(asmRes.symbols.namespaces).toHaveProperty("TEST");
-		expect(asmRes.symbols.namespaces.TEST).not.toHaveProperty("VAR_SPRITEIDX");
-		expect(asmRes.symbols.namespaces.TEST).not.toHaveProperty("LABEL2");
-		expect(asmRes.symbols.namespaces.TEST).toHaveProperty("TEST");
 	});
 });

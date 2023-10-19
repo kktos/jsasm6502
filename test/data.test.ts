@@ -1,29 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", content: filename };
-	},
-	YAMLparse: () => "",
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-};
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { opts } from "./shared/options";
 
 describe("Data", () => {
 	it("tests .db", () => {

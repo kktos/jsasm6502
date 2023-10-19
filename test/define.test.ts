@@ -1,34 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { load } from "../src/helpers/asm-yaml";
-import { assemble } from "../src/assembler.js";
-import { readHexLine } from "../src/pragmas/data.pragma.js";
-
-let output = "";
-
-const opts = {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", content: filename };
-	},
-	YAMLparse: (s) =>load(s),
-	listing: false,
-	segments: null,
-	console: {
-		log: (s) => {
-			output += `${s}\n`;
-		},
-		error: (s) => {
-			output += `${s}\n`;
-		},
-		warn: (s) => {
-			output += `${s}\n`;
-		},
-	},
-};
+import { assemble } from "../src/assembler";
+import { readHexLine } from "../src/pragmas/data.pragma";
+import { opts } from "./shared/options";
 
 describe("Define", () => {
 	beforeEach(() => {
-		output = "";
+		opts.output= "";
 	});
 
 	it("tests define var", () => {
@@ -40,7 +18,7 @@ describe("Define", () => {
 		.log var_yaml
 		`;
 		assemble(src, opts);
-		expect(output.trim()).toStrictEqual('["one","two"]');
+		expect(opts.output.trim()).toStrictEqual('["one","two"]');
 	});
 
 	it("tests define array", () => {
@@ -60,15 +38,14 @@ describe("Define", () => {
 		.log .type(var_yaml.prop), .len(var_yaml.prop)
 		`;
 		assemble(src, opts);
-		expect(output.trim()).toStrictEqual("array9");
+		expect(opts.output.trim()).toStrictEqual("array9");
 	});
 
 	it("tests define array of object with $hexa", () => {
 		const src = `
-		base = $a0
 
 		.define spritesTable
-		- { id: $aa, x: $A0, y: $10}
+		- { id: $AA, x: $A0, y: $10}
 		- { id: $bb, x: $b0, y: $20}
 		.end
 
@@ -85,7 +62,7 @@ describe("Define", () => {
 		.end
 		`;
 		const asmRes = assemble(src, opts);
-		expect(output.trim()).toStrictEqual('[{"id":170,"x":160,"y":16},{"id":187,"x":176,"y":32}]');
+		expect(opts.output.trim()).toStrictEqual('[{"id":170,"x":160,"y":16},{"id":187,"x":176,"y":32}]');
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -113,7 +90,7 @@ describe("Define", () => {
 
 		`;
 		const asmRes = assemble(src, opts);
-		expect(output.trim()).toStrictEqual("object");
+		expect(opts.output.trim()).toStrictEqual("object");
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
