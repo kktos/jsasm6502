@@ -21,6 +21,7 @@ export type TConsole = {
 export type Options = {
 	cpu?: string;
 	listing: boolean;
+
 	console: TConsole;
 	segments: TSegments;
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { assemble } from "../src/assembler";
 import { opts } from "./shared/options";
+import { readHexLine } from "../src/pragmas/data.pragma";
 
 describe("Label", () => {
 
@@ -15,8 +16,36 @@ describe("Label", () => {
 		exit
 			rts
 		`;
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError("Duplicate Symbol : EXIT");
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual([
+			'Duplicate Label : "GLOBAL.EXIT"',
+			'Defined in "":5',
+			'',
+		].join("\n"));
+	});
+
+	it("should deal with label beforehand", () => {
+		const src = `
+			.dw toto
+			toto
+				rts
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("02 10 60"));
+	});
+
+	it("should deal with local label", () => {
+		const src = `
+		!		lda  $1000,x
+				bpl  !+
+				iny
+				bne  !-
+				dey
+		!		rts
+
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("BD 00 10 10 04 C8 D0 F8 88 60"));
 	});
 
 });

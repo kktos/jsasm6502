@@ -18,33 +18,29 @@ export function assemble(mainFilename: string, opts: Options) {
 	const ctx = new Context(opts, mainFilename);
 	setcpu(ctx, opts.cpu);
 
+	const tryAsm = () => {
+		try {
+			asm(ctx);
+		} catch (err) {
+			// handle internal errors
+			if ((err as Error)?.name?.match(/^VA/)) {
+				const errMsg = (err as Error).message;
+				ctx.error(errMsg);
+				return errMsg;
+			}
+			throw err;
+		}
+		return null;
+	};
+
 	// first pass
-	try {
-		asm(ctx);
-	} catch (err) {
-		// handle internal errors
-		if ((err as Error)?.name?.match(/^VA/)) {
-			ctx.error((err as Error).message);
-			// return;
-		}
+	let error = tryAsm();
 
-		throw err;
-	}
-
-	ctx.reset();
-
-	ctx.pass = 2;
-	// second pass
-	try {
-		asm(ctx);
-	} catch (err) {
-		// handle internal errors
-		if ((err as Error)?.name?.match(/^VA/)) {
-			ctx.error((err as Error).message);
-			// return;
-		}
-
-		throw err;
+	if (!error) {
+		ctx.reset();
+		ctx.pass = 2;
+		// second pass
+		error = tryAsm();
 	}
 
 	return {
@@ -52,6 +48,7 @@ export function assemble(mainFilename: string, opts: Options) {
 		segments: ctx.code.segments,
 		obj: ctx.code.obj,
 		dump: ctx.code.dump,
+		error,
 	};
 }
 

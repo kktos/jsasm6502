@@ -17,12 +17,12 @@ describe("Function", () => {
 
 	it("tests a function with the wrong parm count", () => {
 		const err =
-			/TERM: Wrong number of parameters for function "LEN". Expected 1 Got 2/;
+			'TERM: Wrong number of parameters for function "LEN". Expected 1 Got 2';
 		const src = `
 			.echo .len("one","two")
 		`;
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(err);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(err);
 	});
 
 	it("tests .type with various types", () => {

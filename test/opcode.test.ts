@@ -36,57 +36,43 @@ describe("Opcodes Address Size", () => {
 
 	it("cannot assemble LDA.b $1234 as 8bits addr", () => {
 		const src = "LDA.b $1234";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM4 Invalid Address Mode for Opcode LDA/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM4 Invalid Address Mode for Opcode LDA 8");
 	});
 
 	it("cannot assemble JMP.b (addr) as 8bits addr", () => {
 		const src = "jmp.b ($32)";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM2 Invalid Address Mode for Opcode JMP/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM2 Invalid Address Mode for Opcode JMP");
 	});
 
 	it("cannot assemble JMP.b ($1232,x) as 8bits addr", () => {
 		const src = "jmp.b ($1232,x)";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM2 Invalid Address Mode for Opcode JMP/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM2 Invalid Address Mode for Opcode JMP");
 	});
 
 	it("cannot assemble LDA.b ($1232,x) as 8bits addr", () => {
 		const src = "lda.b ($1232,x)";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM2 Invalid Address Mode for Opcode LDA/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM2 Invalid Address Mode for Opcode LDA");
 	});
 
 	it("cannot assemble LDA.w ($1232,x) as 16bits addr", () => {
 		const src = "lda.w ($1232,x)";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM2 Invalid Address Mode for Opcode LDA/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM2 Invalid Address Mode for Opcode LDA");
 	});
 
 	it("cannot assemble LDA ($1232),y as 16bits addr", () => {
 		const src = "lda ($1232),y";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM2 Invalid Address Mode for Opcode LDA/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM2 Invalid Address Mode for Opcode LDA");
 	});
 
 	it("cannot assemble LDA.b $1232,x as 8bits addr", () => {
 		const src = "lda.b $1232,x";
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(
-			/OPCODE: IAM4 Invalid Address Mode for Opcode LDA/,
-		);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("OPCODE: IAM4 Invalid Address Mode for Opcode LDA 8");
 	});
 });

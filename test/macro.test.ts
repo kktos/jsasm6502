@@ -65,4 +65,23 @@ describe("Macro", () => {
 			readHexLine("FE CA 41 00 42 00 43 00 44 00 34 12"),
 		);
 	});
+
+	it("tests macro with label", () => {
+		const src = `
+			.macro read_file filename
+				.dw filename
+			.end
+
+				read_file fwelcome
+				rts
+
+			fwelcome
+				.cstr "ABCD"
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("03 10 60 41 42 43 44 00"),
+		);
+	});
 });

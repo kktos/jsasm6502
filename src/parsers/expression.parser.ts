@@ -16,6 +16,7 @@ export type TExprStackItem = {
 	op?: string;
 	fn?: string;
 	parmCount?: number;
+	extra?: Record<string, unknown>;
 };
 export type TExprStackItemNumber = { value: number } & Omit<TExprStackItem, "value">;
 
@@ -253,7 +254,7 @@ function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				const op2 = localStack.pop();
 				const op1 = localStack.pop();
 				if (op1?.type !== TOKEN_TYPES.NUMBER || op2?.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("AND: Only Numbers are allowed here");
 				stack.unshift({
 					type: TOKEN_TYPES.NUMBER,
 					value: op1.value && op2.value,
@@ -264,7 +265,7 @@ function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				const op2 = localStack.pop();
 				const op1 = localStack.pop();
 				if (op1?.type !== TOKEN_TYPES.NUMBER || op2?.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("OR: Only Numbers are allowed here");
 				stack.unshift({
 					type: TOKEN_TYPES.NUMBER,
 					value: op1.value || op2.value,
@@ -279,7 +280,7 @@ function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				const op2 = localStack.pop();
 				const op1 = localStack.pop();
 				if (op1?.type !== TOKEN_TYPES.NUMBER || op2?.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("BAND: Only Numbers are allowed here");
 				stack.unshift({
 					type: TOKEN_TYPES.NUMBER,
 					value: (op1.value as number) & (op2.value as number),
@@ -289,11 +290,40 @@ function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 			case "BOR": {
 				const op2 = localStack.pop();
 				const op1 = localStack.pop();
-				if (op1?.type !== TOKEN_TYPES.NUMBER || op2?.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+
+				let value1 = 0;
+				switch (op1?.type) {
+					case TOKEN_TYPES.NUMBER:
+						value1 = op1.value as number;
+						break;
+					case TOKEN_TYPES.STRING:
+						if ((op1.value as string).length === 1) {
+							value1 = (op1.value as string).charCodeAt(0);
+							break;
+						}
+						throw new VAExprError("BOR: Only Numbers are allowed here");
+					default:
+						throw new VAExprError("BOR: Only Numbers are allowed here");
+				}
+
+				let value2 = 0;
+				switch (op2?.type) {
+					case TOKEN_TYPES.NUMBER:
+						value2 = op2.value as number;
+						break;
+					case TOKEN_TYPES.STRING:
+						if ((op2.value as string).length === 1) {
+							value2 = (op2.value as string).charCodeAt(0);
+							break;
+						}
+						throw new VAExprError("BOR: Only Numbers are allowed here");
+					default:
+						throw new VAExprError("BOR: Only Numbers are allowed here");
+				}
+
 				stack.unshift({
 					type: TOKEN_TYPES.NUMBER,
-					value: (op1.value as number) | (op2.value as number),
+					value: value1 | value2,
 				});
 				break;
 			}
@@ -301,7 +331,7 @@ function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				const op2 = localStack.pop();
 				const op1 = localStack.pop();
 				if (op1?.type !== TOKEN_TYPES.NUMBER || op2?.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("BXOR: Only Numbers are allowed here");
 				stack.unshift({
 					type: TOKEN_TYPES.NUMBER,
 					value: (op1.value as number) ^ (op2.value as number),
@@ -610,9 +640,9 @@ function parse_local_label(exprCtx: TExprCtx) {
 	// console.log("EXPR", exprCtx.pass, exprCtx.code.pc.toString(16), count);
 
 	const addr = exprCtx.ctx.symbols.findClosestMarker(exprCtx.ctx.code.pc, count);
-	if (!addr) throw new VAExprError("TERM: Cant find local label !?!");
+	if (exprCtx.ctx.pass > 1 && !addr) throw new VAExprError("TERM: Cant find local label !?!");
 
-	exprCtx.stack.push({ value: addr, type: TOKEN_TYPES.NUMBER });
+	exprCtx.stack.push({ value: addr ?? 0, type: TOKEN_TYPES.NUMBER });
 
 	// console.log("EXPR", {addr});
 
@@ -635,10 +665,7 @@ function parse_scalar(exprCtx: TExprCtx) {
 			break;
 
 		case TOKEN_TYPES.IDENTIFIER: {
-			// console.log("IDENTIFER", name);
-
 			parse_var_label(exprCtx, tok);
-
 			break;
 		}
 
@@ -661,6 +688,8 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	const tokens = [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
 
 	// exprCtx.ctx.lexer.next();
+
+	// log("parseVarLabel", exprCtx.ctx.pass, tok);
 
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
 		// console.log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
@@ -686,6 +715,8 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	let value = exprCtx.ctx.symbols.get(name, ns);
 
+	// log("parseVarLabel", value);
+
 	while (exprCtx.ctx.lexer.match(tokens)) {
 		switch (exprCtx.ctx.lexer.tokenType()) {
 			case TOKEN_TYPES.DOT: {
@@ -698,7 +729,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 				name = exprCtx.ctx.lexer.token2().text;
 				const obj = value?.value as Record<string, TExprStackItemValueType>;
-				const fieldValue = obj[name];
+				const fieldValue = obj?.[name];
 
 				if (value && fieldValue === undefined) throw new VAExprError(`IDENTIFIER : Unknown Object field: "${name}"`);
 
@@ -743,7 +774,9 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 		}
 	}
 
-	if (!value && exprCtx.ctx.pass > 1) throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
+	if (!value && exprCtx.ctx.pass > 1) {
+		throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
+	}
 
 	// exprCtx.stack.push(
 	// 	value
@@ -751,6 +784,8 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	// 		: { type: TOKEN_TYPES.NUMBER, value: undefined },
 	// );
 	exprCtx.stack.push({ type: value?.type, value: value?.value });
+
+	// log("parseVarLabel END", { type: value?.type, value: value?.value });
 }
 
 // functions

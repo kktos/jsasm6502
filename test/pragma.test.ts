@@ -45,8 +45,9 @@ describe("Pragma", () => {
 		.echo "should not be visible"
 		`;
 
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(/BOOM/);
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("BOOM");
 	});
 
 	it("tests .fill 10", () => {

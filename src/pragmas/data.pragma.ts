@@ -148,7 +148,7 @@ export function processData(ctx: Context, pragma: string) {
 
 		const res = parseExpression(ctx);
 
-		// ctx.pass > 1 && log(`processData END ${getTypeName(res?.type??0)} ${res?.value}`);
+		// log(`processData END ${getTypeName(res?.type??0)} ${JSON.stringify(res)}`);
 
 		switch (res?.type) {
 			case TOKEN_TYPES.NUMBER:
@@ -158,7 +158,11 @@ export function processData(ctx: Context, pragma: string) {
 				list = list.concat(makeString(ctx, res.value as string, { charSize: endianSize }));
 				break;
 			default:
-				throw new VAParseError(`DATA: Invalid Type "${getTypeName(res?.type ?? 0)}". Must be a string or a number`);
+				if (ctx.pass === 1) {
+					pushNumber(list, { type: TOKEN_TYPES.NUMBER, value: 0 }, endianSize);
+				} else {
+					throw new VAParseError(`DATA: Invalid Type "${JSON.stringify(res)}". Must be a string or a number`);
+				}
 		}
 
 		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;

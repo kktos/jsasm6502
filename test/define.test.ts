@@ -111,8 +111,8 @@ describe("Define", () => {
 		- { id: 0xbb, x: 0xb0, y: 0x20}
 		.end
 		`;
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError("Duplicate Symbol : SPRITESTABLE");
+		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("Duplicate Symbol : SPRITESTABLE");
 	});
 
 });

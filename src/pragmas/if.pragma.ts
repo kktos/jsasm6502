@@ -7,7 +7,7 @@ import { parseExpression } from "../parsers/expression.parser";
 export function processIf(ctx: Context) {
 	const res = parseExpression(ctx);
 
-	if (!res || res.type !== TOKEN_TYPES.NUMBER) throw new VAParseError("Need a number");
+	if (ctx.pass > 1 && (!res || res.type !== TOKEN_TYPES.NUMBER)) throw new VAParseError("Need a number");
 
 	// const line = ctx.lexer.line();
 
@@ -15,7 +15,7 @@ export function processIf(ctx: Context) {
 
 	// console.log({line, willdo: !!res.value, blockTrue, blockFalse});
 
-	const block = res.value ? blockTrue : blockFalse;
+	const block = res?.value ? blockTrue : blockFalse;
 	if (block) ctx.lexer.pushSource(block);
 
 	return true;

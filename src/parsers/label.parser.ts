@@ -3,6 +3,9 @@ import { isMacroToken } from "../pragmas/macro.pragma";
 import { VAExprError, VAParseError } from "../helpers/errors.class";
 import { Context } from "../context.class";
 import { TOKEN_TYPES, Token } from "../lexer/token.class";
+import { NS_GLOBAL } from "../dict.class";
+
+const log = console.log;
 
 export function parseLocalLabel(ctx: Context) {
 	ctx.lexer.next();
@@ -15,6 +18,28 @@ export function parseLocalLabel(ctx: Context) {
 	ctx.symbols.addMarker(ctx.code.pc);
 
 	return null;
+}
+
+function addLabel(ctx: Context, name: string, value: TExprStackItem) {
+	const { line } = ctx.lexer.pos();
+	value.extra = { file: ctx.filepath, line: line };
+	ctx.symbols.set(name, value);
+}
+
+function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
+	if (ctx.symbols.exists(name, ctx.symbols.namespace)) {
+		const label = ctx.symbols.get(name);
+		if (label?.extra?.exported === 1) {
+			label.extra.exported++;
+		} else {
+			const msg1 = `Duplicate Label : "${ctx.symbols.namespace}.${name}"`;
+			const msg2 = `${ctx.symbols.isExported(name) ? "Exported from" : "Defined in"} "${label?.extra?.file}":${
+				label?.extra?.line
+			}`;
+			throw new VAParseError(`${msg1}\n${msg2}\n`);
+		}
+	}
+	addLabel(ctx, name, value);
 }
 
 /*
@@ -36,9 +61,9 @@ export function parseLabel(ctx: Context, token: Token, isCheap = false) {
 
 		if (ctx.pass > 1) return null;
 
-		if (!ctx.lastLabel) throw new VAExprError("Cheap Label needs a parent label");
+		if (!ctx.lastLabel) throw new VAExprError("Local Label needs a parent label");
 
-		if (!ctx.symbols.addLocal(ctx.lastLabel, name, value)) throw new VAExprError("Duplicate Cheap Label");
+		if (!ctx.symbols.addLocal(ctx.lastLabel, name, value)) throw new VAExprError("Duplicate Local Label");
 
 		return null;
 	}
@@ -52,7 +77,7 @@ export function parseLabel(ctx: Context, token: Token, isCheap = false) {
 			ctx.lexer.next();
 			value = parseExpression(ctx);
 			if (!value) throw new VAParseError("undefined value");
-			ctx.symbols.set(name, value);
+			addLabel(ctx, name, value);
 			return null;
 		}
 		// LABEL :
@@ -60,17 +85,17 @@ export function parseLabel(ctx: Context, token: Token, isCheap = false) {
 			ctx.lexer.next();
 			ctx.lexer.next();
 			if (ctx.pass === 1) {
-				if (ctx.symbols.exists(name)) throw new VAParseError(`Duplicate Symbol : ${name}`);
-				ctx.symbols.set(name, value);
+				defineLabel(ctx, name, value);
 			}
 			return name;
 
 		default:
 			if (ctx.opcodes[name] !== undefined || isMacroToken(ctx)) return null;
 
+			// log("LABEL", name, ctx.pass);
+
 			if (ctx.pass === 1) {
-				if (ctx.symbols.exists(name)) throw new VAParseError(`Duplicate Symbol : ${name}`);
-				ctx.symbols.set(name, value);
+				defineLabel(ctx, name, value);
 			}
 
 			ctx.lexer.next();

@@ -42,12 +42,12 @@ export function processText(ctx: Context, pragma: string) {
 	return true;
 }
 
-export function makeString(ctx: Context, str: string, opts: TStringOptions) {
+export function makeString(ctx: Context | null, str: string, opts: TStringOptions) {
 	const buffer = [];
 	let char;
 
 	for (let idx = 0; idx < str.length; idx++) {
-		if (opts?.charSize < 0) for (let padIdx = 1; padIdx < -opts.charSize; padIdx++) buffer.push(0);
+		if (opts.charSize < 0) for (let padIdx = 1; padIdx < -opts.charSize; padIdx++) buffer.push(0);
 
 		char = str.charCodeAt(idx);
 		if (char >= 0x100) throw new VAParseError(`STRING: Invalid character ${str[idx]}`);
@@ -98,16 +98,16 @@ export function makeString(ctx: Context, str: string, opts: TStringOptions) {
 			}
 		}
 
-		char = ctx.charMapManager.convertChar(char);
+		if (ctx) char = ctx.charMapManager.convertChar(char);
 
 		buffer.push(char);
 
-		if (opts?.charSize > 0) for (let padIdx = 1; padIdx < opts.charSize; padIdx++) buffer.push(0);
+		if (opts.charSize > 0) for (let padIdx = 1; padIdx < opts.charSize; padIdx++) buffer.push(0);
 	}
 
-	if (opts?.hasTrailingZero) buffer.push(0);
+	if (opts.hasTrailingZero) buffer.push(0);
 
-	if (opts?.hasLeadingLength) {
+	if (opts.hasLeadingLength) {
 		const len = buffer.length;
 		if (opts?.lengthSize === 2) buffer.unshift((len & 0xff00) >> 8);
 		buffer.unshift(len & 0xff);

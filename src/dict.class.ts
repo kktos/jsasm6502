@@ -48,7 +48,7 @@ export class Dict {
 	}
 
 	export(name: string) {
-		this.global[name] = this.ns[name];
+		this.global[name] = this.ns[name] ?? { type: 0, value: 0, extra: { exported: 1 } };
 		this.exports[name] = this.currentName;
 	}
 
@@ -62,12 +62,22 @@ export class Dict {
 		return list.length;
 	}
 
+	isExported(name: string, ns?: string) {
+		return Object.hasOwn(this.exports, name) && this.exports[name] === (ns ? ns : this.currentName);
+	}
+
 	set(name: string, value: TExprStackItem) {
 		// log(`---- SET ${this.currentName}.${name}= ${value.value}`);
 
 		this.ns[name] = value;
 
-		if (this.exports[name] === this.currentName) this.global[name] = value;
+		if (this.exports[name] === this.currentName) {
+			const exported = this.global[name]?.extra?.exported;
+			this.global[name] = value;
+			if (typeof exported === "number" && value?.extra) {
+				value.extra.exported = exported;
+			}
+		}
 	}
 
 	get(name: string, ns?: string): TDictValue;
@@ -134,11 +144,11 @@ export class Dict {
 	findClosestMarker(target: number, distance: number) {
 		const markers = this.get(MARKERS);
 
-		// console.log("findClosestMarker",{ns:this.currentName, markers, target, distance});
+		// log("findClosestMarker",{ns:this.currentName, markers, target, distance});
 
 		let pos = markers.findIndex((marker) => marker > target);
 
-		// console.log("findClosestMarker",{pos});
+		// log("findClosestMarker",{pos});
 
 		if (pos < 0) {
 			if (distance > 0) return null;
@@ -195,16 +205,30 @@ export class Dict {
 			for (const entry of Object.keys(ns).sort()) {
 				const val = ns[entry];
 				out += `  ${entry}: `;
-				out += getTypeName(val.type).toLowerCase();
-				switch (val.type) {
+				out += getTypeName(val?.type).toLowerCase();
+				switch (val?.type) {
 					case TOKEN_TYPES.ARRAY:
-						out += ` = ${val.value}\n`;
+						out += ` = ${val?.value}`;
+						break;
+					case TOKEN_TYPES.STRING:
+						out += ` = "${val?.value}"`;
 						break;
 					default:
-						out += ` = $${val.value.toString(16).toUpperCase()}\n`;
+						out += ` = $${val?.value.toString(16).toUpperCase()}`;
+				}
+
+				if (val?.extra) {
+					out += ` ;${this.isExported(entry, name) ? "exported from" : ""} "${val?.extra?.file}":${val?.extra?.line}\n`;
 				}
 			}
 		}
+
+		// out += "\n";
+
+		// for (const key of Object.keys(this.exports)) {
+		// 	out += `${key} = ${this.exports[key]}\n`;
+		// }
+
 		return out;
 	}
 }

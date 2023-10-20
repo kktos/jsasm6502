@@ -1,6 +1,6 @@
 import { Type } from "js-yaml";
 
-function isHexCode(c) {
+function isHexCode(c: number) {
 	return (
 		(0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ ||
 		(0x41 /* A */ <= c && c <= 0x46) /* F */ ||
@@ -8,15 +8,15 @@ function isHexCode(c) {
 	);
 }
 
-function isOctCode(c) {
+function isOctCode(c: number) {
 	return 0x30 /* 0 */ <= c && c <= 0x37 /* 7 */;
 }
 
-function isDecCode(c) {
+function isDecCode(c: number) {
 	return 0x30 /* 0 */ <= c && c <= 0x39 /* 9 */;
 }
 
-function resolveYamlInteger(data) {
+function resolveYamlInteger(data: string | null) {
 	if (data === null) return false;
 
 	const max = data.length;
@@ -115,7 +115,7 @@ function resolveYamlInteger(data) {
 	return true;
 }
 
-function constructYamlInteger(data) {
+function constructYamlInteger(data: string) {
 	let value = data;
 	let sign = 1;
 	let ch;
@@ -147,10 +147,16 @@ function constructYamlInteger(data) {
 	return sign * parseInt(value, 10);
 }
 
-function isInteger(object) {
+function isInteger(data: object) {
 	return (
-		Object.prototype.toString.call(object) === "[object Number]" && object % 1 === 0 && !common.isNegativeZero(object)
+		Object.prototype.toString.call(data) === "[object Number]" &&
+		(data as unknown as number) % 1 === 0 &&
+		!isNegativeZero(data as unknown as number)
 	);
+}
+
+function isNegativeZero(number: number) {
+	return number === 0 && Number.NEGATIVE_INFINITY === 1 / number;
 }
 
 export const intType = new Type("tag:yaml.org,2002:int", {
@@ -159,18 +165,24 @@ export const intType = new Type("tag:yaml.org,2002:int", {
 	construct: constructYamlInteger,
 	predicate: isInteger,
 	represent: {
-		binary: function (obj) {
-			return obj >= 0 ? `0b${obj.toString(2)}` : `-0b${obj.toString(2).slice(1)}`;
+		binary: function (obj: object) {
+			return (obj as unknown as number) >= 0
+				? `0b${(obj as unknown as number).toString(2)}`
+				: `-0b${(obj as unknown as number).toString(2).slice(1)}`;
 		},
-		octal: function (obj) {
-			return obj >= 0 ? `0o${obj.toString(8)}` : `-0o${obj.toString(8).slice(1)}`;
+		octal: function (obj: object) {
+			return (obj as unknown as number) >= 0
+				? `0o${(obj as unknown as number).toString(8)}`
+				: `-0o${(obj as unknown as number).toString(8).slice(1)}`;
 		},
-		decimal: function (obj) {
-			return obj.toString(10);
+		decimal: function (obj: object) {
+			return (obj as unknown as number).toString(10);
 		},
 		/* eslint-disable max-len */
-		hexadecimal: function (obj) {
-			return obj >= 0 ? `0x${obj.toString(16).toUpperCase()}` : `-0x${obj.toString(16).toUpperCase().slice(1)}`;
+		hexadecimal: function (obj: object) {
+			return (obj as unknown as number) >= 0
+				? `0x${(obj as unknown as number).toString(16).toUpperCase()}`
+				: `-0x${(obj as unknown as number).toString(16).toUpperCase().slice(1)}`;
 		},
 	},
 	defaultStyle: "hexadecimal",

@@ -6,7 +6,6 @@ import { opts } from "./shared/options";
 describe("Variables", () => {
 	beforeEach(() => {
 		opts.output = "";
-		opts.segments= null;
 	});
 
 	it("sets var value", () => {
@@ -41,10 +40,10 @@ describe("Variables", () => {
 
 		expect(asmRes.symbols.dump()).toStrictEqual([
 		"GLOBAL:",
-		"  LABEL2: number = $100",
-		"  VAR_SPRITEIDX: number = $14",
+		'  LABEL2: number = $100 ; "":3',
+		'  VAR_SPRITEIDX: number = $14 ; "":2',
 		"TEST:",
-		"  LABEL_IN_TEST: number = $DECA",
+		'  LABEL_IN_TEST: number = $DECA ; "":5',
 		""
 		].join("\n"));
 

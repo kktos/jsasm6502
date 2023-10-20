@@ -15,13 +15,14 @@ describe("Strings", () => {
 	});
 
 	it("tests .text without string", () => {
-		const err = /STRING: missing a string here/;
+		const err = "STRING: missing a string here";
 		const src = `
 			.text
 			.text "abcd"
 		`;
-		let asmRes;
-		expect(() => asmRes === assemble(src, opts)).toThrowError(err);
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(err);
 	});
 
 	it("tests .text with many strings", () => {

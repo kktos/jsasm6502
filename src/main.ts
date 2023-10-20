@@ -2,57 +2,79 @@ import { load } from "js-yaml";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import yargs from "yargs";
-import { assemble } from "./assembler.js";
-import { pushNumber } from "./pragmas/data.pragma.js";
-import { makeString } from "./pragmas/string.pragma.js";
+import { assemble } from "./assembler";
+import { pushNumber } from "./pragmas/data.pragma";
+import { makeString } from "./pragmas/string.pragma";
+import { Options } from "./types/Options";
+import { TSegments } from "./compiler.class";
 
-let rootDir;
+interface Arguments {
+	listing?: boolean;
+	dump?: boolean;
+	symbols?: boolean;
+	segments?: boolean;
+	segdir?: boolean;
+	out?: string;
+	conf?: string;
+	_: (string | number)[];
+}
 
-function readFile(filename, fromFile, asBin) {
+type TSegmentItem = [string, number, number, number];
+type TSegmentList = TSegmentItem[];
+
+let rootDir: string;
+
+function readFile(filename: string, fromFile?: string, asBin?: boolean) {
 	try {
 		const includeDir = fromFile ? dirname(fromFile) : "";
 		const fullpath = (includeDir !== "" ? `${includeDir}/` : "") + filename;
 		const content = readFileSync(`${rootDir}/${fullpath}`);
-		return { path: fullpath, content: asBin ? content : content.toString() };
+		return { path: fullpath, content: asBin ? content : content.toString(), error: "" };
 	} catch (e) {
 		// console.error("FATAL ERROR: Unable to readFile "+fullpath);
-		return { error: e.message };
+		return { error: (e as Error).message, path: "", content: "" };
 	}
 }
 
-function readYAMLFile(filename) {
+function readYAMLFile(filename: string): Record<string, unknown> | boolean | number | string {
 	try {
-		return load(readFile(filename).content);
+		return load(readFile(filename).content as string) as Record<string, unknown>;
 	} catch (e) {
 		console.error("readYAMLFile", filename, e);
-		return null;
+		return "";
 	}
 }
 
-function main(argv) {
+function main() {
 	rootDir = ".";
 
 	let conf = null;
 	if (argv.conf) {
 		conf = readYAMLFile(argv.conf);
-		if (!conf) {
+		if (!conf || typeof conf !== "object" || !Object.hasOwn(conf, "segments")) {
 			console.error(`unable to read conf file ${argv.conf}`);
 			process.exit(-1);
 		}
 	}
 
-	const filename = argv._[0];
+	const filename = String(argv._[0]);
+	if (!filename) {
+		console.error("no source file");
+		process.exit(-1);
+	}
+
 	rootDir = dirname(filename);
 
-	const opts = {
+	const opts: Options = {
 		readFile,
-		YAMLparse: load,
+		YAMLparse: readYAMLFile,
 		listing: argv.listing === true,
-		segments: conf?.segments ?? {},
+		segments: (conf?.segments ?? {}) as TSegments,
 		cpu: "6502",
+		console,
 	};
 
-	const hexa = (v, len = 4) => {
+	const hexa = (v: number, len = 4) => {
 		return `$${v.toString(16).padStart(len, "0").toUpperCase()}`;
 	};
 
@@ -60,10 +82,14 @@ function main(argv) {
 	try {
 		asmRes = assemble(basename(filename), opts);
 
-		if (argv.symbols) console.log(asmRes.symbols.dump());
+		if (argv.symbols) console.log("\n", asmRes.symbols.dump());
 
-		let finalCode = [];
-		const segmentsDir = [];
+		if (asmRes.error) {
+			throw "";
+		}
+
+		let finalCode: unknown[] = [];
+		const segmentList: TSegmentList = [];
 		for (const name of Object.keys(asmRes.segments)) {
 			const segObj = asmRes.obj[name];
 
@@ -90,7 +116,7 @@ function main(argv) {
 				);
 
 			if (argv.segdir) {
-				segmentsDir.push([name, currPos, (segObj?.length ?? 0) + padLen, seg.start]);
+				segmentList.push([name, currPos, (segObj?.length ?? 0) + padLen, seg.start]);
 			}
 
 			if (argv.dump) asmRes.dump(name);
@@ -98,35 +124,35 @@ function main(argv) {
 
 		if (argv.segdir) {
 			const lenBeforeDir = finalCode.length;
-			for (const [name, offset, len, org] of segmentsDir) {
-				const recordBuffer = makeString(null, name, { hasLeadingLength: true });
-				pushNumber(recordBuffer, { value: offset }, -4);
-				pushNumber(recordBuffer, { value: len }, -4);
-				pushNumber(recordBuffer, { value: org }, -4);
-				const recordSize = [];
-				pushNumber(recordSize, { value: recordBuffer.length + 1 }, 1);
+			for (const [name, offset, len, org] of segmentList) {
+				const recordBuffer = makeString(null, String(name), { charSize: 1, hasLeadingLength: true });
+				pushNumber(recordBuffer, { value: offset, type: 0 }, -4);
+				pushNumber(recordBuffer, { value: len, type: 0 }, -4);
+				pushNumber(recordBuffer, { value: org, type: 0 }, -4);
+				const recordSize: number[] = [];
+				pushNumber(recordSize, { value: recordBuffer.length + 1, type: 0 }, 1);
 				finalCode = finalCode.concat(recordSize.concat(recordBuffer));
 			}
-			const dirOffset = [];
-			pushNumber(dirOffset, { value: lenBeforeDir }, -4);
-			finalCode = finalCode.concat(dirOffset, makeString(null, "DISK"));
+			const dirOffset: number[] = [];
+			pushNumber(dirOffset, { value: lenBeforeDir, type: 0 }, -4);
+			finalCode = finalCode.concat(dirOffset, makeString(null, "DISK", { charSize: 1 }));
 		}
 
 		const outFilename = argv.out ? argv.out : "a.out";
 		if (finalCode.length) {
-			const buffer = Buffer.from(finalCode);
+			const buffer = Buffer.from(finalCode as number[]);
 			writeFileSync(outFilename, buffer);
 			console.log("binary output", outFilename);
 		} else {
 			console.log("no code to save !");
 		}
 	} catch (err) {
-		console.error("ERROR:", err);
+		//err && console.error("ERROR:", err);
 	}
 }
 
-const argv = yargs(process.argv.splice(2))
-	.usage("Usage: jsasm [--listing] [--out filename] filename")
+const argv: Arguments = yargs(process.argv.splice(2))
+	.usage("Usage: jsasm [--listing] [--out filename] -f filename")
 	.options({
 		listing: {
 			describe: "with listing output",
@@ -154,12 +180,15 @@ const argv = yargs(process.argv.splice(2))
 		},
 		out: {
 			describe: "output file name",
+			type: "string",
 		},
 		conf: {
 			describe: "segments configuration file",
+			type: "string",
 		},
 	})
-	.demandCommand(1).argv;
+	.demandCommand(1)
+	.parseSync();
 
 // console.time("asm");
 // for (let index = 0; index < 1000; index++) {
@@ -167,4 +196,4 @@ const argv = yargs(process.argv.splice(2))
 // }
 // console.timeEnd("asm");
 
-main(argv);
+main();

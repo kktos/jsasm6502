@@ -82,4 +82,24 @@ describe("Data", () => {
 			readHexLine("00 00 00 10 00 00 00 20"),
 		);
 	});
+
+	it("tests .db with more than 1 char string fails", () => {
+		const src = `
+			.db "ap" | $80
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("BOR: Only Numbers are allowed here");
+	});
+
+	it("tests .db with 1 char string BOR", () => {
+		const src = `
+			.db "A"
+			.db "A" | $80
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("41 C1"));
+	});
+
 });

@@ -11,6 +11,8 @@ export function processNamespace(ctx: Context) {
 		ns = token.asString;
 	}
 
+	// console.log("NAMESPACE", ns);
+
 	ctx.symbols.select(ns);
 
 	ctx.lexer.next();

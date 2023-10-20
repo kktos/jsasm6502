@@ -6,6 +6,7 @@ const BYTECOUNTPERLINE = 6;
 type TSegment = {
 	start: number;
 	end: number;
+	pad?: number;
 };
 export type TSegments = Record<string, TSegment>;
 

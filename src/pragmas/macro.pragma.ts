@@ -8,6 +8,8 @@ import { TExprStackItem, parseExpression } from "../parsers/expression.parser";
 
 // const macros = {};
 
+const log = console.log;
+
 export function processMacro(ctx: Context) {
 	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
 
@@ -70,6 +72,8 @@ export function expandMacro(ctx: Context) {
 
 	const paramsCount = macro.parms.length;
 
+	// log("expandMacro line", ctx.lexer.line());
+
 	ctx.lexer.next();
 
 	const parms = macro.hasRestParm ? macro.parms.slice(0, -1) : macro.parms;
@@ -82,10 +86,19 @@ export function expandMacro(ctx: Context) {
 				ctx.lexer.next();
 			}
 
+			// log("expandMacro line", ctx.lexer.line());
+
 			parm = parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
 		}
 
 		if (!parm) throw new VAParseError(`MACRO: missing parameter value for ${parms[idx]}`);
+
+		// log("expandMacro", parms[idx], parm);
+
+		// we're using a label as parm but it's not yet defined (will be on pass 2)
+		if (ctx.pass === 1 && parm.type === undefined) {
+			parm.type = TOKEN_TYPES.NUMBER;
+		}
 
 		// if(ctx.pass == 2)
 		ctx.symbols.override(parms[idx], parm);

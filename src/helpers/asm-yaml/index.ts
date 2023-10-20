@@ -1,5 +1,5 @@
 import { load as yamlLoad, DEFAULT_SCHEMA } from "js-yaml";
-import { intType } from "./int.js";
+import { intType } from "./int";
 
 // function getTypes(list) {
 // 	return list.reduce((acc, curr) => {
@@ -8,16 +8,19 @@ import { intType } from "./int.js";
 // 	}, []);
 // }
 
-const schema = DEFAULT_SCHEMA;
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+const schema: any = DEFAULT_SCHEMA;
 
 let idx;
 
-idx = schema.compiledImplicit.findIndex((type) => {
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+idx = schema.compiledImplicit.findIndex((type: any) => {
 	return type.tag !== "tag:yaml.org,2002:int";
 });
 schema.compiledImplicit[idx] = intType;
 
-idx = schema.implicit.findIndex((type) => {
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+idx = schema.implicit.findIndex((type: any) => {
 	return type.tag !== "tag:yaml.org,2002:int";
 });
 schema.implicit[idx] = intType;
@@ -28,7 +31,7 @@ schema.compiledTypeMap.fallback["tag:yaml.org,2002:int"] = intType;
 // const log = console.log;
 const error = console.error;
 
-export const load = (src) => {
+export const load = (src: string) => {
 	// log("YAML LOAD");
 	let res;
 	try {
