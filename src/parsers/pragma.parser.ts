@@ -19,6 +19,7 @@ import { processSegment } from "../pragmas/segment.pragma";
 import { processSetCPU } from "../pragmas/setcpu.pragma";
 import { processText } from "../pragmas/string.pragma";
 import { Context } from "../context.class";
+import { processFor } from "../pragmas/for.pragma";
 
 function addPragmaDef(handlerFn: TPragmaHandlerFn | null, isBlock: boolean, pragmaNames: string[]) {
 	if (typeof handlerFn === "undefined")
@@ -35,6 +36,7 @@ addPragmaDef(processIf, true, [tokens.IF]);
 addPragmaDef(null, false, [tokens.ELSE]);
 
 addPragmaDef(processRepeat, true, [tokens.REPEAT]);
+addPragmaDef(processFor, true, [tokens.FOR]);
 addPragmaDef(processDefine, true, [tokens.DEFINE]);
 addPragmaDef(processMacro, true, [tokens.MACRO]);
 

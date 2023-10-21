@@ -80,3 +80,19 @@ export function getTypeName(type: number) {
 	const t = TOKEN_TYPES_ENTRIES.find(([k, v]) => v === type);
 	return t?.[0] ?? "????";
 }
+
+export function tokenTypeOf(value: unknown) {
+	switch (typeof value) {
+		case "number":
+			return TOKEN_TYPES.NUMBER;
+		case "string":
+			return TOKEN_TYPES.STRING;
+		case "boolean":
+			return TOKEN_TYPES.NUMBER;
+		case "object":
+			if (Array.isArray(value)) return TOKEN_TYPES.ARRAY;
+			return TOKEN_TYPES.OBJECT;
+		default:
+			return null;
+	}
+}

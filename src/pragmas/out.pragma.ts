@@ -3,6 +3,8 @@ import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { parseExpression } from "../parsers/expression.parser";
 
+// const log= console.log;
+
 export function processASMOuput(ctx: Context, pragma: string) {
 	let msg = "";
 
@@ -21,6 +23,7 @@ export function processASMOuput(ctx: Context, pragma: string) {
 		case "OUT":
 		case "ECHO":
 		case "LOG":
+			// log("ECHO", ctx.pass, msg);
 			ctx.print(msg, true);
 			break;
 

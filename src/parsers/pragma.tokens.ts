@@ -12,6 +12,7 @@ export const tokens = {
 	IF: "IF",
 	ELSE: "ELSE",
 	REPEAT: "REPEAT",
+	FOR: "FOR",
 	DEFINE: "DEFINE",
 	MACRO: "MACRO",
 	OPT: "OPT",
