@@ -3,7 +3,6 @@ import { isMacroToken } from "../pragmas/macro.pragma";
 import { VAExprError, VAParseError } from "../helpers/errors.class";
 import { Context } from "../context.class";
 import { TOKEN_TYPES, Token } from "../lexer/token.class";
-import { NS_GLOBAL } from "../dict.class";
 
 const log = console.log;
 
@@ -46,7 +45,7 @@ function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
 LABEL
 CONST = expr
  */
-export function parseLabel(ctx: Context, token: Token, isCheap = false) {
+export function parseLabel(ctx: Context, token: Token, isLocal = false) {
 	const name = token.asString;
 	let value: TExprStackItem | undefined = {
 		type: TOKEN_TYPES.NUMBER,
@@ -55,7 +54,7 @@ export function parseLabel(ctx: Context, token: Token, isCheap = false) {
 
 	// console.log("PARSELABEL", ctx.lexer.token(), (ctx.opcodes[name] != undefined) || isMacroToken(ctx));
 
-	if (isCheap) {
+	if (isLocal) {
 		ctx.lexer.next();
 		if (ctx.lexer.isToken(TOKEN_TYPES.COLON)) ctx.lexer.next();
 

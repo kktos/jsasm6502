@@ -3,6 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { parseExpression } from "../parsers/expression.parser";
 
+// FILL <byteCount:number> [, <fillValue:number>]
 export function processFill(ctx: Context) {
 	const res = parseExpression(ctx);
 	if (!res || res.type !== TOKEN_TYPES.NUMBER) throw new VAParseError("Need a number");

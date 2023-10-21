@@ -29,10 +29,15 @@ export function processFor(ctx: Context) {
 	const list = parseExpression(ctx, undefined, TOKEN_TYPES.ARRAY);
 	if (!list) throw new VAParseError("FOR: need an array to iterate of");
 
+	const array= (list?.value as unknown[]);
+
 	// log("FOR list", ctx.pass, list);
 
 	const [block] = readBlock(ctx);
 	if (!block) throw new VAParseError("FOR: empty block");
+
+	if(array.length === 0)
+		return;
 
 	const IteratorName = iterator.asString;
 	let arrayItem: unknown;
@@ -41,7 +46,7 @@ export function processFor(ctx: Context) {
 	const IteratorValue: TExprStackItem = { type: 0, value: 0 };
 
 	const getItem = (idx: number) => {
-		arrayItem = (list.value as unknown[])[idx];
+		arrayItem = array[idx];
 		arrayItemType = tokenTypeOf(arrayItem);
 		if (!arrayItemType) throw new VAParseError(`FOR: Invalid type for item ${idx}`);
 		IteratorValue.type = arrayItemType;
@@ -57,7 +62,7 @@ export function processFor(ctx: Context) {
 
 		// log("arrayIdx", arrayIdx);
 
-		if (arrayIdx >= (list?.value as unknown[]).length) {
+		if (arrayIdx >= array.length) {
 			// ctx.lexer.removeEventListener(EVENT_TYPES.EOS, onEndOfBlock)
 			ctx.symbols.restore((iterator as Token).asString);
 			return;
@@ -65,7 +70,7 @@ export function processFor(ctx: Context) {
 		getItem(arrayIdx);
 	};
 
-	for (let idx = 0; idx < (list?.value as unknown[]).length; idx++) {
+	for (let idx = 0; idx < array.length; idx++) {
 		ctx.lexer.pushSource(block);
 		onEndOfBlock && ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);
 	}

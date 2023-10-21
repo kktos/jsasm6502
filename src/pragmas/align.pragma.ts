@@ -1,5 +1,4 @@
 import { Context } from "../context.class";
-import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { TExprStackItemNumber, parseExpression } from "../parsers/expression.parser";
 

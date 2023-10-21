@@ -21,6 +21,10 @@ interface Arguments {
 
 type TSegmentItem = [string, number, number, number];
 type TSegmentList = TSegmentItem[];
+type TConf= {
+	segments?: TSegmentList;
+	src?: string;
+};
 
 let rootDir: string;
 
@@ -48,18 +52,18 @@ function readYAMLFile(filename: string): Record<string, unknown> | boolean | num
 function main() {
 	rootDir = ".";
 
-	let conf = null;
+	let conf: TConf | null = null;
 	if (argv.conf) {
-		conf = readYAMLFile(argv.conf);
-		if (!conf || typeof conf !== "object" || !Object.hasOwn(conf, "segments")) {
+		conf = readYAMLFile(argv.conf) as TConf | null;
+		if (!conf || typeof conf !== "object") {
 			console.error(`unable to read conf file ${argv.conf}`);
 			process.exit(-1);
 		}
 	}
 
-	const filename = String(argv._[0]);
+	const filename = argv._[0] !== undefined ? String(argv._[0]) : conf?.src;
 	if (!filename) {
-		console.error("no source file");
+		console.error("need a source file to assemble");
 		process.exit(-1);
 	}
 
@@ -152,7 +156,7 @@ function main() {
 }
 
 const argv: Arguments = yargs(process.argv.splice(2))
-	.usage("Usage: jsasm [--listing] [--out filename] -f filename")
+	.usage("Usage: jsasm [--listing] [--out filename] filename")
 	.options({
 		listing: {
 			describe: "with listing output",
@@ -187,7 +191,7 @@ const argv: Arguments = yargs(process.argv.splice(2))
 			type: "string",
 		},
 	})
-	.demandCommand(1)
+	// .demandCommand(1)
 	.parseSync();
 
 // console.time("asm");

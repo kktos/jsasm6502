@@ -10,6 +10,23 @@ describe("FOR PRAGMA", () => {
 		opts.output = "";
 	});
 
+	it("should not iterate of an empty array", () => {
+		const src = `
+		.define list
+		[]
+		.end
+
+		.for idx of list
+			.echo idx
+		.end
+
+		.echo .len(list)
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(opts.output.trim()).toStrictEqual("0");
+
+	});
 
 	it("should iterate of an array of number", () => {
 		const src = `
@@ -22,6 +39,7 @@ describe("FOR PRAGMA", () => {
 		.end
 
 		`;
+		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 
@@ -46,6 +64,65 @@ describe("FOR PRAGMA", () => {
 			"colour is blue",
 			"colour is green",
 			"colour is red",
+		].join("\n"));
+	});
+
+	it("should iterate of an array of object", () => {
+		const src = `
+		.define colours
+		- color: blue
+		- color: green
+		- color: red
+		.end
+
+		.for item of colours
+			.echo "colour is "+item.color
+		.end
+
+		`;
+
+		opts.output= "";
+
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+
+		expect(opts.output.trim()).toStrictEqual([
+			"colour is blue",
+			"colour is green",
+			"colour is red",
+		].join("\n"));
+	});
+
+	it("should handle nest FOR loop", () => {
+		const src = `
+		.define colours
+		["blue", "green", "red"]
+		.end
+
+		.define nums
+		[1,2,3,4]
+		.end
+
+		.for idx of nums
+			str= ""
+			.for colour of colours
+				str= str + colour + ","
+			.end
+			.echo idx+":"+str
+		.end
+
+		`;
+
+		opts.output= "";
+
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+
+		expect(opts.output.trim()).toStrictEqual([
+			"1:blue,green,red,",
+			"2:blue,green,red,",
+			"3:blue,green,red,",
+			"4:blue,green,red,",
 		].join("\n"));
 	});
 
