@@ -18,12 +18,14 @@ export type TConsole = {
 	warn: (s?: string | null) => void;
 };
 
+export type TSegmentsConf = TSegments;
+
 export type Options = {
 	cpu?: string;
 	listing: boolean;
 
 	console: TConsole;
-	segments: TSegments;
+	segments: TSegments | null;
 
 	readFile: ReadFileFunction;
 

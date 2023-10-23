@@ -1,4 +1,6 @@
+import { TCodeObj, TSegments } from "./compiler.class";
 import { Context } from "./context.class";
+import { Dict } from "./dict.class";
 import { VAParseError } from "./helpers/errors.class";
 import { TOKEN_TYPES, Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
@@ -9,12 +11,13 @@ import { isPragmaToken } from "./parsers/pragma.tokens";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
 import { Options } from "./types/Options";
+import { TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 
 const ASM_BYTES_LEN = 32;
 
-export function assemble(mainFilename: string, opts: Options) {
+export function assemble(mainFilename: string, opts: Options): TAssemblerResult {
 	const ctx = new Context(opts, mainFilename);
 	setcpu(ctx, opts.cpu);
 

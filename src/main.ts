@@ -3,10 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import yargs from "yargs";
 import { assemble } from "./assembler";
-import { pushNumber } from "./pragmas/data.pragma";
-import { makeString } from "./pragmas/string.pragma";
-import { Options } from "./types/Options";
-import { TSegments } from "./compiler.class";
+import { Options, TSegmentsConf } from "./types/Options";
+import * as path from "node:path";
+import { link } from "./linker";
 
 interface Arguments {
 	listing?: boolean;
@@ -19,12 +18,11 @@ interface Arguments {
 	_: (string | number)[];
 }
 
-type TSegmentItem = [string, number, number, number];
-type TSegmentList = TSegmentItem[];
 type TConf = {
-	segments?: TSegmentList;
+	segments?: TSegmentsConf;
 	src?: string;
 };
+
 
 let rootDir: string;
 
@@ -52,6 +50,8 @@ function readYAMLFile(filename: string): Record<string, unknown> | boolean | num
 function main() {
 	rootDir = ".";
 
+	console.log("jsAsm v.01");
+
 	let conf: TConf | null = null;
 	if (argv.conf) {
 		conf = readYAMLFile(argv.conf) as TConf | null;
@@ -73,7 +73,7 @@ function main() {
 		readFile,
 		YAMLparse: readYAMLFile,
 		listing: argv.listing === true,
-		segments: (conf?.segments ?? null) as TSegments,
+		segments: conf?.segments ?? null,
 		cpu: "6502",
 		console,
 	};
@@ -82,76 +82,49 @@ function main() {
 		return `$${v.toString(16).padStart(len, "0").toUpperCase()}`;
 	};
 
+	const outFilename = argv.out ? argv.out : "a.out";
+	const outBasename = path.basename(outFilename, path.extname(outFilename));
+
 	let asmRes;
 	try {
 		asmRes = assemble(basename(filename), opts);
 
-		if (argv.symbols) console.log("\n", asmRes.symbols.dump());
+		if (argv.symbols) {
+			writeFileSync(`${outBasename}.symbols`, asmRes.symbols.dump());
+		}
 
 		if (asmRes.error) {
-			throw "";
+			process.exit(-1);
 		}
 
-		let finalCode: unknown[] = [];
-		const segmentList: TSegmentList = [];
-		for (const name of Object.keys(asmRes.segments)) {
-			const segObj = asmRes.obj[name];
+		const linkRes = link(asmRes, { hasSegmentDirectory: !!argv.segdir});
 
-			const currPos = finalCode.length;
-
-			if (segObj) finalCode = finalCode.concat(segObj);
-
-			const seg = asmRes.segments[name];
-			const segLen = seg.end - seg.start + 1;
-			let padLen = 0;
-			if ((segObj?.length ?? 0) < segLen && Object.hasOwn(seg, "pad")) {
-				padLen = segLen - segObj.length;
-				const padBuffer = Array.from({ length: padLen }, () => seg.pad);
-				finalCode = finalCode.concat(padBuffer);
-			}
-
-			if (argv.segments)
+		if (argv.segments) {
+			console.log("");
+			for (const [name, offset, len, padLen, org, size] of linkRes.dir) {
 				console.log(
-					hexa(currPos, 8),
-					": SEGMENT",
+					hexa(offset, 8),
+					"LEN:",hexa(len),
+					"PAD:",hexa(padLen),
+					"SIZE:",hexa(size),
+					"ADDR:",hexa(org),
 					name,
-					hexa(segObj?.length ?? 0),
-					padLen ? `PAD ${hexa(padLen)}` : "",
 				);
 
-			if (argv.segdir) {
-				segmentList.push([name, currPos, (segObj?.length ?? 0) + padLen, seg.start]);
 			}
-
-			if (argv.dump) asmRes.dump(name);
 		}
 
-		if (argv.segdir) {
-			const lenBeforeDir = finalCode.length;
-			for (const [name, offset, len, org] of segmentList) {
-				const recordBuffer = makeString(null, String(name), { charSize: 1, hasLeadingLength: true });
-				pushNumber(recordBuffer, { value: offset, type: 0 }, -4);
-				pushNumber(recordBuffer, { value: len, type: 0 }, -4);
-				pushNumber(recordBuffer, { value: org, type: 0 }, -4);
-				const recordSize: number[] = [];
-				pushNumber(recordSize, { value: recordBuffer.length + 1, type: 0 }, 1);
-				finalCode = finalCode.concat(recordSize.concat(recordBuffer));
-			}
-			const dirOffset: number[] = [];
-			pushNumber(dirOffset, { value: lenBeforeDir, type: 0 }, -4);
-			finalCode = finalCode.concat(dirOffset, makeString(null, "DISK", { charSize: 1 }));
-		}
+		// if (argv.dump) asmRes.dump(name);
 
-		const outFilename = argv.out ? argv.out : "a.out";
-		if (finalCode.length) {
-			const buffer = Buffer.from(finalCode as number[]);
+		if (linkRes.finalCode.length) {
+			const buffer = Buffer.from(linkRes.finalCode as number[]);
 			writeFileSync(outFilename, buffer);
 			console.log("binary output", outFilename);
 		} else {
 			console.log("no code to save !");
 		}
 	} catch (err) {
-		//err && console.error("ERROR:", err);
+		err && console.error("ERROR:", err);
 	}
 }
 

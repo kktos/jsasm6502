@@ -99,7 +99,7 @@ export class Context {
 
 	print(msg: string, wantItDeferred = false) {
 		if (wantItDeferred) {
-			this._deferredMsg += msg;
+			this._deferredMsg += `${msg}\n`;
 			return;
 		}
 		if (this.pass < 2) return;
@@ -117,6 +117,11 @@ export class Context {
 	}
 
 	error(msg: string) {
+		if (this._deferredMsg !== "") {
+			this.console.log(this._deferredMsg);
+			this._deferredMsg = "";
+		}
+
 		const { posInLine, line: lineIdx } = this.lexer.pos();
 		const line = this.lexer.line();
 		this.console.error(

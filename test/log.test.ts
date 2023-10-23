@@ -44,5 +44,15 @@ describe("log", () => {
 		expect(opts.output.trim()).toStrictEqual(`object {"key":"value"}`);
 	});
 
+	it("tests .error", () => {
+		const src = `
+			.log "hello"
+			.error "boom"
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(opts.output.trim()).toMatch(/^hello\n\nboom in  at/m);
+	});
+
 
 });

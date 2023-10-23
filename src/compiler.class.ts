@@ -12,10 +12,11 @@ type TSegment = {
 	pad?: number;
 };
 export type TSegments = Record<string, TSegment>;
+export type TCodeObj = Record<string, Array<unknown>>;
 
 export class Compiler {
 	public pc = 0;
-	public obj: Record<string, Array<unknown>> = {};
+	public obj: TCodeObj = {};
 	private _output: string | null = null;
 	public segments: TSegments;
 	private currentSegment: string | null;
