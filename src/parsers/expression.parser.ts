@@ -4,10 +4,13 @@ import { getValueType } from "../helpers/utils";
 import { TOKEN_TYPES, Token, getTypeName } from "../lexer/token.class";
 import { getVarValue } from "../variable";
 import { TFunctionFlags, execFunction, fnFlags, fnParmCount, isFunctionExists } from "./function.parser";
+import { TDictValue } from "../dict.class";
 
 const log = console.log;
 
 const LLCHARSET = new Set([TOKEN_TYPES.MINUS, TOKEN_TYPES.PLUS]);
+const FIELD_TOKENS = [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
+
 
 export type TExprStackItemValueType = number | string | Record<string, unknown> | boolean | Array<unknown>;
 export type TExprStackItem = {
@@ -685,7 +688,6 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	let name = tok.asString;
 	let ns = undefined;
 	const checkIfExists = exprCtx.ctx.pass > 1 && !exprCtx.flags?.allowUndef;
-	const tokens = [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
 
 	// exprCtx.ctx.lexer.next();
 
@@ -717,62 +719,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	// log("parseVarLabel", value);
 
-	while (exprCtx.ctx.lexer.match(tokens)) {
-		switch (exprCtx.ctx.lexer.tokenType()) {
-			case TOKEN_TYPES.DOT: {
-				exprCtx.ctx.lexer.next();
-
-				if (value && value.type !== TOKEN_TYPES.OBJECT) throw new VAExprError(`IDENTIFIER : Not an object: "${name}"`);
-
-				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
-					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.ctx.lexer.token2().text}"`);
-
-				name = exprCtx.ctx.lexer.token2().text;
-				const obj = value?.value as Record<string, TExprStackItemValueType>;
-				const fieldValue = obj?.[name];
-
-				if (value && fieldValue === undefined) throw new VAExprError(`IDENTIFIER : Unknown Object field: "${name}"`);
-
-				value = {
-					type: value ? getValueType(fieldValue) : TOKEN_TYPES.NUMBER,
-					value: fieldValue,
-				};
-
-				exprCtx.ctx.lexer.next();
-				break;
-			}
-
-			case TOKEN_TYPES.LEFT_BRACKET: {
-				if (value && value.type !== TOKEN_TYPES.ARRAY)
-					throw new VAExprError(`IDENTIFIER : Not an array ${ns ? `${ns}.` : ""}${name}`);
-
-				exprCtx.ctx.lexer.next();
-				const arrayIdx = parseExpression(exprCtx.ctx, new Set([TOKEN_TYPES.RIGHT_BRACKET]), TOKEN_TYPES.NUMBER);
-
-				if (!arrayIdx) throw new VAExprError("IDENTIFIER: Missing array index !?!");
-
-				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET))
-					throw new VAExprError(`IDENTIFIER : Missing close bracket ${ns ? `${ns}.` : ""}${name}`);
-
-				exprCtx.ctx.lexer.next();
-
-				const valueArray = value?.value as Array<TExprStackItemValueType | Token>;
-				const idx = arrayIdx.value as number;
-
-				if (idx >= valueArray.length)
-					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${valueArray.length}`);
-
-				// exprCtx.ctx.pass > 1 && log("ARRAY", idx, valueArray[idx], valueArray);
-
-				const itemValue = valueArray[idx];
-				value =
-					itemValue instanceof Token
-						? { type: getValueType(itemValue.value), value: itemValue.value as TExprStackItemValueType }
-						: { type: getValueType(itemValue), value: itemValue };
-				break;
-			}
-		}
-	}
+	value= parse_object_and_array(exprCtx, ns, name, value);
 
 	if (!value && exprCtx.ctx.pass > 1) {
 		throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
@@ -839,6 +786,80 @@ function parse_variable(exprCtx: TExprCtx) {
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) throw new VAExprError("TERM: expecting a variable name here");
 
 	const varName = exprCtx.ctx.lexer.token2().asString;
-	exprCtx.stack.push(getVarValue(exprCtx.ctx, varName));
+	let value= getVarValue(exprCtx.ctx, varName);
+
 	exprCtx.ctx.lexer.next();
+
+	value= parse_object_and_array(exprCtx, undefined, varName, value);
+
+	exprCtx.stack.push(value);
+	// exprCtx.ctx.lexer.next();
+}
+
+// parse object fields and array indices
+//  field : "." <identifier>
+//  array : "[" <expr> "]"
+function parse_object_and_array(exprCtx: TExprCtx, varNamespace: string | undefined, varName: string, varValue: TDictValue) {
+	const ns= varNamespace;
+	let name= varName;
+	let value= varValue;
+
+	while (exprCtx.ctx.lexer.match(FIELD_TOKENS)) {
+		switch (exprCtx.ctx.lexer.tokenType()) {
+			case TOKEN_TYPES.DOT: {
+				exprCtx.ctx.lexer.next();
+
+				if (value && value.type !== TOKEN_TYPES.OBJECT) throw new VAExprError(`IDENTIFIER : Not an object: "${name}"`);
+
+				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
+					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.ctx.lexer.token2().text}"`);
+
+				name = exprCtx.ctx.lexer.token2().text;
+				const obj = value?.value as Record<string, TExprStackItemValueType>;
+				const fieldValue = obj?.[name];
+
+				if (value && fieldValue === undefined) throw new VAExprError(`IDENTIFIER : Unknown Object field: "${name}"`);
+
+				value = {
+					type: value ? getValueType(fieldValue) : TOKEN_TYPES.NUMBER,
+					value: fieldValue,
+				};
+
+				exprCtx.ctx.lexer.next();
+				break;
+			}
+
+			case TOKEN_TYPES.LEFT_BRACKET: {
+				if (value && value.type !== TOKEN_TYPES.ARRAY)
+					throw new VAExprError(`IDENTIFIER : Not an array ${ns ? `${ns}.` : ""}${name}`);
+
+				exprCtx.ctx.lexer.next();
+				const arrayIdx = parseExpression(exprCtx.ctx, new Set([TOKEN_TYPES.RIGHT_BRACKET]), TOKEN_TYPES.NUMBER);
+
+				if (!arrayIdx) throw new VAExprError("IDENTIFIER: Missing array index !?!");
+
+				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET))
+					throw new VAExprError(`IDENTIFIER : Missing close bracket ${ns ? `${ns}.` : ""}${name}`);
+
+				exprCtx.ctx.lexer.next();
+
+				const valueArray = value?.value as Array<TExprStackItemValueType | Token>;
+				const idx = arrayIdx.value as number;
+
+				if (idx >= valueArray.length)
+					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${valueArray.length}`);
+
+				// exprCtx.ctx.pass > 1 && log("ARRAY", idx, valueArray[idx], valueArray);
+
+				const itemValue = valueArray[idx];
+				value =
+					itemValue instanceof Token
+						? { type: getValueType(itemValue.value), value: itemValue.value as TExprStackItemValueType }
+						: { type: getValueType(itemValue), value: itemValue };
+				break;
+			}
+		}
+	}
+
+	return value;
 }

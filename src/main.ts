@@ -73,7 +73,7 @@ function main() {
 		readFile,
 		YAMLparse: readYAMLFile,
 		listing: argv.listing === true,
-		segments: (conf?.segments ?? {}) as TSegments,
+		segments: (conf?.segments ?? null) as TSegments,
 		cpu: "6502",
 		console,
 	};

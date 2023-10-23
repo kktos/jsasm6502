@@ -8,19 +8,19 @@ describe("Macro", () => {
 	it("tests that labels work with expanded macro", () => {
 		const src = `
 			.macro test a,x,y
-			lda.w a
-			ldx.w x
-			ldy.w y
+				lda.w a
+				ldx.w x
+				ldy.w y
 			.end
 
 			start:
-			nop
-			test 1,2,3
+				nop
+				test 1,2,3
 			end:
-			nop
-			jmp start
-			jmp end
-			.out .hex(start)," ", .hex(end)
+				nop
+				jmp start
+				jmp end
+				.out .hex(start)," ", .hex(end)
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();

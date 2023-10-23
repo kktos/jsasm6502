@@ -8,7 +8,7 @@ const OVERRIDEN = Symbol("overriden");
 const MARKERS = Symbol("markers");
 
 type TLocalDict = TExprStackItem & { isLocal: boolean };
-type TDictValue = TExprStackItem & { localDict?: Record<string, TLocalDict> };
+export type TDictValue = TExprStackItem & { localDict?: Record<string, TLocalDict> };
 
 type TOverridenDict = Record<typeof OVERRIDEN, Record<string, TDictValue[]>>;
 type TMarkersDict = Record<typeof MARKERS, number[]>;

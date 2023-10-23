@@ -1,11 +1,14 @@
 import { VABuildError, VAExprError } from "./helpers/errors.class";
 import { getHexByte, getHexWord, low } from "./helpers/utils";
 
+const log= console.log;
+
 const BYTECOUNTPERLINE = 6;
 
 type TSegment = {
 	start: number;
 	end: number;
+	size: number;
 	pad?: number;
 };
 export type TSegments = Record<string, TSegment>;
@@ -19,13 +22,18 @@ export class Compiler {
 
 	constructor(segments: TSegments) {
 		if (segments == null) {
-			this.segments = { CODE: { start: 0x1000, end: 0xffff } };
+			this.segments = { CODE: { start: 0x1000, end: 0xffff, size: 0 } };
 			this.currentSegment = "CODE";
 			this.obj[this.currentSegment] = [];
 			this.pc = this.segments[this.currentSegment].start;
 		} else {
 			this.segments = segments;
 			this.currentSegment = null;
+		}
+
+		for(const name in this.segments) {
+			const segment= this.segments[name];
+			segment.size= segment.end - segment.start + 1;
 		}
 	}
 
@@ -36,13 +44,16 @@ export class Compiler {
 	}
 
 	segment() {
-		if (!this.currentSegment) throw new VAExprError("No segment defined");
+		if (!this.currentSegment) throw new VAExprError("No segment selected");
 		return { name: this.currentSegment, ...this.segments[this.currentSegment] };
 	}
 
 	select(segmentName: string) {
 		this.currentSegment = segmentName;
-		if (this.segments[this.currentSegment] === undefined) throw new VABuildError("No such segment");
+		if (this.segments[this.currentSegment] === undefined) {
+			// log("SEGMENT SELECT", segmentName, JSON.stringify(this.segments));
+			throw new VABuildError("No such segment");
+		}
 
 		if (this.obj[this.currentSegment] === undefined) this.obj[this.currentSegment] = [];
 
@@ -50,7 +61,7 @@ export class Compiler {
 	}
 
 	setPC(addr: number) {
-		if (!this.currentSegment) throw new VABuildError("No segment defined");
+		if (!this.currentSegment) throw new VABuildError("No segment selected");
 
 		const seg = this.segments[this.currentSegment];
 		if (addr < seg.start || addr > seg.end)
@@ -72,15 +83,15 @@ export class Compiler {
 		// 			getHexWord(this.pc),
 		// 			bytes);
 
-		if (!this.currentSegment) throw new VABuildError("No segment defined");
+		if (!this.currentSegment) throw new VABuildError("EMIT: No segment selected");
 
 		const obj = this.obj[this.currentSegment];
-		if (obj === undefined) throw new VABuildError("No Object Segment set");
+		if (obj === undefined) throw new VABuildError("EMIT: No Object Segment set");
 
 		const seg = this.segments[this.currentSegment];
 		if (this.pc + bytes.length > seg.end + 1)
 			throw new VABuildError(
-				`Code is out of Segment "${this.currentSegment}" range ${getHexWord(this.pc)}:${getHexWord(
+				`EMIT: Code is out of Segment "${this.currentSegment}" range ${getHexWord(this.pc)}:${getHexWord(
 					this.pc + bytes.length,
 				)} > ${getHexWord(seg.start)}:${getHexWord(seg.end)}`,
 			);
@@ -116,7 +127,7 @@ export class Compiler {
 
 	dump(segmentName: string, bytePerLine = 16) {
 		const obj = this.obj[segmentName];
-		if (obj === undefined || !obj.length) throw new VABuildError(`No Object Code for Segment ${segmentName}`);
+		if (obj === undefined || !obj.length) throw new VABuildError(`EMIT: No Object Code for Segment ${segmentName}`);
 
 		let s = "";
 

@@ -1,8 +1,14 @@
 import { Context } from "./context.class";
+import { TDictValue } from "./dict.class";
 import { VAExprError } from "./helpers/errors.class";
 import { TOKEN_TYPES } from "./lexer/token.class";
 
-export function getVarValue(ctx: Context, name: string) {
+const log= console.log;
+
+export function getVarValue(ctx: Context, name: string): TDictValue {
+
+	// log("getVarValue", ctx.pass, name);
+
 	switch (name) {
 		case "CPU":
 			return { type: TOKEN_TYPES.STRING, value: ctx.cpu };
@@ -27,9 +33,17 @@ export function getVarValue(ctx: Context, name: string) {
 			return { type: TOKEN_TYPES.STRING, value: ctx.code.segment().name };
 		}
 
+		case "SEGMENT": {
+			return { type: TOKEN_TYPES.OBJECT, value: ctx.code.segment() };
+		}
+
 		case "NAMESPACE":
 		case "NS": {
 			return { type: TOKEN_TYPES.STRING, value: ctx.symbols.namespace };
+		}
+
+		case "PC": {
+			return { type: TOKEN_TYPES.STRING, value: ctx.code.pc };
 		}
 
 		// // for macros
@@ -39,6 +53,6 @@ export function getVarValue(ctx: Context, name: string) {
 		// }
 
 		default:
-			throw new VAExprError(`Unknown variable "${name}"`);
+			throw new VAExprError(`SYS: Unknown variable "${name}"`);
 	}
 }
