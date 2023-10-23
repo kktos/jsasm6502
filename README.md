@@ -63,6 +63,31 @@ printStr
 
 ```
 
+## System variables
+
+System variables are readonly and they are prefixed by a dot "."
+```
+; get name of the current cpu opcodes
+.cpu "6502"
+.echo .cpu  ; => 6502
+.cpu "65C02"
+.echo .cpu  ; => 65C02
+
+; get current namespace
+.echo .namespace
+
+; get current segment (name | start | end | size)
+.echo .segment.name
+.echo .segment.start
+.echo .segment.end
+.echo .segment.size
+
+; get program counter (pc | *)
+.echo .pc
+.echo *
+
+```
+
 ## Variable & Label
 
 ```
@@ -230,23 +255,54 @@ Namespaces can be nested and they use a stack for this
 ## Memory
 
 Memory can be segmented in part and you can set your code to be assembled for a specific part.  
-This will allow you, for instance, to control whether your code can fit in a segment.
+This will allow you, for instance, to control whether your code can fit in a segment.  
+To set up segments, you will need a yaml conf file with an entry segments with hold the map of your segments.  
+For each segment, you have to define the starting and ending addresses. And optionally, a padding value to fill the unused space (default is $00).
+```yaml
+# main.conf
+segments:
+  BOOT1:		{ start: 0x0800, end: 0x08FF }
+  LOADER:		{ start: 0xB700, end: 0xBFFF, pad: 0xFF }
+```
+
 ```
 ; use a segment
 .segment loader
+; here the program counter has be set to $B700, start of the loader segment
 ```
+
 You can set the program counter, but with addresses in the range defined by the current segment.
 ```
 ; set the program counter
-.org $800
-* = $800
+.org $B780
+* = $B780
+; as we're in the loader segment, the addresses range is $B700 to $B7FF. Org values ouside that range will raise an error.
 ```
 
 ## Macro
 
 ```
-.macro printStr
-.end
+; create a macro with a name and parameter(s)
+	.macro printStr str
+		ldx #<str
+		ldy #>str
+		jsr printStr
+	.end
+
+    printStr welcome
+    rts
+welcome
+    .cstr "Welcome !"
+
+; you can capture all the parameters using the rest notation
+	.macro defStruc id, ...parms
+		.dw id
+		.repeat .len(parms) idx
+		    .dw parms[idx]
+		.end
+	.end
+	defStruc $CAFE, "ABCD", $1234
+
 ```
 
 ## Miscellaneous
