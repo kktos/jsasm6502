@@ -3,10 +3,9 @@ import { TDictValue } from "./dict.class";
 import { VAExprError } from "./helpers/errors.class";
 import { TOKEN_TYPES } from "./lexer/token.class";
 
-const log= console.log;
+const log = console.log;
 
 export function getVarValue(ctx: Context, name: string): TDictValue {
-
 	// log("getVarValue", ctx.pass, name);
 
 	switch (name) {

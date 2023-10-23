@@ -11,7 +11,6 @@ const log = console.log;
 const LLCHARSET = new Set([TOKEN_TYPES.MINUS, TOKEN_TYPES.PLUS]);
 const FIELD_TOKENS = [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
 
-
 export type TExprStackItemValueType = number | string | Record<string, unknown> | boolean | Array<unknown>;
 export type TExprStackItem = {
 	type: number;
@@ -719,7 +718,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	// log("parseVarLabel", value);
 
-	value= parse_object_and_array(exprCtx, ns, name, value);
+	value = parse_object_and_array(exprCtx, ns, name, value);
 
 	if (!value && exprCtx.ctx.pass > 1) {
 		throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
@@ -786,11 +785,11 @@ function parse_variable(exprCtx: TExprCtx) {
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) throw new VAExprError("TERM: expecting a variable name here");
 
 	const varName = exprCtx.ctx.lexer.token2().asString;
-	let value= getVarValue(exprCtx.ctx, varName);
+	let value = getVarValue(exprCtx.ctx, varName);
 
 	exprCtx.ctx.lexer.next();
 
-	value= parse_object_and_array(exprCtx, undefined, varName, value);
+	value = parse_object_and_array(exprCtx, undefined, varName, value);
 
 	exprCtx.stack.push(value);
 	// exprCtx.ctx.lexer.next();
@@ -799,10 +798,15 @@ function parse_variable(exprCtx: TExprCtx) {
 // parse object fields and array indices
 //  field : "." <identifier>
 //  array : "[" <expr> "]"
-function parse_object_and_array(exprCtx: TExprCtx, varNamespace: string | undefined, varName: string, varValue: TDictValue) {
-	const ns= varNamespace;
-	let name= varName;
-	let value= varValue;
+function parse_object_and_array(
+	exprCtx: TExprCtx,
+	varNamespace: string | undefined,
+	varName: string,
+	varValue: TDictValue,
+) {
+	const ns = varNamespace;
+	let name = varName;
+	let value = varValue;
 
 	while (exprCtx.ctx.lexer.match(FIELD_TOKENS)) {
 		switch (exprCtx.ctx.lexer.tokenType()) {

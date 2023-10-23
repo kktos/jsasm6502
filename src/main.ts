@@ -21,7 +21,7 @@ interface Arguments {
 
 type TSegmentItem = [string, number, number, number];
 type TSegmentList = TSegmentItem[];
-type TConf= {
+type TConf = {
 	segments?: TSegmentList;
 	src?: string;
 };

@@ -29,15 +29,14 @@ export function processFor(ctx: Context) {
 	const list = parseExpression(ctx, undefined, TOKEN_TYPES.ARRAY);
 	if (!list) throw new VAParseError("FOR: need an array to iterate of");
 
-	const array= (list?.value as unknown[]);
+	const array = list?.value as unknown[];
 
 	// log("FOR list", ctx.pass, list);
 
 	const [block] = readBlock(ctx);
 	if (!block) throw new VAParseError("FOR: empty block");
 
-	if(array.length === 0)
-		return;
+	if (array.length === 0) return;
 
 	const IteratorName = iterator.asString;
 	let arrayItem: unknown;

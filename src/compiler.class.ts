@@ -1,7 +1,7 @@
 import { VABuildError, VAExprError } from "./helpers/errors.class";
 import { getHexByte, getHexWord, low } from "./helpers/utils";
 
-const log= console.log;
+const log = console.log;
 
 const BYTECOUNTPERLINE = 6;
 
@@ -31,9 +31,9 @@ export class Compiler {
 			this.currentSegment = null;
 		}
 
-		for(const name in this.segments) {
-			const segment= this.segments[name];
-			segment.size= segment.end - segment.start + 1;
+		for (const name in this.segments) {
+			const segment = this.segments[name];
+			segment.size = segment.end - segment.start + 1;
 		}
 	}
 
