@@ -64,7 +64,7 @@ describe("FOR PRAGMA", () => {
 			"colour is blue",
 			"colour is green",
 			"colour is red",
-		].join("\n"));
+		].join("\n\n"));
 	});
 
 	it("should iterate of an array of object", () => {
@@ -90,7 +90,7 @@ describe("FOR PRAGMA", () => {
 			"colour is blue",
 			"colour is green",
 			"colour is red",
-		].join("\n"));
+		].join("\n\n"));
 	});
 
 	it("should handle nest FOR loop", () => {
@@ -123,7 +123,7 @@ describe("FOR PRAGMA", () => {
 			"2:blue,green,red,",
 			"3:blue,green,red,",
 			"4:blue,green,red,",
-		].join("\n"));
+		].join("\n\n"));
 	});
 
 });

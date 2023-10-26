@@ -21,7 +21,7 @@ export class Compiler {
 	public segments: TSegments;
 	private currentSegment: string | null;
 
-	constructor(segments: TSegments) {
+	constructor(segments: TSegments | null) {
 		if (segments == null) {
 			this.segments = { CODE: { start: 0x1000, end: 0xffff, size: 0 } };
 			this.currentSegment = "CODE";

@@ -1,6 +1,4 @@
-import { TCodeObj, TSegments } from "./compiler.class";
 import { Context } from "./context.class";
-import { Dict } from "./dict.class";
 import { VAParseError } from "./helpers/errors.class";
 import { TOKEN_TYPES, Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
@@ -10,16 +8,18 @@ import { parsePragma } from "./parsers/pragma.parser";
 import { isPragmaToken } from "./parsers/pragma.tokens";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
-import { Options } from "./types/Options";
+import { Options } from "./types/Options.type";
 import { TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 
 const ASM_BYTES_LEN = 32;
 
-export function assemble(mainFilename: string, opts: Options): TAssemblerResult {
-	const ctx = new Context(opts, mainFilename);
+export function assemble(src: string | { content: string }, opts: Options): TAssemblerResult {
+	const ctx = new Context(opts, src);
 	setcpu(ctx, opts.cpu);
+
+	if (ctx.symbols.dump().trim() !== "") throw `ARGL ! -> "${ctx.symbols.dump()}"`;
 
 	const tryAsm = () => {
 		try {
@@ -56,6 +56,8 @@ export function assemble(mainFilename: string, opts: Options): TAssemblerResult 
 }
 
 function asm(ctx: Context) {
+	// log("ASM", ctx.pass, ctx.lexer.pos());
+
 	while (!ctx.wannaStop && ctx.lexer.nextLine()) {
 		const token = ctx.lexer.token();
 
@@ -66,6 +68,9 @@ function asm(ctx: Context) {
 		if (token.type === TOKEN_TYPES.INVALID) throw new VAParseError(`Invalid character ${token.value}`);
 
 		const currLine = ctx.lexer.line();
+
+		// log(ctx.pass, ctx.lexer.pos().line,  currLine);
+
 		let label = null;
 
 		const lblParser = (token: Token) => {
@@ -135,7 +140,7 @@ function asm(ctx: Context) {
 			break;
 		}
 
-		// console.log("LOOP", ctx.lexer.token(), ctx.pass);
+		// log("LOOP", ctx.lexer.token(), ctx.pass);
 
 		const tok = ctx.lexer.token();
 		if (tok) throw new VAParseError(`Syntax Error on ${tok.text}`);

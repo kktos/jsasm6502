@@ -1,7 +1,7 @@
 import { TSegments, TCodeObj } from "../compiler.class";
 import { Dict } from "../dict.class";
 
-export type TAssemblerResult= {
+export type TAssemblerResult = {
 	symbols: Dict;
 	segments: TSegments;
 	obj: TCodeObj;

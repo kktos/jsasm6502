@@ -1,26 +1,33 @@
+import { VAParseError } from "./helpers/errors.class";
 import { TOKEN_TYPES, getTypeName } from "./lexer/token.class";
 import { TExprStackItem } from "./parsers/expression.parser";
 
 export const NS_GLOBAL = "GLOBAL";
+const FN_ALL = "*";
 
 const NOSYMBOL = Symbol("no symbol");
 const OVERRIDEN = Symbol("overriden");
 const MARKERS = Symbol("markers");
+const FUNCTIONS = Symbol("functions");
 
 type TLocalDict = TExprStackItem & { isLocal: boolean };
 export type TDictValue = TExprStackItem & { localDict?: Record<string, TLocalDict> };
 
 type TOverridenDict = Record<typeof OVERRIDEN, Record<string, TDictValue[]>>;
-type TMarkersDict = Record<typeof MARKERS, number[]>;
+type TMarkerDict = Record<typeof MARKERS, number[]>;
+type TNamespaceEntry = Record<TModuleKey, TDictValue> & TOverridenDict & TMarkerDict;
 
-type TNamespaceEntry = string | typeof NOSYMBOL;
-type TNamespace = Record<TNamespaceEntry, TDictValue> & TOverridenDict & TMarkersDict;
-type TNamespaceDict = Record<string, TNamespace>;
+type TFunctionDict = Record<typeof FUNCTIONS, Record<string, TNamespaceEntry>>;
 
-const globalNS: TNamespace = {
+type TModuleKey = string | typeof NOSYMBOL;
+type TModuleEntry = TNamespaceEntry & TFunctionDict;
+type TModuleDict = Record<string, TModuleEntry>;
+
+const globalNS: TModuleEntry = {
 	[MARKERS]: [],
 	[OVERRIDEN]: {},
 	[NOSYMBOL]: { type: 0, value: 0 },
+	[FUNCTIONS]: {},
 };
 
 const log = console.log;
@@ -28,28 +35,35 @@ const log = console.log;
 export class Dict {
 	private exports: Record<string, string> = {};
 	private nsStack: string[] = [];
-	private currentName = NS_GLOBAL;
+	private fnStack: string[] = [];
+	private currentNamespace = NS_GLOBAL;
+	private currentFunction = FN_ALL;
+	private fn: TNamespaceEntry | null = null;
 
 	constructor(
 		private global = { ...globalNS },
-		private ns: TNamespace = global,
-		private namespaces: TNamespaceDict = { [NS_GLOBAL]: global },
+		private ns: TModuleEntry = global,
+		private namespaces: TModuleDict = { [NS_GLOBAL]: global },
 	) {
-		this.select(NS_GLOBAL);
+		this.global = { ...globalNS };
+		this.ns = this.global;
+		this.namespaces = { [NS_GLOBAL]: this.global };
+
+		this.nsSelect(NS_GLOBAL);
 		if (!this.global) throw new Error(`NO GLOBAL !?! ${this}`);
 	}
 
 	get namespace() {
-		return this.currentName;
+		return this.currentNamespace;
 	}
 
 	get isGlobal() {
-		return this.currentName === NS_GLOBAL;
+		return this.currentNamespace === NS_GLOBAL;
 	}
 
 	export(name: string) {
 		this.global[name] = this.ns[name] ?? { type: 0, value: 0, extra: { exported: 1 } };
-		this.exports[name] = this.currentName;
+		this.exports[name] = this.currentNamespace;
 	}
 
 	exportMany(regex: string) {
@@ -57,25 +71,28 @@ export class Dict {
 		const list = Object.keys(this.ns).filter((name) => name.match(re));
 		for (const name of list) {
 			this.global[name] = this.ns[name];
-			this.exports[name] = this.currentName;
+			this.exports[name] = this.currentNamespace;
 		}
 		return list.length;
 	}
 
 	isExported(name: string, ns?: string) {
-		return Object.hasOwn(this.exports, name) && this.exports[name] === (ns ? ns : this.currentName);
+		return Object.hasOwn(this.exports, name) && this.exports[name] === (ns ? ns : this.currentNamespace);
 	}
 
 	set(name: string, value: TExprStackItem) {
 		// log(`---- SET ${this.currentName}.${name}= ${value.value}`);
 
-		this.ns[name] = value;
-
-		if (this.exports[name] === this.currentName) {
-			const exported = this.global[name]?.extra?.exported;
-			this.global[name] = value;
-			if (typeof exported === "number" && value?.extra) {
-				value.extra.exported = exported;
+		if (this.fn) {
+			this.fn[name] = value;
+		} else {
+			this.ns[name] = value;
+			if (this.exports[name] === this.currentNamespace) {
+				const exported = this.global[name]?.extra?.exported;
+				this.global[name] = value;
+				if (typeof exported === "number" && value?.extra) {
+					value.extra.exported = exported;
+				}
 			}
 		}
 	}
@@ -84,7 +101,7 @@ export class Dict {
 	get(name: typeof MARKERS, ns?: string): number[];
 	get(name: typeof MARKERS | string, ns?: string): TDictValue | number[] {
 		if (ns) return this.namespaces[ns]?.[name];
-		return this.ns[name] ? this.ns[name] : this.global[name];
+		return this.fn?.[name] ?? this.ns[name] ?? this.global[name];
 	}
 
 	search(name: string) {
@@ -93,6 +110,10 @@ export class Dict {
 			if (this.namespaces[ns][name]) matches.push(ns);
 		}
 		return matches;
+	}
+
+	nsHasFunction(name: string) {
+		return this.ns[FUNCTIONS][name] !== undefined;
 	}
 
 	override(name: string, value: TExprStackItem) {
@@ -161,48 +182,82 @@ export class Dict {
 		return markers[pos];
 	}
 
+	exists(name: string, ns: string | null = null) {
+		if (ns) return this.fn ? Object.hasOwn(this.fn, name) : Object.hasOwn(this.namespaces[ns], name);
+		return (
+			(this.fn && Object.hasOwn(this.fn, name)) || Object.hasOwn(this.ns, name) || Object.hasOwn(this.global, name)
+		);
+	}
+
 	nsExists(name: string) {
 		return this.namespaces[name] !== undefined;
 	}
 
-	exists(name: string, ns: string | null = null) {
-		if (ns) return Object.hasOwn(this.namespaces[ns], name);
+	nsSelect(nsName?: string) {
+		const name = nsName ?? NS_GLOBAL;
 
-		if (!this.global) throw new Error(`NO GLOBAL ${name} ${this.global}`);
-
-		return Object.hasOwn(this.ns, name) || Object.hasOwn(this.global, name);
-	}
-
-	select(name?: string) {
-		const nsName = name ?? NS_GLOBAL;
-
-		if (!this.namespaces[nsName]) {
-			this.namespaces[nsName] = {
+		if (!this.namespaces[name]) {
+			this.namespaces[name] = {
 				[MARKERS]: [],
 				[NOSYMBOL]: { type: 0, value: 0 },
 				[OVERRIDEN]: {},
+				[FUNCTIONS]: {},
 			};
 		}
 
-		if (this.currentName) this.nsStack.push(nsName);
-
-		this.currentName = nsName;
-		this.ns = this.namespaces[this.currentName];
+		if (this.currentNamespace) this.nsStack.push(name);
+		this.currentNamespace = name;
+		this.ns = this.namespaces[this.currentNamespace];
 	}
 
-	nsPop() {
+	nsUnselect() {
 		this.nsStack.pop();
-		this.currentName = this.nsStack.slice(-1).shift() ?? NS_GLOBAL;
-		this.ns = this.namespaces[this.currentName];
+		this.currentNamespace = this.nsStack.slice(-1).shift() ?? NS_GLOBAL;
+		this.ns = this.namespaces[this.currentNamespace];
+	}
+
+	fnDeclare(name: string) {
+		if (Object.hasOwn(this.ns[FUNCTIONS], name)) {
+			throw new VAParseError(`Duplicate function ${name} in ${this.currentNamespace}`);
+		}
+		this.ns[FUNCTIONS][name] = {
+			[MARKERS]: [],
+			[NOSYMBOL]: { type: 0, value: 0 },
+			[OVERRIDEN]: {},
+		};
+	}
+
+	fnEnter(name: string) {
+		if (!this.ns[FUNCTIONS][name]) {
+			throw new VAParseError(`Unknown function ${name}`);
+		}
+
+		this.fnStack.push(this.currentFunction);
+		this.currentFunction = name;
+		this.fn = this.ns[FUNCTIONS][name];
+	}
+
+	fnLeave() {
+		if (this.fnStack.length === 0) {
+			throw new VAParseError("Not in a function");
+		}
+		this.currentFunction = this.fnStack.pop() ?? FN_ALL;
+		this.fn = this.currentFunction !== FN_ALL ? this.ns[FUNCTIONS][this.currentFunction] : null;
+	}
+
+	fnIsOneActive() {
+		return this.fn !== null;
 	}
 
 	dump() {
 		let out = "";
 		for (const name of Object.keys(this.namespaces).sort()) {
-			out += `${name}:\n`;
-
 			const ns = this.namespaces[name];
-			for (const entry of Object.keys(ns).sort()) {
+			const entries = Object.keys(ns).sort();
+
+			if (entries.length) out += `${name}:\n`;
+
+			for (const entry of entries) {
 				const val = ns[entry];
 				out += `  ${entry}: `;
 				out += getTypeName(val?.type).toLowerCase();

@@ -5,7 +5,7 @@ import { TOKEN_TYPES } from "./lexer/token.class";
 
 const log = console.log;
 
-export function getVarValue(ctx: Context, name: string): TDictValue {
+export function getSysVarValue(ctx: Context, name: string): TDictValue {
 	// log("getVarValue", ctx.pass, name);
 
 	switch (name) {

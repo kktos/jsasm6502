@@ -32,7 +32,7 @@ export function setcpu(ctx: Context, name?: string) {
 
 export function processSetCPU(ctx: Context) {
 	const tok = ctx.lexer.token();
-	if (!tok || tok.type !== TOKEN_TYPES.STRING) throw new VAParseError("Need cpu name string");
+	if (tok?.type !== TOKEN_TYPES.STRING) throw new VAParseError("Need cpu name string");
 
 	setcpu(ctx, tok.asString);
 	ctx.lexer.next();

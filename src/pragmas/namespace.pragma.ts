@@ -13,7 +13,7 @@ export function processNamespace(ctx: Context) {
 
 	// console.log("NAMESPACE", ns);
 
-	ctx.symbols.select(ns);
+	ctx.symbols.nsSelect(ns);
 
 	ctx.lexer.next();
 

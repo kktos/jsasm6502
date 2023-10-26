@@ -53,6 +53,7 @@ export const tokens = {
 	DBYTE: "DBYTE",
 	DWORD: "DWORD",
 	INCLUDE: "INCLUDE",
+	FUNCTION: "FUNCTION",
 	NAMESPACE: "NAMESPACE",
 	EXPORT: "EXPORT",
 };

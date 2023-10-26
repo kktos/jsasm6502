@@ -84,4 +84,20 @@ describe("Macro", () => {
 			readHexLine("03 10 60 41 42 43 44 00"),
 		);
 	});
+
+	it("tests duplicate macro isn't possible", () => {
+		const src = `
+			.macro read_file filename
+				.dw filename
+			.end
+
+			.macro read_file filename
+				.dw filename
+			.end
+
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual('MACRO: "READ_FILE" is already defined');
+	});
 });

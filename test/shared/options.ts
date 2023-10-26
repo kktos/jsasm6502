@@ -1,10 +1,10 @@
 import { load } from "../../src/helpers/asm-yaml";
-import { Options } from "../../src/types/Options";
+import { Options } from "../../src/types/Options.type";
 
 let consoleOutput= "";
 export const opts: Options & { output: string }= {
 	readFile: (filename: string, fromFile?: string, asBin?: boolean) => {
-		return { path: "", content: filename, error:"" };
+		return { path: "", dir: "", content: filename, error:"" };
 	},
 	YAMLparse: (s) =>load(s),
 	listing: false,

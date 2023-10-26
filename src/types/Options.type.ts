@@ -1,16 +1,12 @@
-// type ReadFileError= { error: string };
-// type ReadFileReturnBuffer= ReadFileError & { path: string; content: Buffer };
-// type ReadFileReturnString= ReadFileError & { path: string; content: string };
-// type ReadFileFunction= <T extends boolean>(filename: string, fromFile?: string, asBin?: T) => (T extends true ? ReadFileReturnBuffer : ReadFileReturnString);
-
 import { TSegments } from "../compiler.class";
 
-type ReadFileReturnString = {
+export type ReadFileReturn = {
 	error: string;
 	path: string;
+	dir: string;
 	content: string | Buffer;
 };
-type ReadFileFunction = (filename: string, fromFile?: string, asBin?: boolean) => ReadFileReturnString;
+type ReadFileFunction = (filename: string, fromFile?: string, asBin?: boolean) => ReadFileReturn;
 
 export type TConsole = {
 	log: (s?: string | null) => void;

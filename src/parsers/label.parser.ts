@@ -19,7 +19,7 @@ export function parseLocalLabel(ctx: Context) {
 	return null;
 }
 
-function addLabel(ctx: Context, name: string, value: TExprStackItem) {
+export function addLabel(ctx: Context, name: string, value: TExprStackItem) {
 	const { line } = ctx.lexer.pos();
 	value.extra = { file: ctx.filepath, line: line };
 	ctx.symbols.set(name, value);

@@ -36,7 +36,7 @@ export function processFor(ctx: Context) {
 	const [block] = readBlock(ctx);
 	if (!block) throw new VAParseError("FOR: empty block");
 
-	if (array.length === 0) return;
+	if (array.length === 0) return true;
 
 	const IteratorName = iterator.asString;
 	let arrayItem: unknown;

@@ -18,8 +18,8 @@ export class CharMapManager {
 		}
 
 		const name = `CHARMAP_${mapName}`;
-		let value = this.symbols.get(name);
-		if (!value) value = this.symbols.get(name, NS_GLOBAL);
+		const value = this.symbols.get(name);
+		// if (!value) value = this.symbols.get(name, NS_GLOBAL);
 		if (!value) throw new VAParseError(`OPTION: unknown charmap ${mapName}`);
 		if (value.type !== TOKEN_TYPES.ARRAY) {
 			throw new VAParseError(`OPTION: invalid charmap ${getHexWord(value.type)}, need an array`);

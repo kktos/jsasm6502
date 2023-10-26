@@ -20,6 +20,7 @@ import { processSetCPU } from "../pragmas/setcpu.pragma";
 import { processText } from "../pragmas/string.pragma";
 import { Context } from "../context.class";
 import { processFor } from "../pragmas/for.pragma";
+import { processFunction } from "../pragmas/function.pragma";
 
 function addPragmaDef(handlerFn: TPragmaHandlerFn | null, isBlock: boolean, pragmaNames: string[]) {
 	if (typeof handlerFn === "undefined")
@@ -78,6 +79,7 @@ addPragmaDef(processData, false, [
 
 addPragmaDef(processInclude, false, [tokens.INCLUDE]);
 addPragmaDef(processNamespace, false, [tokens.NAMESPACE]);
+addPragmaDef(processFunction, false, [tokens.FUNCTION]);
 addPragmaDef(processExport, false, [tokens.EXPORT]);
 
 export function parsePragma(ctx: Context) {
@@ -87,7 +89,7 @@ export function parsePragma(ctx: Context) {
 	if (!token) return false;
 
 	const pragmaDef = pragmaDefs[token.asString];
-	if (!pragmaDef) throw new VAParseError("PRAGMA: Unknown pragma");
+	if (!pragmaDef) throw new VAParseError(`PRAGMA: Unknown pragma "${token.asString}"`);
 	if (!pragmaDef.handlerFn) throw new VAParseError("PRAGMA: Syntax Error");
 
 	ctx.lexer.next();

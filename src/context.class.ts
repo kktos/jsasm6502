@@ -4,7 +4,11 @@ import { CharMapManager } from "./helpers/charMapManager";
 import { VAParseError } from "./helpers/errors.class";
 import { MacroManager } from "./helpers/macroManager";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class";
-import { Options, TConsole } from "./types/Options";
+import { Options, TConsole } from "./types/Options.type";
+
+const log = console.log;
+
+const INLINE = "$INLINE_SOURCE$";
 
 type LexerStackItem = {
 	filename: string | null;
@@ -12,7 +16,7 @@ type LexerStackItem = {
 };
 
 export class Context {
-	public filename = "";
+	public filename: string | null = null;
 	public filepath = "";
 	public pass = 1;
 	public lexerStack: LexerStackItem[] = [];
@@ -27,23 +31,21 @@ export class Context {
 	public console: TConsole;
 	public code: Compiler;
 
-	// public symbols = new Dict();
-	// public charMapManager = new CharMapManager(this.symbols);
-	// public lexer = new Lexer({charMapManager:this.charMapManager});
+	public filesDir: Record<string, string> = {};
 
 	public lastLabel: string | null = null;
 	private _deferredMsg: string | null = null;
 
 	constructor(
 		opts: Options,
-		mainFile: string,
+		src: string | { content: string },
 		public symbols = new Dict(),
 		public charMapManager = new CharMapManager(symbols),
 		public lexer = new Lexer({ charMapManager: charMapManager }),
 	) {
 		this._readFile = opts.readFile;
 		this.YAMLparse = opts.YAMLparse;
-		this._mainFile = mainFile;
+		this._mainFile = src;
 		this.wannaListing = opts.listing;
 
 		this.console = opts.console ? opts.console : (console as unknown as TConsole);
@@ -51,50 +53,56 @@ export class Context {
 
 		this.code = new Compiler(opts.segments);
 
-		// this.lastLabel= null;
-		// this.pushFile(mainFile);
-		// this._deferredMsg= "";
 		this.reset();
 	}
 
 	pushFile(file: string, fromFile?: string) {
 		// console.log("CONTEXT PUSH", file);
 
-		const { path, content, error } = this._readFile(file, fromFile, false);
+		const wd = fromFile ? this.filesDir[fromFile] : "";
+
+		// log("pushFile", file, "FROM", fromFile, "WD", wd);
+
+		const { path, dir, content, error } =
+			file !== INLINE
+				? this._readFile(file, wd, false)
+				: { path: "", dir: "", content: this._mainFile.content, error: "" };
 
 		if (error) {
 			throw new VAParseError(error);
 		}
+		this.filesDir[file] = dir;
 
 		this.lexerStack.push({
 			filename: this.filename,
 			filepath: this.filepath,
 		});
+
 		this.filename = file;
 		this.filepath = path;
+
+		// log("pushFile", file, typeof content);
 
 		this.lexer.pushSource(content as string);
 
 		this.lexer.addEventListener(EVENT_TYPES.EOS, () => {
+			// log("CONTEXT lexerStack", JSON.stringify(this.lexerStack));
+
 			const lexCtx = this.lexerStack.pop();
 
-			// console.log("CONTEXT EOS", this.filename, lexCtx.filename);
+			this.filename = lexCtx?.filename ?? null;
+			this.filepath = lexCtx?.filepath ?? "";
 
-			if (!lexCtx) return;
-			// if (!lexCtx.filename) throw new VAParseError("No filename for LexerContext");
-			// if (!lexCtx.filepath) throw new VAParseError("No filepath for LexerContext");
-
-			this.filename = lexCtx.filename ?? "--";
-			this.filepath = lexCtx.filepath ?? "--";
+			// log("CONTEXT EOS", {filename:this.filename, filepath:this.filepath});
 		});
 	}
 
 	reset() {
-		this.pushFile(this._mainFile);
+		this.pushFile(typeof this._mainFile === "string" ? this._mainFile : INLINE);
 		this.code.reset();
 		this._deferredMsg = "";
 		this.lastLabel = null;
-		this.symbols.select();
+		this.symbols.nsSelect();
 	}
 
 	print(msg: string, wantItDeferred = false) {

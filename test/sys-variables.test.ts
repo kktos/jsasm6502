@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { assemble } from "../src/assembler";
 import { opts } from "./shared/options";
 
-describe("Sytem Variables", () => {
+describe("System Variables", () => {
 	beforeEach(() => {
 		opts.output = "";
 	});
@@ -33,15 +33,12 @@ describe("Sytem Variables", () => {
 		expect(opts.output.trim()).toStrictEqual([
 			"6502 6502",
 			"NOT 6502 65C02"
-		].join("\n"));
+		].join("\n\n"));
 	});
 
 	it("should return the current segment", () => {
 		const src = `
-		  .echo .segment.name
-		  .echo .segment.start
-		  .echo .segment.end
-		  .echo .segment.size
+		  .echo .segment.name," ",.segment.start," ",.segment.end," ",.segment.size
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
@@ -51,7 +48,7 @@ describe("Sytem Variables", () => {
 			0x1000.toString(10),
 			0xFFFF.toString(10),
 			(0xFFFF - 0x1000 + 1).toString(10),
-		].join("\n"));
+		].join(" "));
 	});
 
 	it("should return the current segment name", () => {
@@ -114,17 +111,15 @@ describe("Sytem Variables", () => {
 		].join("\n"));
 	});
 
-	it("should return the current namespace", () => {
+	it("should return the current program counter", () => {
 		const src = `
-		  .echo *
-		  .echo .pc
+		  .echo *," ",.pc
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 
 		expect(opts.output.trim()).toStrictEqual([
-			0x1000.toString(10),
-			0x1000.toString(10),
+			`${0x1000.toString(10)} ${0x1000.toString(10)}`,
 		].join("\n"));
 	});
 

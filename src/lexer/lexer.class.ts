@@ -2,6 +2,8 @@ import { CharMapManager } from "../helpers/charMapManager";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES, Token } from "./token.class";
 
+const log = console.log;
+
 const ALPHABET = [...Array(26)].map((_, i) => String.fromCharCode(i + 65));
 
 const WS_CHARSET = new Set([" ", "\t"]);
@@ -153,21 +155,27 @@ export class Lexer {
 		while (true) {
 			this.ctx.nextLine();
 
-			// console.log("--", this.ctx.lineIdx, this.ctx.lines.length);
+			// log("nextLine", this.ctx.lineIdx, this.ctx.lines.length);
 
 			if (this.ctx.lineIdx < this.ctx.lines.length) break;
 
-			// console.log("Lexer.nextLine", this.ctx.eventHandlers);
+			// log("Lexer.nextLine", this.ctx.eventHandlers);
 			if (this.ctx.eventHandlers.get(EVENT_TYPES.EOS)) this.executeEventListener(EVENT_TYPES.EOS);
 
 			// if(this.onEOF)
 			// 	this.onEOF();
 
 			this.ctx = this.contexts.pop() ?? null;
+
+			// log("Lexer.nextLine ctx", this.ctx);
+
 			if (!this.ctx) return false;
 		}
 
 		this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
+
+		// log("nextLine", this.ctx.currLine);
+
 		this._tokenize();
 
 		// console.log("nextLine", this.ctx.tokens);

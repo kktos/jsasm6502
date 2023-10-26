@@ -2,7 +2,7 @@ import { Context } from "../context.class";
 import { VAExprError } from "../helpers/errors.class";
 import { getValueType } from "../helpers/utils";
 import { TOKEN_TYPES, Token, getTypeName } from "../lexer/token.class";
-import { getVarValue } from "../variable";
+import { getSysVarValue } from "../sysvariable";
 import { TFunctionFlags, execFunction, fnFlags, fnParmCount, isFunctionExists } from "./function.parser";
 import { TDictValue } from "../dict.class";
 
@@ -695,6 +695,9 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
 		// console.log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
 
+		if (exprCtx.ctx.symbols.nsHasFunction(name))
+			throw new VAExprError("IDENTIFIER : Labels inside a function can't be access");
+
 		// namespace.labelname
 		// not a label, being a namespace
 		if (!exprCtx.ctx.symbols.exists(name) && exprCtx.ctx.symbols.nsExists(name)) {
@@ -707,9 +710,15 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	if (checkIfExists && !exprCtx.ctx.symbols.exists(name, ns)) {
 		// console.log("----- ", exprCtx.ctx.symbols.namespaces[NS_GLOBAL]);
-		const namespaces = exprCtx.ctx.symbols.search(name);
-		let msg = `IDENTIFIER : Unknown identifier "${name}" in ${ns ? ns : exprCtx.ctx.symbols.namespace}`;
-		if (namespaces.length) msg += `\nBut "${name}" exists in ${namespaces.join(", ")}`;
+
+		let msg = "";
+		if (exprCtx.ctx.symbols.nsHasFunction(name)) {
+			msg = `IDENTIFIER : labels in function ${name} cannot be access from outside the function`;
+		} else {
+			const namespaces = exprCtx.ctx.symbols.search(name);
+			msg = `IDENTIFIER : Unknown identifier "${name}" in ${ns ? ns : exprCtx.ctx.symbols.namespace}`;
+			if (namespaces.length) msg += `\nBut "${name}" exists in ${namespaces.join(", ")}`;
+		}
 
 		throw new VAExprError(msg);
 	}
@@ -785,7 +794,7 @@ function parse_variable(exprCtx: TExprCtx) {
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) throw new VAExprError("TERM: expecting a variable name here");
 
 	const varName = exprCtx.ctx.lexer.token2().asString;
-	let value = getVarValue(exprCtx.ctx, varName);
+	let value = getSysVarValue(exprCtx.ctx, varName);
 
 	exprCtx.ctx.lexer.next();
 

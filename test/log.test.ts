@@ -51,7 +51,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toMatch(/^hello\n\nboom in  at/m);
+		expect(opts.output.trim()).toMatch(/^hello\n\n\nboom/m);
 	});
 
 

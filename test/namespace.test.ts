@@ -41,10 +41,10 @@ describe("Namespace", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toBe("one=ONE\ntwo=TWO\none=ONE");
+		expect(opts.output.trim()).toBe(["one=ONE","two=TWO","one=ONE"].join("\n\n"));
 	});
 
-	it("shows nested NS have their local labels", () => {
+	it("shows nested NS have their local labels 1", () => {
 		const src = `
 			.namespace one
 			count= 2
@@ -60,10 +60,10 @@ describe("Namespace", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toBe("2\n3\n2");
+		expect(opts.output.trim()).toBe("2\n\n3\n\n2");
 	});
 
-	it("shows nested NS have their local labels", () => {
+	it("shows nested NS have their local labels 2", () => {
 		const src = `
 			count= 9
 

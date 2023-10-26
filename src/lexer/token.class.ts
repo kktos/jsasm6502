@@ -1,4 +1,4 @@
-import { TValue, TValueType } from "../types/Value";
+import { TValue, TValueType } from "../types/Value.type";
 
 export const TOKEN_TYPES = {
 	DOT: 0x100,
@@ -45,7 +45,7 @@ export const TOKEN_TYPES = {
 	EOF: 0x8000,
 };
 export const TOKEN_TYPES_ENTRIES = Object.entries(TOKEN_TYPES);
-type TTOKEN_TYPES = keyof typeof TOKEN_TYPES;
+// type TTOKEN_TYPES = keyof typeof TOKEN_TYPES;
 
 export class Token implements TValue {
 	public type: number | null;
