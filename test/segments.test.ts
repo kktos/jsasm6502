@@ -8,8 +8,8 @@ describe("Segments", () => {
 
 	beforeAll(() => {
 		opts.segments= {
-			BOOT: { start: 0x800, end: 0x8FF },
-			INTRO: { start: 0xA000, end: 0xBFFF }
+			BOOT: { start: 0x800, end: 0x8FF, size: 0x8FF-0x800+1},
+			INTRO: { start: 0xA000, end: 0xBFFF, size: 0xBFFF-0xA000+1 }
 		};
 	});
 

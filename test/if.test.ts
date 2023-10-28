@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/assembler";
 import { opts } from "./shared/options";
 import { readHexLine } from "../src/pragmas/data.pragma";
 
 describe("If", () => {
+
+	beforeEach(()=> {
+		opts.output= "";
+		opts.listing= true;
+	});
 
 	it("should deal with label defined after", () => {
 		const src = `
@@ -16,6 +21,7 @@ describe("If", () => {
 
 		`;
 		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual("loadLevel : $1000");
 

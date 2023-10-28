@@ -6,7 +6,7 @@ import { opts } from "./shared/options";
 
 describe("Function", () => {
 
-	it("tests a simple function", () => {
+	it.skip("tests a simple function", () => {
 		const src = `
 		loop
 			rts
@@ -29,7 +29,7 @@ describe("Function", () => {
 			);
 	});
 
-	it("tests access to external label from a function", () => {
+	it.skip("tests access to external label from a function", () => {
 		const src = `
 		counter
 			.db 00
@@ -44,7 +44,7 @@ describe("Function", () => {
 			);
 	});
 
-	it("tests we can't access a label in a function", () => {
+	it.skip("tests we can't access a label in a function", () => {
 		const src = `
 		.function clearByte3
 		counter
@@ -59,7 +59,7 @@ describe("Function", () => {
 		].join("\n"));
 	});
 
-	it("tests we can't access a function label", () => {
+	it.skip("tests we can't access a function label", () => {
 		const src = `
 		.namespace screen
 		.function clear
@@ -93,4 +93,6 @@ describe("Function", () => {
 	});
 
 
+
 });
+

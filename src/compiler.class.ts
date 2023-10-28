@@ -17,7 +17,7 @@ export type TCodeObj = Record<string, Array<unknown>>;
 export class Compiler {
 	public pc = 0;
 	public obj: TCodeObj = {};
-	private _output: string | null = null;
+	private _output: string[] | null = null;
 	public segments: TSegments;
 	private currentSegment: string | null;
 
@@ -111,7 +111,10 @@ export class Compiler {
 				obj[offset + idx] = low(bytes[idx]);
 				hex += ` ${getHexByte(bytes[idx])}`;
 
-				if (wannaShowChars) chars += String.fromCharCode(bytes[idx]);
+				if (wannaShowChars) {
+					if (bytes[idx] >= 0x20 && bytes[idx] <= 0x7f) chars += String.fromCharCode(bytes[idx]);
+					else chars += ".";
+				}
 
 				if (idx % BYTECOUNTPERLINE === BYTECOUNTPERLINE - 1) {
 					lines.push(hex.padEnd(32) + chars);
@@ -120,7 +123,7 @@ export class Compiler {
 				}
 			}
 			hex !== "" && lines.push(hex.padEnd(32) + chars);
-			this._output = lines.join("\n");
+			this._output = lines;
 		}
 
 		this.pc += bytes.length;

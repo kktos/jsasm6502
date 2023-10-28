@@ -6,6 +6,7 @@ import { opts } from "./shared/options";
 describe("System Variables", () => {
 	beforeEach(() => {
 		opts.output = "";
+		opts.listing = true;
 	});
 
 	it("should return the CPU selected", () => {
@@ -29,11 +30,12 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			"6502 6502",
 			"NOT 6502 65C02"
-		].join("\n\n"));
+		].join("\n"));
 	});
 
 	it("should return the current segment", () => {
@@ -42,6 +44,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			"CODE",
@@ -57,6 +60,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			"CODE",
@@ -69,6 +73,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			0x1000.toString(10),
@@ -81,6 +86,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			0xFFFF.toString(10),
@@ -93,6 +99,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			(0xFFFF - 0x1000 + 1).toString(10),
@@ -105,6 +112,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			"GLOBAL",
@@ -117,6 +125,7 @@ describe("System Variables", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(opts.output.trim()).toStrictEqual([
 			`${0x1000.toString(10)} ${0x1000.toString(10)}`,

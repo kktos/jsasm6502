@@ -1,5 +1,6 @@
 import { Context } from "./context.class";
 import { VAParseError } from "./helpers/errors.class";
+import { getHexWord } from "./helpers/utils";
 import { TOKEN_TYPES, Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
 import { parseOpcode } from "./parsers/opcode.parser";
@@ -13,17 +14,19 @@ import { TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 
-const ASM_BYTES_LEN = 32;
+const ASM_BYTES_LEN = 45;
 
-export function assemble(src: string | { content: string }, opts: Options): TAssemblerResult {
+export function assemble(src: string | { name: string; content: string }, opts: Options): TAssemblerResult {
 	const ctx = new Context(opts, src);
 	setcpu(ctx, opts.cpu);
 
 	if (ctx.symbols.dump().trim() !== "") throw `ARGL ! -> "${ctx.symbols.dump()}"`;
 
+	let disasm = "";
+
 	const tryAsm = () => {
 		try {
-			asm(ctx);
+			disasm += asm(ctx);
 		} catch (err) {
 			// handle internal errors
 			if ((err as Error)?.name?.match(/^VA/)) {
@@ -51,11 +54,14 @@ export function assemble(src: string | { content: string }, opts: Options): TAss
 		segments: ctx.code.segments,
 		obj: ctx.code.obj,
 		dump: ctx.code.dump,
+		disasm,
 		error,
 	};
 }
 
-function asm(ctx: Context) {
+function asm(ctx: Context): string {
+	let disasm = "";
+
 	// log("ASM", ctx.pass, ctx.lexer.pos());
 
 	while (!ctx.wannaStop && ctx.lexer.nextLine()) {
@@ -146,24 +152,29 @@ function asm(ctx: Context) {
 		if (tok) throw new VAParseError(`Syntax Error on ${tok.text}`);
 
 		if (ctx.pass === 2) {
-			if (label) ctx.print(`${label}:`);
-
-			let listingLine = "";
-
 			const asmOut = ctx.code.output;
-			const wantAfter = asmOut?.length ?? 0 > ASM_BYTES_LEN;
-
-			if (asmOut && !wantAfter) listingLine += asmOut;
-
-			listingLine = listingLine.padEnd(18);
-
-			listingLine += currLine;
-
-			if (asmOut && wantAfter) listingLine += `\n${asmOut}`;
-
-			ctx.print(listingLine);
+			if (!asmOut) {
+				if (ctx.lastLabel?.value.extra?.label === false) {
+					if (typeof ctx.lastLabel.value.value === "number") {
+						disasm += getHexWord(ctx.lastLabel.value.value);
+					} else {
+						disasm += ctx.lastLabel.value.value;
+					}
+				}
+				disasm += `${"".padEnd(ASM_BYTES_LEN)}${currLine}\n`;
+			} else {
+				for (let idx = 0; idx < asmOut.length; idx++) {
+					disasm += asmOut[idx];
+					if (idx === 0) {
+						const padding = ASM_BYTES_LEN - asmOut[idx].length;
+						disasm += `${"".padEnd(padding)}${currLine}`;
+					}
+					disasm += "\n";
+				}
+			}
 		}
 	}
 
 	ctx.wannaStop = false;
+	return disasm;
 }

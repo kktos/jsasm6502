@@ -10,11 +10,11 @@ export function processInclude(ctx: Context) {
 	const asBin = ctx.lexer.isIdentifier("ASBIN");
 
 	if (asBin) {
-		const { content } = ctx._readFile(res.value as string, ctx.filename, true);
+		const { content } = ctx._readFile(res.value as string, ctx.filename ?? undefined, true);
 		ctx.code.emits(ctx.pass, content as Buffer);
 		ctx.lexer.next();
 	} else {
-		ctx.pushFile(res.value as string, ctx.filename);
+		ctx.pushFile(res.value as string, ctx.filename ?? undefined);
 	}
 
 	return true;

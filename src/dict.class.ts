@@ -183,7 +183,8 @@ export class Dict {
 	}
 
 	exists(name: string, ns: string | null = null) {
-		if (ns) return this.fn ? Object.hasOwn(this.fn, name) : Object.hasOwn(this.namespaces[ns], name);
+		// if (ns) return this.fn ? Object.hasOwn(this.fn, name) : Object.hasOwn(this.namespaces[ns], name);
+		if (ns) return Object.hasOwn(this.namespaces[ns], name);
 		return (
 			(this.fn && Object.hasOwn(this.fn, name)) || Object.hasOwn(this.ns, name) || Object.hasOwn(this.global, name)
 		);

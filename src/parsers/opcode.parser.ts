@@ -15,7 +15,8 @@ export function parseOpcode(ctx: Context) {
 	// console.log("parseOpcode 1",token);
 
 	const opcodeTable = ctx.opcodes[opcode];
-	if (opcodeTable == null) throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel}`);
+	if (opcodeTable == null)
+		throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel?.name}`);
 
 	ctx.lexer.next();
 	token = ctx.lexer.token();

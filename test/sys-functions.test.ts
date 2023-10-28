@@ -34,17 +34,19 @@ describe("Function", () => {
 		.define obj
 		test:
 		.end
+		.lst on
 		.log .type(arr)
 		.log .type(obj)
 		.log .type("one")
 		.log .type(1)
 		`;
-		assemble(src, opts);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual([
 			"array",
 			"object",
 			"string",
 			"number",
-	].join("\n\n"));
+	].join("\n"));
 	});
 });

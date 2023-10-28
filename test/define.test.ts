@@ -7,6 +7,7 @@ import { opts } from "./shared/options";
 describe("Define", () => {
 	beforeEach(() => {
 		opts.output= "";
+		opts.listing= true;
 	});
 
 	it("tests define var", () => {
@@ -17,7 +18,8 @@ describe("Define", () => {
 		.end
 		.log var_yaml
 		`;
-		assemble(src, opts);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual('["one","two"]');
 	});
 
@@ -37,7 +39,8 @@ describe("Define", () => {
 		.end
 		.log .type(var_yaml.prop), .len(var_yaml.prop)
 		`;
-		assemble(src, opts);
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("array9");
 	});
 
@@ -62,6 +65,7 @@ describe("Define", () => {
 		.end
 		`;
 		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual('[{"id":170,"x":160,"y":16},{"id":187,"x":176,"y":32}]');
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
@@ -90,6 +94,7 @@ describe("Define", () => {
 
 		`;
 		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("object");
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(

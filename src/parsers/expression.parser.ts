@@ -597,7 +597,7 @@ function parse_term(exprCtx: TExprCtx) {
 			if (!exprCtx.ctx.lastLabel) throw new VAExprError("TERM: Unknown Parent Label");
 
 			const name = exprCtx.ctx.lexer.token2().asString;
-			const value = exprCtx.ctx.symbols.getLocal(exprCtx.ctx.lastLabel, name);
+			const value = exprCtx.ctx.symbols.getLocal(exprCtx.ctx.lastLabel.name, name);
 			if (!value) throw new VAExprError("TERM: Unknown Local Label");
 
 			exprCtx.ctx.lexer.next();
@@ -693,7 +693,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	// log("parseVarLabel", exprCtx.ctx.pass, tok);
 
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
-		// console.log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
+		// log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
 
 		if (exprCtx.ctx.symbols.nsHasFunction(name))
 			throw new VAExprError("IDENTIFIER : Labels inside a function can't be access");
@@ -707,6 +707,8 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 			exprCtx.ctx.lexer.next();
 		}
 	}
+
+	// log("parse_var_label", ns, name, ns?exprCtx.ctx.symbols.exists(name, ns):"");
 
 	if (checkIfExists && !exprCtx.ctx.symbols.exists(name, ns)) {
 		// console.log("----- ", exprCtx.ctx.symbols.namespaces[NS_GLOBAL]);

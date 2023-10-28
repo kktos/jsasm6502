@@ -7,6 +7,7 @@ describe("log", () => {
 
 	beforeEach(() => {
 		opts.output = "";
+		opts.listing = true;
 	});
 
 	it("tests .log string", () => {
@@ -15,6 +16,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("test one");
 	});
 
@@ -29,6 +31,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("array [1,2,3]");
 	});
 
@@ -41,6 +44,7 @@ describe("log", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual(`object {"key":"value"}`);
 	});
 
@@ -49,9 +53,10 @@ describe("log", () => {
 			.log "hello"
 			.error "boom"
 		`;
-		const asmRes = assemble(src, opts);
+		const asmRes = assemble({name: "boombada", content: src}, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toMatch(/^hello\n\n\nboom/m);
+		expect(asmRes.error).toStrictEqual("boom");
+		expect(opts.output.trim()).toMatch(/^boom in boombada at line 3 at 16/);
 	});
 
 

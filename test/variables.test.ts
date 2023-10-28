@@ -6,13 +6,14 @@ import { opts } from "./shared/options";
 describe("Variables", () => {
 	beforeEach(() => {
 		opts.output = "";
+		opts.listing= true;
 	});
 
 	it("sets var value", () => {
 		const src = "var_dummy= 10*2\n.out var_dummy";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("20");
 	});
 
@@ -24,7 +25,7 @@ describe("Variables", () => {
 			`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("39");
 	});
 
@@ -37,7 +38,7 @@ describe("Variables", () => {
 			`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.symbols.dump()).toStrictEqual([
 		"GLOBAL:",
 		'  LABEL2: number = $100 ; "":3',

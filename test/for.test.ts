@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/assembler";
-import { beforeEach } from "node:test";
 import { opts } from "./shared/options";
 import { readHexLine } from "../src/pragmas/data.pragma";
 
 describe("FOR PRAGMA", () => {
 	beforeEach(() => {
 		opts.output = "";
+		opts.listing = true;
 	});
 
 	it("should not iterate of an empty array", () => {
@@ -22,9 +22,13 @@ describe("FOR PRAGMA", () => {
 
 		.echo .len(list)
 		`;
+
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+
 		expect(opts.output.trim()).toStrictEqual("0");
+
 
 	});
 
@@ -42,7 +46,7 @@ describe("FOR PRAGMA", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("BD 00 04 BD 00 05 BD 00 06 BD 00 07"));
 	});
 
@@ -59,12 +63,12 @@ describe("FOR PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual([
 			"colour is blue",
 			"colour is green",
 			"colour is red",
-		].join("\n\n"));
+		].join("\n"));
 	});
 
 	it("should iterate of an array of object", () => {
@@ -85,12 +89,12 @@ describe("FOR PRAGMA", () => {
 
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual([
 			"colour is blue",
 			"colour is green",
 			"colour is red",
-		].join("\n\n"));
+		].join("\n"));
 	});
 
 	it("should handle nest FOR loop", () => {
@@ -113,17 +117,15 @@ describe("FOR PRAGMA", () => {
 
 		`;
 
-		opts.output= "";
-
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual([
 			"1:blue,green,red,",
 			"2:blue,green,red,",
 			"3:blue,green,red,",
 			"4:blue,green,red,",
-		].join("\n\n"));
+		].join("\n"));
 	});
 
 });

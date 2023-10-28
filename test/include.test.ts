@@ -6,9 +6,9 @@ import { opts } from "./shared/options";
 
 opts.readFile= (filename, fromFile, asBin) => {
 	if (filename === "inc1")
-		return { path: "", content: ".namespace two\nlda #count", error:"" };
+		return { path: "", dir:"inc1", content: ".namespace two\nlda #count", error:"" };
 
-	return { path: "", content: filename, error:"" };
+	return { path: "", dir:"", content: filename, error:"" };
 },
 
 describe("Include", () => {

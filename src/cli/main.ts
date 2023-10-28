@@ -46,6 +46,11 @@ try {
 		writeFileSync(`${outBasename}.sym`, asmRes.symbols.dump());
 	}
 
+	if (conf.options.listing) {
+		mkdirSync(outDirname, { recursive: true });
+		writeFileSync(`${outBasename}.lst`, asmRes.disasm);
+	}
+
 	if (asmRes.error) {
 		process.exit(-1);
 	}

@@ -21,7 +21,7 @@ export function parseLocalLabel(ctx: Context) {
 
 export function addLabel(ctx: Context, name: string, value: TExprStackItem) {
 	const { line } = ctx.lexer.pos();
-	value.extra = { file: ctx.filepath, line: line };
+	value.extra = { ...value.extra, file: ctx.filepath, line: line, label: false };
 	ctx.symbols.set(name, value);
 }
 
@@ -39,6 +39,7 @@ function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
 		}
 	}
 	addLabel(ctx, name, value);
+	value.extra = { ...value.extra, label: true };
 }
 
 /*
@@ -62,7 +63,7 @@ export function parseLabel(ctx: Context, token: Token, isLocal = false) {
 
 		if (!ctx.lastLabel) throw new VAExprError("Local Label needs a parent label");
 
-		if (!ctx.symbols.addLocal(ctx.lastLabel, name, value)) throw new VAExprError("Duplicate Local Label");
+		if (!ctx.symbols.addLocal(ctx.lastLabel.name, name, value)) throw new VAExprError("Duplicate Local Label");
 
 		return null;
 	}
@@ -77,7 +78,7 @@ export function parseLabel(ctx: Context, token: Token, isLocal = false) {
 			value = parseExpression(ctx);
 			if (!value) throw new VAParseError("undefined value");
 			addLabel(ctx, name, value);
-			return null;
+			break;
 		}
 		// LABEL :
 		case TOKEN_TYPES.COLON:
@@ -86,7 +87,7 @@ export function parseLabel(ctx: Context, token: Token, isLocal = false) {
 			if (ctx.pass === 1) {
 				defineLabel(ctx, name, value);
 			}
-			return name;
+			break;
 
 		default:
 			if (ctx.opcodes[name] !== undefined || isMacroToken(ctx)) return null;
@@ -98,6 +99,6 @@ export function parseLabel(ctx: Context, token: Token, isLocal = false) {
 			}
 
 			ctx.lexer.next();
-			return name;
 	}
+	return { name, value };
 }

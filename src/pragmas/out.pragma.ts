@@ -24,7 +24,7 @@ export function processASMOuput(ctx: Context, pragma: string) {
 		case "ECHO":
 		case "LOG":
 			// log("ECHO", ctx.pass, msg);
-			ctx.print(msg, true);
+			ctx.print(msg, false);
 			break;
 
 		case "WARNING":

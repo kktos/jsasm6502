@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/assembler";
 import { readHexLine } from "../src/pragmas/data.pragma";
@@ -6,12 +6,18 @@ import { opts } from "./shared/options";
 
 opts.readFile= (filename, fromFile, asBin) => {
 	if (filename === "inc1")
-		return { path: "", content: ".namespace two\nlda #count", error:"" };
+		return { path: "", dir:"", content: ".namespace two\nlda #count", error:"" };
 
-	return { path: "", content: filename, error:"" };
-},
+	return { path: "",  dir:"", content: filename, error:"" };
+};
 
 describe("Namespace", () => {
+
+	beforeEach(() => {
+		opts.output= "";
+		opts.listing= true;
+	});
+
 	it("get exported value from included file", () => {
 		const src = `
 			.namespace one
@@ -22,6 +28,7 @@ describe("Namespace", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 02"));
 	});
 
@@ -41,7 +48,8 @@ describe("Namespace", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toBe(["one=ONE","two=TWO","one=ONE"].join("\n\n"));
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toBe(["one=ONE","two=TWO","one=ONE"].join("\n"));
 	});
 
 	it("shows nested NS have their local labels 1", () => {
@@ -60,7 +68,8 @@ describe("Namespace", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(opts.output.trim()).toBe("2\n\n3\n\n2");
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toBe("2\n3\n2");
 	});
 
 	it("shows nested NS have their local labels 2", () => {
@@ -82,6 +91,7 @@ describe("Namespace", () => {
 		opts.output = "";
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.symbols.dump()).toBe([
 			"GLOBAL:",
 			'  COUNT: number = $9 ; "":2',
