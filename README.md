@@ -39,7 +39,7 @@ lda #<$1232 ; $32
 
 ```
 
-## Functions
+## System Functions
 ```
 ; returns true if variable or label is defined
 .if .def(printStr)
@@ -302,6 +302,31 @@ welcome
 		.end
 	.end
 	defStruc $CAFE, "ABCD", $1234
+
+```
+
+## Comments
+
+You can add a comment on any line with the semicolon, ";", as usual for assembler.  
+But if you are more into C-like comments, you can use instead the double slash "//".  
+And if you cant to comment a whole section, you can use C-like the /* .... */.
+
+```
+; this is a comment
+
+    printStr welcome ; this is another comment
+    rts
+
+welcome
+    .cstr "Welcome !"
+
+// and here you can comment out a section
+
+/*
+.for colour of colours ; colours = [ "red", "green", "blue" ]
+    .echo colour
+.end
+*/
 
 ```
 

@@ -3,7 +3,7 @@ import { basename, dirname, extname } from "node:path";
 import { assemble } from "../assembler";
 import { Options } from "../types/Options.type";
 import { link } from "./linker";
-import { readFile, readYAMLFile, setRootDir } from "./file";
+import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";
 
 console.log("jsAsm v.01");
@@ -24,7 +24,7 @@ setRootDir(dirname(filename));
 
 const opts: Options = {
 	readFile,
-	YAMLparse: readYAMLFile,
+	YAMLparse: parseYAML,
 	listing: conf.options.listing,
 	segments: conf.segments ?? null,
 	console,

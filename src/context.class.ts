@@ -4,12 +4,10 @@ import { CharMapManager } from "./helpers/charMapManager";
 import { VAParseError } from "./helpers/errors.class";
 import { MacroManager } from "./helpers/macroManager";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class";
-import { TExprStackItem } from "./parsers/expression.parser";
+import { TExprStackItem } from "./parsers/expression/expression.parser";
 import { Options, TConsole } from "./types/Options.type";
 
 const log = console.log;
-
-const INLINE = "$INLINE_SOURCE$";
 
 type LexerStackItem = {
 	filename: string | null;
@@ -31,19 +29,33 @@ export class Context {
 	public macros = new MacroManager();
 	public console: TConsole;
 	public code: Compiler;
+	public symbols: Dict;
+	public charMapManager: CharMapManager;
+	public lexer: Lexer;
 
 	public filesDir: Record<string, string> = {};
 
 	public lastLabel: { name: string; value: TExprStackItem } | null = null;
 	// private _deferredMsg: string | null = null;
 
+	static createContext(opts: Options, src: string | { name: string; content: string }) {
+		const symbols = new Dict();
+		const charMapManager = new CharMapManager(symbols);
+		const lexer = new Lexer({ charMapManager: charMapManager });
+		return new Context(opts, src, symbols, charMapManager, lexer);
+	}
+
 	constructor(
 		opts: Options,
 		src: string | { name: string; content: string },
-		public symbols = new Dict(),
-		public charMapManager = new CharMapManager(symbols),
-		public lexer = new Lexer({ charMapManager: charMapManager }),
+		symbols: Dict,
+		charMapManager: CharMapManager,
+		lexer: Lexer,
 	) {
+		this.lexer = lexer;
+		this.symbols = symbols;
+		this.charMapManager = charMapManager;
+
 		this._readFile = opts.readFile;
 		this.YAMLparse = opts.YAMLparse;
 		this._mainFile = src;

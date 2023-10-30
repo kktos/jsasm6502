@@ -4,7 +4,7 @@ import { TMacro } from "../helpers/macroManager";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
-import { TExprStackItem, parseExpression } from "../parsers/expression.parser";
+import { TExprStackItem, parseExpression } from "../parsers/expression/expression.parser";
 
 // const macros = {};
 

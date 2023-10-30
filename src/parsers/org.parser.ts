@@ -1,7 +1,7 @@
 import { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { parseExpression } from "./expression.parser";
+import { parseExpression } from "./expression/expression.parser";
 
 export function parseOrg(ctx: Context) {
 	ctx.lexer.next();

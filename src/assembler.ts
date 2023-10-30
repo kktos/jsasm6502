@@ -3,7 +3,7 @@ import { VAParseError } from "./helpers/errors.class";
 import { getHexWord } from "./helpers/utils";
 import { TOKEN_TYPES, Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
-import { parseOpcode } from "./parsers/opcode.parser";
+import { isIdentifierAnOpcode, parseOpcode } from "./parsers/opcode.parser";
 import { parseOrg } from "./parsers/org.parser";
 import { parsePragma } from "./parsers/pragma.parser";
 import { isPragmaToken } from "./parsers/pragma.tokens";
@@ -14,10 +14,10 @@ import { TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 
-const ASM_BYTES_LEN = 45;
+const ASM_BYTES_LEN = 34;
 
 export function assemble(src: string | { name: string; content: string }, opts: Options): TAssemblerResult {
-	const ctx = new Context(opts, src);
+	const ctx = Context.createContext(opts, src);
 	setcpu(ctx, opts.cpu);
 
 	if (ctx.symbols.dump().trim() !== "") throw `ARGL ! -> "${ctx.symbols.dump()}"`;
@@ -61,6 +61,7 @@ export function assemble(src: string | { name: string; content: string }, opts: 
 
 function asm(ctx: Context): string {
 	let disasm = "";
+	let lastVarname = "";
 
 	// log("ASM", ctx.pass, ctx.lexer.pos());
 
@@ -102,7 +103,7 @@ function asm(ctx: Context): string {
 		};
 
 		while (true) {
-			// console.log("LINE", ctx.lexer.line());
+			// log("LINE", ctx.lexer.token(), ctx.lexer.line());
 
 			//
 			// ORG as * = xxxx
@@ -112,15 +113,26 @@ function asm(ctx: Context): string {
 				break;
 			}
 
+			if (isIdentifierAnOpcode(ctx)) {
+				parseOpcode(ctx);
+				break;
+			}
+
 			//
 			// LABEL
 			//
+
+			// log("PARSE LABEL", token, ctx.lexer.token());
+
 			label = lblParser(token);
 			if (label) ctx.lastLabel = label;
 
 			//
 			// PRAGMA
 			//
+
+			// log("PARSE PRAGMA", ctx.lexer.token());
+
 			if (isPragmaToken(ctx)) {
 				parsePragma(ctx);
 
@@ -131,6 +143,9 @@ function asm(ctx: Context): string {
 			//
 			// MACRO
 			//
+
+			// log("PARSE MACRO", ctx.lexer.token());
+
 			if (isMacroToken(ctx)) {
 				expandMacro(ctx);
 				break;
@@ -141,6 +156,9 @@ function asm(ctx: Context): string {
 			//
 			// OPCODE
 			//
+
+			// log("PARSE OPCODE", ctx.lexer.token());
+
 			if (ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) parseOpcode(ctx);
 
 			break;
@@ -154,11 +172,13 @@ function asm(ctx: Context): string {
 		if (ctx.pass === 2) {
 			const asmOut = ctx.code.output;
 			if (!asmOut) {
-				if (ctx.lastLabel?.value.extra?.label === false) {
-					if (typeof ctx.lastLabel.value.value === "number") {
-						disasm += getHexWord(ctx.lastLabel.value.value);
+				const entry = ctx.lastLabel?.value;
+				if (entry?.extra?.isVariable === true && lastVarname !== ctx.lastLabel?.name) {
+					lastVarname = ctx.lastLabel?.name ?? "";
+					if (typeof entry.value === "number") {
+						disasm += getHexWord(entry.value);
 					} else {
-						disasm += ctx.lastLabel.value.value;
+						disasm += entry.value;
 					}
 				}
 				disasm += `${"".padEnd(ASM_BYTES_LEN)}${currLine}\n`;

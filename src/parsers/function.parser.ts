@@ -3,7 +3,7 @@ import { fnDef, fnUndef } from "../functions/def.function";
 import { fnHex } from "../functions/hex.function";
 import { fnLen } from "../functions/len.function";
 import { fnType } from "../functions/type.function";
-import { TExprStackItem, TExprStackItemValueType } from "./expression.parser";
+import { TExprStackItem, TExprStackItemValueType } from "./expression/expression.parser";
 
 export type TFunctionFlags = {
 	allowUndef?: boolean;

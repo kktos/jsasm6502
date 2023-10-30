@@ -6,6 +6,29 @@ import { opts } from "./shared/options";
 
 describe("Function & Namespace", () => {
 
+	it("tests a simple function with label in global too", () => {
+		const src = `
+		loop
+			rts
+	.function clearByte
+			ldx #$30
+			jsr $1000 ; getHGRLineAddr
+			ldy #$27
+			lda #$00
+	loop	sta ($1c),y
+			dey
+			bpl loop
+			rts
+	.end function
+			.db 00
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("60 A2 30 20 00 10 A0 27 A9 00 91 1C 88 10 FB 60 00")
+			);
+	});
+
 	it("tests a call to a namespace from a function", () => {
 		const src = `
 			.namespace utils

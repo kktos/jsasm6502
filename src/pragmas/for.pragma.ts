@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES, Token, tokenTypeOf } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
-import { TExprStackItem, TExprStackItemValueType, parseExpression } from "../parsers/expression.parser";
+import { TExprStackItem, TExprStackItemValueType, parseExpression } from "../parsers/expression/expression.parser";
 
 const log = console.log;
 

@@ -1,8 +1,9 @@
-import { TExprStackItem, parseExpression } from "./expression.parser";
+import { parseExpression } from "./expression/expression.parser";
 import { isMacroToken } from "../pragmas/macro.pragma";
 import { VAExprError, VAParseError } from "../helpers/errors.class";
 import { Context } from "../context.class";
 import { TOKEN_TYPES, Token } from "../lexer/token.class";
+import { TExprStackItem } from "./expression/expression.type";
 
 const log = console.log;
 
@@ -21,12 +22,12 @@ export function parseLocalLabel(ctx: Context) {
 
 export function addLabel(ctx: Context, name: string, value: TExprStackItem) {
 	const { line } = ctx.lexer.pos();
-	value.extra = { ...value.extra, file: ctx.filepath, line: line, label: false };
+	value.extra = { ...value.extra, file: ctx.filepath, line: line, isVariable: true };
 	ctx.symbols.set(name, value);
 }
 
 function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
-	if (ctx.symbols.exists(name, ctx.symbols.namespace)) {
+	if (ctx.symbols.exists(name, ctx.symbols.namespace, ctx.symbols.function)) {
 		const label = ctx.symbols.get(name);
 		if (label?.extra?.exported === 1) {
 			label.extra.exported++;
@@ -39,7 +40,7 @@ function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
 		}
 	}
 	addLabel(ctx, name, value);
-	value.extra = { ...value.extra, label: true };
+	value.extra = { ...value.extra, isVariable: false };
 }
 
 /*

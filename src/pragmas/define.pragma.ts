@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { getValueType } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
-import { TExprStackItemValueType } from "../parsers/expression.parser";
+import { TExprStackItemValueType } from "../parsers/expression/expression.parser";
 
 export function processDefine(ctx: Context) {
 	const tok = ctx.lexer.token();

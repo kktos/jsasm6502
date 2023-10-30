@@ -13,6 +13,7 @@ const BINARY_CHARSET = new Set(["0", "1"]);
 const IDENTIFIER_CHARSET = new Set([...ALPHABET, "_"]);
 const IDENTIFIER_CHARSET2 = new Set([...IDENTIFIER_CHARSET, ...DIGITS_CHARSET]);
 const QUOTES_CHARSET = new Set(["'", '"']);
+const COMMENT_CHARSET = new Set(["/", "*"]);
 
 export enum EVENT_TYPES {
 	EOS = "EOS",
@@ -65,8 +66,8 @@ class LexerContext {
 	public states: LexerState[] = [];
 	public eventHandlers: Map<TEVENT_TYPES, TEventListenerHandler[]> = new Map();
 
-	public currChar: string | null = null;
 	public posInLine = 0;
+	public currChar: string | null = null;
 	public currLine = "";
 	public currToken = new Token();
 	public tokens: Token[] = [];
@@ -83,7 +84,6 @@ class LexerContext {
 		this.currChar = null;
 		this.posInLine = 0;
 		this.currLine = "";
-		// this.currToken = null;
 		this.tokens = [];
 		this.curTokIdx = 0;
 		this.tokCount = 0;
@@ -92,27 +92,22 @@ class LexerContext {
 }
 
 export class Lexer {
-	private ctx: LexerContext | null;
+	private ctx: LexerContext;
 	private contexts: LexerContext[];
 	private helpers: LexerHelpers;
 
 	constructor(helpers: LexerHelpers) {
-		this.ctx = null;
+		this.ctx = new LexerContext("");
 		this.contexts = [];
 		this.helpers = helpers;
-		// this.onEOF= null;
 	}
 
 	pushSource(src: string) {
-		if (this.ctx) this.contexts.push(this.ctx);
+		this.contexts.push(this.ctx);
 		this.ctx = new LexerContext(src);
 	}
 
 	addEventListener(type: TEVENT_TYPES, listener: TEventListenerHandler) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
-		if (typeof listener !== "function") throw new TypeError("FATAL ERROR: Lexer.addEventListener needs a function");
-
 		const listeners = this.ctx.eventHandlers.get(type) ?? [];
 		this.ctx.eventHandlers.set(type, listeners);
 		listeners.push(listener);
@@ -121,8 +116,6 @@ export class Lexer {
 		// console.log("Lexer.eventHandlers",this.ctx.eventHandlers);
 	}
 	removeEventListener(type: TEVENT_TYPES, listener: TEventListenerHandler) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		const listeners = this.ctx.eventHandlers.get(type);
 		if (!listeners) return;
 
@@ -134,8 +127,6 @@ export class Lexer {
 		if (idx > -1) listeners.splice(idx, 1);
 	}
 	executeEventListener(type: TEVENT_TYPES) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		const listeners = this.ctx.eventHandlers.get(type);
 		if (!listeners) return;
 
@@ -144,14 +135,10 @@ export class Lexer {
 
 	// cancel the rest of the source -> pragma .end
 	stopSource() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		this.ctx.lineIdx = this.ctx.lines.length;
 	}
 
 	nextLine() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		while (true) {
 			this.ctx.nextLine();
 
@@ -165,11 +152,15 @@ export class Lexer {
 			// if(this.onEOF)
 			// 	this.onEOF();
 
-			this.ctx = this.contexts.pop() ?? null;
+			// this.ctx = this.contexts.pop() ?? null;
+			const lastCtx = this.contexts.pop() ?? null;
 
+			if (lastCtx) {
+				this.ctx = lastCtx;
+			} else {
+				return false;
+			}
 			// log("Lexer.nextLine ctx", this.ctx);
-
-			if (!this.ctx) return false;
 		}
 
 		this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
@@ -183,8 +174,6 @@ export class Lexer {
 	}
 
 	saveState() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		this.ctx.states.push({
 			lineIdx: this.ctx.lineIdx,
 			posInLine: this.ctx.posInLine,
@@ -194,8 +183,6 @@ export class Lexer {
 	}
 
 	restoreState() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		const previousState = this.ctx.states.pop();
 		if (!previousState) throw new VAParseError("No Lexer Previous State");
 
@@ -208,30 +195,20 @@ export class Lexer {
 	}
 
 	popState() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		this.ctx.states.pop();
 	}
 
 	pos() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return { posInLine: this.ctx.posInLine, line: this.ctx.lineIdx };
 	}
 	line() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return this.ctx.currLine;
 	}
 	eof() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return this.ctx.lineIdx >= this.ctx.lines.length;
 	}
 
 	isLookahead(tokenType: number, identifier?: string) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.curTokIdx >= this.ctx.tokCount - 1) return false;
 
 		const hasSameType = this.ctx.tokens[this.ctx.curTokIdx + 1].type === tokenType;
@@ -240,8 +217,6 @@ export class Lexer {
 	}
 
 	lookahead(idx = 1) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (idx < 0) {
 			if (this.ctx.tokCount - idx < 0) return null;
 			return this.ctx.tokens[this.ctx.tokCount - idx];
@@ -257,8 +232,6 @@ export class Lexer {
 	}
 
 	isIdentifier(identifier: string) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return (
 			this.ctx.curTokIdx < this.ctx.tokCount &&
 			TOKEN_TYPES.IDENTIFIER === this.ctx.tokens[this.ctx.curTokIdx].type &&
@@ -267,28 +240,20 @@ export class Lexer {
 	}
 
 	isToken(tokenType: number) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return this.ctx.curTokIdx < this.ctx.tokCount ? tokenType === this.ctx.tokens[this.ctx.curTokIdx].type : false;
 	}
 
 	match(tokens: Array<number | null>) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return this.ctx.curTokIdx < this.ctx.tokCount && tokens.includes(this.ctx.tokens[this.ctx.curTokIdx].type);
 	}
 
 	token() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null; //new Token(TOKEN_TYPES.EOF);
 
 		return this.ctx.tokens[this.ctx.curTokIdx];
 	}
 
 	token2() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) throw new VAParseError("No more token !?!");
 
 		return this.ctx.tokens[this.ctx.curTokIdx];
@@ -299,21 +264,15 @@ export class Lexer {
 	}
 
 	next() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		this.ctx.curTokIdx++;
 		return this.ctx.curTokIdx < this.ctx.tokCount;
 	}
 
 	eol() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		return this.ctx.curTokIdx >= this.ctx.tokCount;
 	}
 
 	_tokenize() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		while (this._advance()) {
 			// console.log("_tokenize", this.ctx.currToken);
 			this.ctx.tokens.push(this.ctx.currToken);
@@ -321,19 +280,16 @@ export class Lexer {
 		this.ctx.tokCount = this.ctx.tokens.length;
 	}
 
-	_nextChar() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
+	private nextChar() {
 		if (this.ctx.posInLine >= this.ctx.currLine?.length) {
 			this.ctx.currChar = null;
 			return null;
 		}
 		this.ctx.currChar = this.ctx.currLine?.[this.ctx.posInLine++] ?? null;
+		return this.ctx.currChar;
 	}
 
 	_testLookaheadChars(chars: string) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.posInLine + chars.length >= this.ctx.currLine?.length) return false;
 		let charIdx = 0;
 		while (
@@ -347,35 +303,68 @@ export class Lexer {
 	}
 
 	_testLookaheadChar(charset: Set<string>) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.posInLine >= this.ctx.currLine?.length) return false;
 		return charset.has(this.ctx.currLine?.[this.ctx.posInLine].toUpperCase() ?? null);
 	}
 
 	_lookaheadChar(offset = 0) {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
-
 		if (this.ctx.posInLine + offset >= this.ctx.currLine?.length) return null;
 		return this.ctx.currLine?.[this.ctx.posInLine + offset] ?? null;
 	}
 
-	_advance() {
-		if (!this.ctx) throw new VAParseError("No Lexer Context");
+	private consumeComment(start: number) {
+		const commentCharsLen = this.ctx.currChar === ";" ? 1 : 2;
+		const isMultiLines = commentCharsLen > 1 && this._lookaheadChar(0) === "*";
+		let startPos: number = start + commentCharsLen;
 
+		if (isMultiLines) {
+			let comments = "";
+			comments = "";
+			this.nextChar();
+			while (!this.eof()) {
+				while (this.nextChar()) {
+					if (this.ctx.currChar === "*" && this._lookaheadChar(0) === "/") {
+						comments += this.ctx.currLine.slice(startPos, -2);
+						return false;
+					}
+				}
+
+				comments += this.ctx.currLine.slice(startPos);
+				this.ctx.nextLine();
+				this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
+
+				startPos = 0;
+			}
+
+			throw new VAParseError("Unclosed Comments");
+		} else {
+			this.ctx.comment = this.ctx.currLine.slice(startPos);
+		}
+	}
+
+	_advance() {
 		this.ctx.currToken = new Token();
 
-		this._nextChar();
+		this.nextChar();
 
 		// WHITESPACESs
 		while (this.ctx.currChar && WS_CHARSET.has(this.ctx.currChar)) {
 			this.ctx.currToken.hasSpaceBefore = true;
-			this._nextChar();
+			this.nextChar();
 		}
 
 		if (this.ctx.currChar == null) return false;
 
 		this.ctx.currToken.posInLine = this.ctx.posInLine - 1;
+
+		let startPos = this.ctx.posInLine - 1;
+
+		// COMMENT
+
+		if (this.ctx.currChar === ";" || (this.ctx.currChar === "/" && this._testLookaheadChar(COMMENT_CHARSET))) {
+			this.consumeComment(startPos);
+			return false;
+		}
 
 		// SEPARATORS
 		if (SEPARATOR_CHARSET.has(this.ctx.currChar)) {
@@ -389,7 +378,7 @@ export class Lexer {
 
 			const nextChars = sep[0];
 			if (this._testLookaheadChars(nextChars)) {
-				for (let idx = nextChars.length; idx !== 0; idx--) this._nextChar();
+				for (let idx = nextChars.length; idx !== 0; idx--) this.nextChar();
 				this.ctx.currToken.text += nextChars; //this.ctx.currChar;
 				this.ctx.currToken.type = sep[1];
 			} else this.ctx.currToken.type = sep[2];
@@ -397,11 +386,9 @@ export class Lexer {
 			return true;
 		}
 
-		let startPos = this.ctx.posInLine - 1;
-
 		// IDENTIFIER
 		if (IDENTIFIER_CHARSET.has(this.ctx.currChar.toUpperCase())) {
-			while (this._testLookaheadChar(IDENTIFIER_CHARSET2)) this._nextChar();
+			while (this._testLookaheadChar(IDENTIFIER_CHARSET2)) this.nextChar();
 			this.ctx.currToken.type = TOKEN_TYPES.IDENTIFIER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
 			this.ctx.currToken.value = this.ctx.currToken.text.toUpperCase();
@@ -414,20 +401,20 @@ export class Lexer {
 			let charset = DIGITS_CHARSET;
 
 			if (this._lookaheadChar() === "x") {
-				this._nextChar();
+				this.nextChar();
 				base = 16;
 				charset = HEXA_CHARSET;
 				startPos += 2;
 			}
 
 			if (this._lookaheadChar() === "b") {
-				this._nextChar();
+				this.nextChar();
 				base = 2;
 				charset = BINARY_CHARSET;
 				startPos += 2;
 			}
 
-			while (this._testLookaheadChar(charset)) this._nextChar();
+			while (this._testLookaheadChar(charset)) this.nextChar();
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
@@ -437,7 +424,7 @@ export class Lexer {
 
 		// NUMBER base10
 		if (DIGITS_CHARSET.has(this.ctx.currChar)) {
-			while (this._testLookaheadChar(DIGITS_CHARSET)) this._nextChar();
+			while (this._testLookaheadChar(DIGITS_CHARSET)) this.nextChar();
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
@@ -448,7 +435,7 @@ export class Lexer {
 		// NUMBER hexa
 		if (this.ctx.currChar === "$") {
 			while (this._testLookaheadChar(HEXA_CHARSET)) {
-				this._nextChar();
+				this.nextChar();
 			}
 			const endPos = this.ctx.posInLine;
 
@@ -466,7 +453,7 @@ export class Lexer {
 
 		// NUMBER binary
 		if (this.ctx.currChar === "%") {
-			while (this._testLookaheadChar(BINARY_CHARSET)) this._nextChar();
+			while (this._testLookaheadChar(BINARY_CHARSET)) this.nextChar();
 
 			const endPos = this.ctx.posInLine;
 
@@ -486,7 +473,7 @@ export class Lexer {
 			this.saveState();
 
 			const quote = this.ctx.currChar;
-			while (this._lookaheadChar() != null && this._lookaheadChar() !== quote) this._nextChar();
+			while (this._lookaheadChar() != null && this._lookaheadChar() !== quote) this.nextChar();
 
 			// if no end quote, let's assume it's a number as char
 			if (this._lookaheadChar() == null) {
@@ -500,7 +487,7 @@ export class Lexer {
 					return false;
 				}
 
-				this._nextChar();
+				this.nextChar();
 				this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 				this.ctx.currToken.text = quote + this.ctx.currChar;
 				this.ctx.currToken.value = this.helpers.charMapManager.convertChar(this.ctx.currChar.charCodeAt(0));
@@ -508,19 +495,12 @@ export class Lexer {
 			}
 
 			this.popState();
-			this._nextChar();
+			this.nextChar();
 			this.ctx.currToken.type = TOKEN_TYPES.STRING;
 			this.ctx.currToken.value = this.ctx.currLine.slice(startPos + 1, this.ctx.posInLine - 1);
 			this.ctx.currToken.text = quote + this.ctx.currToken.value + quote;
 
 			return true;
-		}
-
-		// COMMENT
-		if (this.ctx.currChar === ";") {
-			this.ctx.comment = this.ctx.currLine.slice(startPos + 1);
-			// this.ctx.currLine= "";
-			return false;
 		}
 
 		this.ctx.currToken.type = TOKEN_TYPES.INVALID;

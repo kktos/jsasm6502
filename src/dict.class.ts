@@ -1,6 +1,6 @@
 import { VAParseError } from "./helpers/errors.class";
 import { TOKEN_TYPES, getTypeName } from "./lexer/token.class";
-import { TExprStackItem } from "./parsers/expression.parser";
+import { TExprStackItem } from "./parsers/expression/expression.parser";
 
 export const NS_GLOBAL = "GLOBAL";
 const FN_ALL = "*";
@@ -55,6 +55,10 @@ export class Dict {
 
 	get namespace() {
 		return this.currentNamespace;
+	}
+
+	get function() {
+		return this.currentFunction !== FN_ALL ? this.currentFunction : undefined;
 	}
 
 	get isGlobal() {
@@ -182,9 +186,13 @@ export class Dict {
 		return markers[pos];
 	}
 
-	exists(name: string, ns: string | null = null) {
-		// if (ns) return this.fn ? Object.hasOwn(this.fn, name) : Object.hasOwn(this.namespaces[ns], name);
+	exists(name: string, ns?: string, fn?: string) {
+		// log("exists", ns, name, this.fn);
+
+		if (fn) return Object.hasOwn(this.ns[fn], name);
+
 		if (ns) return Object.hasOwn(this.namespaces[ns], name);
+
 		return (
 			(this.fn && Object.hasOwn(this.fn, name)) || Object.hasOwn(this.ns, name) || Object.hasOwn(this.global, name)
 		);

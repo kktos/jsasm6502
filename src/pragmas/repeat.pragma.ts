@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES, Token } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
-import { TExprStackItemNumber, parseExpression } from "../parsers/expression.parser";
+import { TExprStackItemNumber, parseExpression } from "../parsers/expression/expression.parser";
 /*
 	.REPEAT <count> [<iterator>]
 	<block to repeat>

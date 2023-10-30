@@ -31,10 +31,11 @@ describe("Label", () => {
 				rts
 		`;
 		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("02 10 60"));
 	});
 
-	it("should deal with local label", () => {
+	it("should deal with local label with !", () => {
 		const src = `
 		!		lda  $1000,x
 				bpl  !+
@@ -45,6 +46,21 @@ describe("Label", () => {
 
 		`;
 		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("BD 00 10 10 04 C8 D0 F8 88 60"));
+	});
+
+	it("should deal with local label with :", () => {
+		const src = `
+		:		lda  $1000,x
+				bpl  :+
+				iny
+				bne  :-
+				dey
+		:		rts
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("BD 00 10 10 04 C8 D0 F8 88 60"));
 	});
 

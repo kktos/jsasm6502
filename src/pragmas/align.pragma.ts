@@ -1,6 +1,6 @@
 import { Context } from "../context.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { TExprStackItemNumber, parseExpression } from "../parsers/expression.parser";
+import { TExprStackItemNumber, parseExpression } from "../parsers/expression/expression.parser";
 
 export function processAlign(ctx: Context) {
 	const res = parseExpression(ctx, undefined, TOKEN_TYPES.NUMBER) as TExprStackItemNumber;

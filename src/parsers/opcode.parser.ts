@@ -1,9 +1,18 @@
 import { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { high, low } from "../helpers/utils";
-import { TOKEN_TYPES } from "../lexer/token.class";
+import { TOKEN_TYPES, Token } from "../lexer/token.class";
 import { ADDRMODE } from "../opcodes/65xxx.addrmodes";
-import { TExprStackItemNumber, parseExpression } from "./expression.parser";
+import { parseExpression } from "./expression/expression.parser";
+import { TExprStackItemNumber } from "./expression/expression.type";
+
+const log = console.log;
+
+export function isIdentifierAnOpcode(ctx: Context) {
+	const token = ctx.lexer.token();
+	if (!token || token.type !== TOKEN_TYPES.IDENTIFIER) return false;
+	return Boolean(ctx.opcodes[token.asString]);
+}
 
 export function parseOpcode(ctx: Context) {
 	let valueSize = 0;
@@ -12,7 +21,7 @@ export function parseOpcode(ctx: Context) {
 
 	const opcode = token.asString;
 
-	// console.log("parseOpcode 1",token);
+	// log("parseOpcode 1",token);
 
 	const opcodeTable = ctx.opcodes[opcode];
 	if (opcodeTable == null)
@@ -41,7 +50,7 @@ export function parseOpcode(ctx: Context) {
 		token = ctx.lexer.token();
 	}
 
-	// console.log("parseOpcode 2",token);
+	// log("parseOpcode 2",token);
 
 	//
 	// ASL (IMPLICIT ADDR MODE)
@@ -157,7 +166,8 @@ export function parseOpcode(ctx: Context) {
 	// LDA addr , Y
 	// LDA addr , X
 	// console.log({ctx});
-	// console.log(token);
+
+	// log(token);
 
 	const addr = parseExpression(ctx, undefined, TOKEN_TYPES.NUMBER) as TExprStackItemNumber;
 

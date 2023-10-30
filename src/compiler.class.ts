@@ -4,6 +4,8 @@ import { getHexByte, getHexWord, low } from "./helpers/utils";
 const log = console.log;
 
 const BYTECOUNTPERLINE = 6;
+const ADDR_PREFIX_LENGTH = 7;
+const BYTE_DUMP_LENGTH = ADDR_PREFIX_LENGTH + BYTECOUNTPERLINE * 3 + 1;
 
 type TSegment = {
 	start: number;
@@ -105,7 +107,7 @@ export class Compiler {
 			const lines = [];
 			for (let idx = 0; idx < bytes.length; idx++) {
 				if (idx % BYTECOUNTPERLINE === 0) {
-					hex += `    ${getHexWord(this.pc + idx)}: `;
+					hex += `${getHexWord(this.pc + idx)}: `;
 				}
 
 				obj[offset + idx] = low(bytes[idx]);
@@ -117,12 +119,12 @@ export class Compiler {
 				}
 
 				if (idx % BYTECOUNTPERLINE === BYTECOUNTPERLINE - 1) {
-					lines.push(hex.padEnd(32) + chars);
+					lines.push(hex.padEnd(BYTE_DUMP_LENGTH) + chars);
 					hex = "";
 					chars = "";
 				}
 			}
-			hex !== "" && lines.push(hex.padEnd(32) + chars);
+			hex !== "" && lines.push(hex.padEnd(BYTE_DUMP_LENGTH) + chars);
 			this._output = lines;
 		}
 

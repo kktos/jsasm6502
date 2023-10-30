@@ -2,7 +2,7 @@ import { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { getHexByte, getHexWord } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { TExprStackItemValueType } from "../parsers/expression.parser";
+import { TExprStackItemValueType } from "../parsers/expression/expression.parser";
 
 export function fnHex(ctx: Context, parms: TExprStackItemValueType[]) {
 	const parm = parms[0];

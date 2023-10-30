@@ -1,8 +1,8 @@
-import { load } from "js-yaml";
 import { readFileSync, accessSync } from "node:fs";
 import { dirname } from "node:path";
 import { TConf } from "./types";
 import { ReadFileReturn } from "../types/Options.type";
+import { load } from "../helpers/asm-yaml";
 
 let rootDir = ".";
 
@@ -26,7 +26,8 @@ export function readConfFile(path?: string) {
 		if (!isFileExists(confPath)) return null;
 	}
 
-	const conf: TConf | null = readYAMLFile(confPath) as TConf | null;
+	const yaml = readFile(confPath);
+	const conf: TConf | null = parseYAML(yaml.content as string) as TConf | null;
 	if (!conf || typeof conf !== "object") {
 		return { conf: null, error: `invalid conf file ${confPath}` };
 	}
@@ -56,11 +57,11 @@ export function readFile(filename: string, fromDir?: string, asBin?: boolean): R
 	}
 }
 
-export function readYAMLFile(filename: string): Record<string, unknown> | boolean | number | string {
+export function parseYAML(yaml: string): Record<string, unknown> | boolean | number | string {
 	try {
-		return load(readFile(filename).content as string) as Record<string, unknown>;
+		return load(yaml) as Record<string, unknown>;
 	} catch (e) {
-		console.error("readYAMLFile", filename, e);
+		console.error("parseYAML", e);
 		return "";
 	}
 }
