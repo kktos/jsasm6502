@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
+import { assemble } from "../src/lib/assembler";
 import { opts } from "./shared/options";
 
 // opts.readFile= (filename, fromFile, asBin) => {
@@ -13,6 +13,7 @@ import { opts } from "./shared/options";
 describe("Function", () => {
 	beforeEach(() => {
 		opts.output = "";
+		opts.listing= true;
 	});
 
 	it("tests a function with the wrong parm count", () => {
@@ -49,4 +50,25 @@ describe("Function", () => {
 			"number",
 	].join("\n"));
 	});
+
+	it("tests split string on default (space)", () => {
+		const src = `
+			arr= .split("one two")
+			.echo arr, " TYPE:", .type(arr)
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toStrictEqual(`["one","two"] TYPE:array`);
+	});
+
+	it("tests split string on comma (,)", () => {
+		const src = `
+			arr= .split("one,two", ",")
+			.echo arr, " TYPE:", .type(arr)
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toStrictEqual(`["one","two"] TYPE:array`);
+	});
+
 });

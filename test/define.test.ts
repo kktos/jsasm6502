@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { opts } from "./shared/options";
 
 describe("Define", () => {
@@ -10,7 +10,7 @@ describe("Define", () => {
 		opts.listing= true;
 	});
 
-	it.skip("tests define var", () => {
+	it("tests define var", () => {
 		const src = `
 		.define var_yaml
 			- one
@@ -23,7 +23,7 @@ describe("Define", () => {
 		expect(opts.output.trim()).toStrictEqual('["one","two"]');
 	});
 
-	it.skip("tests define array", () => {
+	it("tests define array", () => {
 		const src = `
 		.define var_yaml
 		prop: !!seq
@@ -44,7 +44,7 @@ describe("Define", () => {
 		expect(opts.output.trim()).toStrictEqual("array9");
 	});
 
-	it.skip("tests define array of object with $hexa", () => {
+	it("tests define array of object with $hexa", () => {
 		const src = `
 
 		.define spritesTable
@@ -77,7 +77,7 @@ describe("Define", () => {
 		);
 	});
 
-	it.skip("tests define array of object", () => {
+	it("tests define array of object", () => {
 		const src = `
 		.define spritesTable
 		- { id: 0xaa, x: 0xa0, y: 0x10}
@@ -105,7 +105,7 @@ describe("Define", () => {
 		);
 	});
 
-	it.skip("should throw an error on duplicate define", () => {
+	it("should throw an error on duplicate define", () => {
 		const src = `
 		.define spritesTable
 		- { id: 0xaa, x: 0xa0, y: 0x10}

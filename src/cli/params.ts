@@ -17,10 +17,6 @@ export function getParams(line: string[]): Arguments {
 				describe: "output segments table",
 				boolean: true,
 			},
-			segdir: {
-				describe: "output segments dir in the output file",
-				boolean: true,
-			},
 			out: {
 				describe: "output file name",
 				type: "string",
@@ -38,7 +34,6 @@ export function getParams(line: string[]): Arguments {
 		listing,
 		symbols,
 		segments,
-		segdir,
 		out,
 		conf,
 		src: _[0] as string,

@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { op65c02 } from "../src/opcodes/65C02.opcodes";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { op65c02 } from "../src/lib/opcodes/65C02.opcodes";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { test_65C02 } from "./test_65C02.data";
 import { opts } from "./shared/options";
 

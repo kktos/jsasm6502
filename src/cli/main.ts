@@ -1,12 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname } from "node:path";
-import { assemble } from "../assembler";
-import { Options } from "../types/Options.type";
+import { assemble } from "../lib/assembler";
+import { Options } from "../lib/types/Options.type";
 import { link } from "./linker";
 import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";
 
-console.log("jsAsm v.01");
+console.log("jsAsm v1.00");
 
 const { conf, error } = readConf(process.argv.splice(2));
 if (!conf) {
@@ -55,7 +55,7 @@ try {
 		process.exit(-1);
 	}
 
-	const linkRes = link(asmRes, { hasSegmentDirectory: conf.options.segdir });
+	const linkRes = link(asmRes);
 
 	if (conf.options.segments) {
 		console.log("");
@@ -65,7 +65,7 @@ try {
 				"LEN:",
 				hexa(len),
 				"PAD:",
-				hexa(padLen),
+				padLen ? hexa(padLen) : "-----",
 				"SIZE:",
 				hexa(size),
 				"ADDR:",
@@ -75,11 +75,22 @@ try {
 		}
 	}
 
-	if (linkRes.finalCode.length) {
-		const buffer = Buffer.from(linkRes.finalCode as number[]);
+	let bin = linkRes.finalCode;
+
+	if (conf.link.post) {
+		const m = await import(`file://${process.cwd()}/${conf.link.post}`);
+		const res = m?.default?.(bin, linkRes.dir);
+		if (res && (typeof res !== "object" || !Array.isArray(res.bin)))
+			throw "linker post script needs to return a valid object { bin: [...] }";
+
+		bin = res.bin;
+	}
+
+	if (bin.length) {
+		const buffer = Buffer.from(bin as number[]);
 		mkdirSync(outDirname, { recursive: true });
 		writeFileSync(outFilename, buffer);
-		console.log("binary output", outFilename);
+		// console.log("binary output", outFilename);
 	} else {
 		console.log("no code to save !");
 	}

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { cpu6502 } from "../src/opcodes/6502.opcodes";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { cpu6502 } from "../src/lib/opcodes/6502.opcodes";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { test_6502 } from "./test_6502.data";
 import { opts } from "./shared/options";
 

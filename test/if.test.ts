@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
+import { assemble } from "../src/lib/assembler";
 import { opts } from "./shared/options";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 
 describe("If", () => {
 

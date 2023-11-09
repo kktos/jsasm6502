@@ -1,8 +1,8 @@
 import { readFileSync, accessSync } from "node:fs";
 import { dirname } from "node:path";
 import { TConf } from "./types";
-import { ReadFileReturn } from "../types/Options.type";
-import { load } from "../helpers/asm-yaml";
+import { ReadFileReturn } from "../lib/types/Options.type";
+import { load } from "../lib/helpers/asm-yaml";
 
 let rootDir = ".";
 

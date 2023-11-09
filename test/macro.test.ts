@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { opts } from "./shared/options";
+import { hexDump } from "../src/lib/helpers/utils";
 
 describe("Macro", () => {
 
@@ -109,5 +110,144 @@ describe("Macro", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual('MACRO: "READ_FILE" is already defined');
+	});
+
+	it("tests macro with label as args", () => {
+		const src = `
+		spriteX = $1000
+
+		.macro ifx ...parms
+		    parmIdx= 0
+
+		    .if .len(parms)=4
+		      ldx parms[parmIdx]
+			  parmIdx= parmIdx + 1
+		    .end
+
+			op= parms[parmIdx]
+			value= parms[parmIdx+1]
+			goto= parms[parmIdx+2]
+
+		    .if op="<"
+		      cpx #value
+		      bcc goto
+		    .end
+
+		    .if op=">"
+		      cpx #value
+		      beq :+
+		      bcs goto
+		      :
+		    .end
+		.end
+
+		ifx spriteX, "<", 130, $1050
+		ifx ">", 208, $1050
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(opts.output.trim()).toStrictEqual("");
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("AE 00 10 E0 82 90 49 E0 D0 F0 02 B0 43"),
+		);
+	});
+
+	it("tests macro with label as args", () => {
+		const src = `
+		spriteX = $1000
+
+		.macro ifa ...parms
+		    parmIdx= 0
+
+		    .if .len(parms)=4
+		      lda %(parms[parmIdx])
+			  parmIdx= parmIdx + 1
+		    .end
+
+			op= parms[parmIdx]
+			value= parms[parmIdx+1]
+			goto= parms[parmIdx+2]
+
+		    .if op="<"
+		      cmp %(value)
+		      bcc goto
+		    .end
+
+		    .if op=">"
+		      cmp %(value)
+		      beq :+
+		      bcs goto
+		      :
+		    .end
+		.end
+
+		ifa "#$66", "<", "#130", next
+
+		next
+				rts
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(opts.output.trim()).toStrictEqual("");
+		expect(asmRes.error).toStrictEqual(null);
+		expect(hexDump(asmRes.obj.CODE,6)).toStrictEqual(
+			hexDump(readHexLine("A9 66 C9 82 90 00 60"),6),
+		);
+	});
+
+	it("tests macro with label as args", () => {
+		const src = `
+		spriteX = $1000
+
+		.macro ifx ...parms
+		    .if .len(parms)!=2
+				.error "Macro ifx : needs 2 params"
+			.end
+
+			.if .type(parms[0])!="string"
+				.error "Macro ifx : the first parm <",parms[0],"> needs to be a string"
+			.end
+
+			expr= .split(parms[0])
+			goto= parms[1]
+		    parmIdx= 0
+
+		    .if .len(expr)=3
+		      ldx %(expr[parmIdx])
+			  parmIdx= parmIdx + 1
+		    .end
+
+			op= expr[parmIdx]
+			value= expr[parmIdx+1]
+
+		    .if op="<"
+		      cpx %(value)
+		      bcc goto
+		    .end
+
+		    .if op=">"
+		      cpx %(value)
+		      beq :+
+		      bcs goto
+		      :
+		    .end
+		.end
+
+		ifx "spriteX < #130", next
+
+		nop
+		nop
+
+		next
+				rts
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		// expect(opts.output.trim()).toStrictEqual("");
+		expect(asmRes.error).toStrictEqual(null);
+		expect(hexDump(asmRes.obj.CODE,6)).toStrictEqual(
+			hexDump(readHexLine("AE 00 10 E0 82 90 02 EA EA 60"),6),
+		);
 	});
 });

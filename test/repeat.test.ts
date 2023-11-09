@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { beforeEach } from "node:test";
 import { opts } from "./shared/options";
 
@@ -18,7 +18,7 @@ describe("REPEAT PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -45,7 +45,7 @@ describe("REPEAT PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -69,7 +69,7 @@ describe("REPEAT PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -91,7 +91,7 @@ describe("REPEAT PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(
 				`
@@ -105,8 +105,10 @@ describe("REPEAT PRAGMA", () => {
 	it("check repeat on array items", () => {
 		const src = `
 		.define spritesTable
-		- { id: 0xaa, x: 0xa0, y: 0x10}
-		- { id: 0xbb, x: 0xb0, y: 0x20}
+		[
+			{ id: 0xaa, x: 0xa0, y: 0x10},
+			{ id: 0xbb, x: 0xb0, y: 0x20}
+		]
 		.end
 
 		.repeat .len(spritesTable) spriteIdx
@@ -119,6 +121,7 @@ describe("REPEAT PRAGMA", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 
 		expect(asmRes.obj.CODE).toStrictEqual(
 			readHexLine(

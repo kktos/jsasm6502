@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
+import { assemble } from "../src/lib/assembler";
 import { opts } from "./shared/options";
 
 describe("System Variables", () => {

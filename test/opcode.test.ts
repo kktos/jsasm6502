@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler";
-import { readHexLine } from "../src/pragmas/data.pragma";
+import { assemble } from "../src/lib/assembler";
+import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { opts } from "./shared/options";
 
 

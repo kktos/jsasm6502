@@ -1,30 +1,6 @@
 import { readConfFile } from "./file";
 import { getParams } from "./params";
-import { TConf } from "./types";
-
-class SchemaDict {
-	constructor(obj: object) {
-		const dst = this as Record<string, unknown>;
-		const src = obj as Record<string, unknown>;
-		for (const key in obj) dst[key] = src[key];
-	}
-}
-
-const confSchema = {
-	src: "string",
-	out: "string",
-	options: {
-		segments: "boolean",
-		segdir: "boolean",
-		symbols: "boolean",
-		listing: "boolean",
-	},
-	segments: new SchemaDict({
-		start: "number",
-		end: "number",
-		pad: "number",
-	}),
-};
+import { SchemaDict, TConf, confSchema } from "./types";
 
 export function readConf(args: string[]) {
 	const argv = getParams(args);
@@ -50,9 +26,11 @@ export function readConf(args: string[]) {
 		src: argv.src ?? tmpConf?.src,
 		out: argv.out ?? tmpConf?.out ?? "./a.out",
 		segments: tmpConf?.segments,
+		link: {
+			post: tmpConf?.link?.post,
+		},
 		options: {
 			segments: argv.segments ?? tmpConf?.options?.segments ?? false,
-			segdir: argv.segdir ?? tmpConf?.options?.segdir ?? false,
 			symbols: argv.symbols ?? tmpConf?.options?.symbols ?? false,
 			listing: argv.listing ?? tmpConf?.options?.listing ?? true,
 		},

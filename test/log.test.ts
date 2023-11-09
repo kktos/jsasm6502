@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { assemble } from "../src/assembler.js";
+import { assemble } from "../src/lib/assembler.js";
 import { opts } from "./shared/options";
 
 describe("log", () => {
