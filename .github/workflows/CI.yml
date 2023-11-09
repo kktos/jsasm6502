@@ -15,10 +15,10 @@ jobs:
         working-directory: .
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.1.1
 
       - name: Setup node env 🏗
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4.0.0
         with:
           node-version: 20.x
           registry-url: https://registry.npmjs.org/
