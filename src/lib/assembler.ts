@@ -175,7 +175,7 @@ function asm(ctx: Context): string {
 				const entry = ctx.lastLabel?.value;
 				if (entry?.extra?.isVariable === true && lastVarname !== ctx.lastLabel?.name) {
 					lastVarname = ctx.lastLabel?.name ?? "";
-					switch(typeof entry.value) {
+					switch (typeof entry.value) {
 						case "number":
 							disasm += getHexWord(entry.value);
 							break;

@@ -474,9 +474,11 @@ function parse_function(exprCtx: TExprCtx) {
 
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAExprError('TERM: Syntax Error: Missing ")"');
 
-	if (desiredParmCount >=0 ? parmCount !== desiredParmCount : parmCount < Math.abs(desiredParmCount))
+	if (desiredParmCount >= 0 ? parmCount !== desiredParmCount : parmCount < Math.abs(desiredParmCount))
 		throw new VAExprError(
-			`TERM: Wrong number of parameters for function "${fnName}". Expected ${Math.abs(desiredParmCount)} Got ${parmCount}`,
+			`TERM: Wrong number of parameters for function "${fnName}". Expected ${Math.abs(
+				desiredParmCount,
+			)} Got ${parmCount}`,
 		);
 
 	exprCtx.stack.push(TExprStackItem.newFunction(fnName, parmCount)); // { op: "FN", fn: fnName, parmCount, type: 0, value: 0 }
