@@ -1,0 +1,52 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Assembler 6502/65C02",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#comments"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.asm6502",
+				"match": "(?i)(\\.if|\\.repeat|\\.for|\\.end|\\.include|\\.hex|\\.db)\\b"
+			},
+			{
+				"name": "keyword.other.opcode.cpu.asm6502",
+				"match": "(?i)\\b(adc|and|asl|bit|bpl|bmi|bvc|bvs|bcc|bcs|bne|beq|brk|cmp|cpx|cpy|dec|eor|clc|sec|cli|sei|clv|cld|sed|inc|jmp|jsr|lda|ldx|ldy|lsr|nop|ora|tax|txa|dex|inx|tay|tya|dey|iny|ror|rol|rti|rts|sbc|sta|txs|tsx|pha|pla|php|plp|stx|sty)\\b"
+			},
+			{
+				"name": "keyword.other.label.asm6502",
+				"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)"
+			}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.asm6502",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.asm6502",
+					"match": "\\\\."
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.semicolon",
+					"match": ";[^\n]*\n"
+				}
+			]
+		}
+	},
+	"scopeName": "source.asm6502"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "jsasm6502",
+  "displayName": "jsAsm6502",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "asm6502",
+      "aliases": ["Assembler 6502/65C02", "asm6502"],
+      "extensions": [".asm",".s"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "asm6502",
+      "scopeName": "source.asm6502",
+      "path": "./syntaxes/asm6502.tmLanguage.json"
+    }]
+  }
+}
