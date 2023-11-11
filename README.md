@@ -72,6 +72,15 @@ printStr
 // it'll be : string | number | object | array
 .if .type(val) = "string"
 ```
+#### .split( < string value > [,< delimiter >] )
+```as
+// divides the given string using the delimiter as a cut point and returns an array of strings 
+// if the delimiter is not given, space will be used
+// no delimiter -> " "
+params= .split("one two three")
+// with delimiter
+params= .split("one,two,three", ",")
+```
 
 ## System variables
 
