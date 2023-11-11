@@ -114,7 +114,7 @@ System variables are readonly and they are prefixed by a dot "."
 
 ```
 
-## Variable & Label
+## Variables & Labels
 #### < name > = expression
 ```as
 // define a simple variable
@@ -328,7 +328,7 @@ You can set the program counter but with addresses in the range defined by the c
 // as we're in the loader segment, the addresses range is $B700 to $B7FF. Org values ouside that range will raise an error.
 ```
 
-## Macro
+## Macros
 #### .macro < name > [param1 ,param2, ...]
 ```as
 // create a macro with a name and parameter(s)
@@ -346,24 +346,72 @@ welcome
 #### Variable number of parameters
 ```as
 // you can capture all the parameters using the rest notation
-	.macro defStruc id, ...params
+	.macro defStruc id, ...parms
 		.dw id
-		.repeat .len(params) idx
-		    .dw params[idx]
+		.repeat .len(parms) idx
+			.if .type(parms[idx]) = "string"
+				.cstr parms[idx]
+			.else
+				.dw parms[idx]
+			.end
 		.end
 	.end
+
 	defStruc $CAFE, "ABCD", $1234
+	/*
+	will emit
+	0000: FE CA
+	0002: 41 42 43 44 00
+	000A: 34 12
+	*/
 ```
 #### Parameter Interpolation
 This is useful when you want to pass a label and an addressing mode, for instance
 ```as
-	.macro ifa condition, goto
-		.dw id
-		.repeat .len(params) idx
-		    .dw params[idx]
+	.macro ifx ...parms
+		.if .len(parms)!=2
+			.error "Macro ifx : needs 2 params"
+		.end
+
+		.if .type(parms[0])!="string"
+			.error "Macro ifx : the first parm <",parms[0],"> needs to be a string"
+		.end
+
+		expr= .split(parms[0])
+		goto= parms[1]
+		parmIdx= 0
+
+		.if .len(expr)=3
+			ldx %(expr[parmIdx])
+			parmIdx= parmIdx + 1
+		.end
+
+		op= expr[parmIdx]
+		value= expr[parmIdx+1]
+
+		.if op="<"
+			cpx %(value)
+			bcc goto
+		.end
+
+		.if op=">"
+			cpx %(value)
+			beq :+
+			bcs goto
+			:
 		.end
 	.end
-	defStruc $CAFE, "ABCD", $1234
+
+	spriteX = $1000
+	ifx "spriteX < #130", next
+
+	/*
+	will emit
+	0000: AE 00 10 ; ldx spriteX
+	0000: E0 82    ; cpx #130
+	0000: 90 xx    ; bcc next
+	*/
+
 ```
 ## Comments
 
