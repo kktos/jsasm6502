@@ -339,13 +339,15 @@ welcome
 
 ; use a specific characters map for string declaration
 .option charmap apple2
-; for instance, the ascii code for the uppercase letter A is $41.
-; but to render it on an apple2, it needs to be $C1.
-; you can have a characters map which will redefine $41 to $C1
-; so the following
-; .text "ABC"
-; will emit :
-; $C1 $C2 $C3
+/*
+ for instance, the ascii code for the uppercase letter A is $41.
+ but to render it on an apple2, it needs to be $C1.
+ you can have a characters map which will redefine $41 to $C1
+ so the following
+ .text "ABC"
+ will emit :
+ $C1 $C2 $C3
+*/
 
 ; enable or disable the printing of the dissasembly of your code
 .list on ; alias .listing or .lst
