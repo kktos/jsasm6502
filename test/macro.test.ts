@@ -63,7 +63,11 @@ describe("Macro", () => {
 			.macro toto id, ...parms
 				.dw id
 				.repeat .len(parms) idx
-				.dw parms[idx]
+					.if .type(parms[idx]) = "string"
+						.cstr parms[idx]
+					.else
+						.dw parms[idx]
+					.end
 				.end
 			.end
 			toto $CAFE, "ABCD", $1234
@@ -71,8 +75,8 @@ describe("Macro", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
-		expect(asmRes.obj.CODE).toStrictEqual(
-			readHexLine("FE CA 41 00 42 00 43 00 44 00 34 12"),
+		expect(hexDump(asmRes.obj.CODE)).toStrictEqual(
+			hexDump(readHexLine("FE CA 41 42 43 44 00 34 12")),
 		);
 	});
 
@@ -153,7 +157,7 @@ describe("Macro", () => {
 		);
 	});
 
-	it("tests macro with label as args", () => {
+	it("tests macro with interpolation 1", () => {
 		const src = `
 		spriteX = $1000
 
@@ -196,7 +200,7 @@ describe("Macro", () => {
 		);
 	});
 
-	it("tests macro with label as args", () => {
+	it("tests macro with interpolation 2", () => {
 		const src = `
 		spriteX = $1000
 
