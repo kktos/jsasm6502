@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/lib/assembler";
 import { opts } from "./shared/options";
@@ -6,6 +6,10 @@ import { hexDump } from "../src/lib/helpers/utils";
 import { readHexLine } from "../src/lib/pragmas/data.pragma";
 
 describe("Label", () => {
+
+	beforeEach(() => {
+		opts.segments= null;
+	});
 
 	it("should detect duplicate labels", () => {
 		const src = `
@@ -305,4 +309,21 @@ maxYpos		.db 00
 			"00 00"
 		].join("\n")),4,0xD000));
 	});
+
+	it("should detect duplicate labels", () => {
+		const src = `
+		.macro test text
+			.log text
+		.end
+
+			lda #0
+			beq test
+			ldx #3
+		test:
+			rts
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+	});
+
 });

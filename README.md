@@ -194,7 +194,7 @@ exit
 .ds 2,$AA ; alias .fill or .res 
 
 // advance current PC to a multiple value and fill with provided value or with $00
-.align 2,$AA
+.align $100,$AA    // align on next page. e.g: if pc = $15F0, will fill up 16 bytes value $AA
 
 // bytes as hexa dump
 .hex
@@ -205,17 +205,24 @@ exit
 ```
 
 ## String declaration
-
+All the string pragmas are using the currently defined charmap.
+#### .text < string1 > [ , < string2 > ... ]
 ```as
-// string
+// sequence of bytes as charasters
 .text "one", "two", "three"
-
+```
+#### .cstr < string1 > [ , < string2 > ... ]
+```as
 // C string : null-terminated string
 .cstr "one", "two" ; alias .cstring or .asciiz
-
+```
+#### .pstr < string1 > [ , < string2 > ... ]
+```as
 // pascal string : string prefixed with a byte holding its length
 .pstr "one", "two" ; alias .pstring
-
+```
+#### .pstrl < string1 > [ , < string2 > ... ]
+```as
 // long pascal string : string prefixed with a word(little-endian) holding its length
 .pstrl "one", "two" ; alias .pstringl
 

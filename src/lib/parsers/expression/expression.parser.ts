@@ -44,7 +44,11 @@ export function parseExpression(ctx: Context, endSet?: Set<number>, expectedType
 	// ctx.pass >1 && log("parseExpression LINE", ctx.lexer.line());
 
 	while (true) {
+		// log("parseExpression token", ctx.lexer.tokens);
+
 		parseExpr(exprCtx);
+
+		// log("parseExpression token", ctx.lexer.token());
 
 		// ctx.pass >1 && log("parseExpression parseExpr", exprCtx.stack);
 
@@ -345,9 +349,11 @@ function parse_local_label(exprCtx: TExprCtx) {
 
 function parse_scalar(exprCtx: TExprCtx) {
 	const tok = exprCtx.ctx.lexer.token2();
+	// log("parse_scalar 1", tok);
+
 	exprCtx.ctx.lexer.next();
 
-	// console.log("parse_number", tok);
+	// log("parse_scalar 2", exprCtx.ctx.lexer.token());
 
 	switch (tok?.type) {
 		case TOKEN_TYPES.NUMBER:
