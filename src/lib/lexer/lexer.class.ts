@@ -8,9 +8,9 @@ const log = console.log;
 const ALPHABET = [...Array(26)].map((_, i) => String.fromCharCode(i + 65));
 
 const WS_CHARSET = new Set([" ", "\t"]);
-const DIGITS_CHARSET = new Set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+const DIGITS_CHARSET = new Set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_"]);
 const HEXA_CHARSET = new Set([...DIGITS_CHARSET, "A", "B", "C", "D", "E", "F"]);
-const BINARY_CHARSET = new Set(["0", "1"]);
+const BINARY_CHARSET = new Set(["0", "1","_"]);
 const IDENTIFIER_CHARSET = new Set([...ALPHABET, "_"]);
 const IDENTIFIER_CHARSET2 = new Set([...IDENTIFIER_CHARSET, ...DIGITS_CHARSET]);
 const QUOTES_CHARSET = new Set(["'", '"']);
@@ -471,7 +471,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos + 1, this.ctx.posInLine);
-			this.ctx.currToken.value = parseInt(this.ctx.currToken.text, 2);
+			this.ctx.currToken.value = parseInt(this.ctx.currToken.text.replaceAll("_", ""), 2);
 			return true;
 		}
 

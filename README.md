@@ -7,6 +7,14 @@ inspired by virtual assembler by mass:werk and the fact I needed to have it runn
 ## Expressions
 
 ```as
+// Numbers
+value = 170          // base 10
+value = $AA          // base 16 - hexadecimal
+value = %10101010    // base 2  - binary
+value = 0xAA         // base 16 - hexadecimal
+value = 0b10101010   // base 2  - binary
+value = 0b1010_1010  // with separator to ease the reading
+
 // Number Arithmetic
 // + - * /
 count = 1+1
@@ -18,7 +26,7 @@ str = firstname + " " + lastname
 
 // Number Comparisons
 // < <= > >= = !=
-.if value != 5
+.if value != $55
 
 // String Comparisons
 // = !=
@@ -31,6 +39,7 @@ str = firstname + " " + lastname
 // Boolean arithmetic
 // &:and |:or ^:xor
 char = $41 | $80 ; $C1
+flags = flags | %10000000
 
 // 16-bit address operations
 // >:MSB <:LSB
@@ -61,10 +70,12 @@ printStr
 // returns the length of an array or a string
 .if .len(spritesTable) > 2
 ```
-#### .hex( < value > )
+#### .hex( < value > [,< minimumDigits >] )
 ```as
 // returns a string representing in hexa the parameter value 
-.echo .hex(count)
+count = 10
+.echo .hex(count)    // will output $0A
+.echo .hex(count, 4) // will output $000A
 ```
 #### .type( < value > )
 ```as
@@ -77,9 +88,14 @@ printStr
 // divides the given string using the delimiter as a cut point and returns an array of strings 
 // if the delimiter is not given, space will be used
 // no delimiter -> " "
-params= .split("one two three")
+params= .split("one two three")        // ["one","two","three"]
 // with delimiter
-params= .split("one,two,three", ",")
+params= .split("one,two,three", ",")   // ["one","two","three"]
+```
+#### .array( parameter1 [,parameter2, ...] )
+```as
+// returns an array made of all the parameters 
+list= .array($45,$46,89)               // [$45,$46,89]
 ```
 
 ## System variables
