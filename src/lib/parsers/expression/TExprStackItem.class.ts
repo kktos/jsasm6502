@@ -82,6 +82,10 @@ export class TExprStackItem implements IExprItem {
 		return this.val.value as string;
 	}
 
+	get array() {
+		return this.val.value as unknown[];
+	}
+
 	static asString(obj: TExprStackItem) {
 		let out = getTypeName(obj.val.type ?? 0).toLowerCase();
 		switch (obj.val.type) {

@@ -1,17 +1,17 @@
 import { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
+import { TOKEN_TYPES } from "../lexer/token.class";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
-import { TValueType } from "../types/Value.type";
 
-export function fnSplit(ctx: Context, parms: TValueType[]) {
+export function fnSplit(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	const str = parms[0];
-	if (typeof str !== "string")
-		throw new VAParseError(`SPLIT: First parameter should be a string  - "${str}":${typeof str}`);
+	if (str?.type !== TOKEN_TYPES.STRING)
+		throw new VAParseError(`SPLIT: First parameter should be a string  - "${str}"`);
 
-	const splitOn = parms.length > 1 ? parms[1] : " ";
-	if (typeof splitOn !== "string")
-		throw new VAParseError(`SPLIT: Second parameter should be a string  - "${splitOn}":${typeof splitOn}`);
+	if (parms.length > 1 && parms[1]?.type !== TOKEN_TYPES.STRING)
+		throw new VAParseError(`SPLIT: Second parameter should be a string  - "${parms[1]}"`);
 
-	const value = str.split(splitOn);
+	const splitOn = parms.length > 1 && parms[1] ? parms[1].string : " ";
+	const value = str.string.split(splitOn);
 	return TExprStackItem.newArray(value);
 }

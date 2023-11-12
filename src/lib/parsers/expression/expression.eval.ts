@@ -262,10 +262,10 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 			// functions
 			//
 			case "FN": {
-				const parms: TValueType[] = [];
+				const parms: (TExprStackItem | undefined)[] = [];
 				let parmCount = item.paramCount ?? 0;
 				while (parmCount-- && localStack.length) {
-					parms.unshift(localStack.pop()?.value as TValueType);
+					parms.unshift(localStack.pop());
 				}
 				const res = execFunction(exprCtx.ctx, item.fn as string, parms);
 				stack.unshift(res);

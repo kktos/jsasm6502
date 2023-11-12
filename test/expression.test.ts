@@ -1,16 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/lib/assembler";
 import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { opts } from "./shared/options";
 
 describe("Expression", () => {
+
+	beforeEach(()=>{
+		opts.output= "";
+	});
+
 	it("loads in Acc ascii of A", () => {
 		const src = `
 			lda #"A
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 41"));
 	});
 
@@ -20,6 +26,7 @@ describe("Expression", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 C1"));
 	});
 
@@ -29,6 +36,7 @@ describe("Expression", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 41"));
 	});
 
@@ -38,6 +46,7 @@ describe("Expression", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("A9 31"));
 	});
 
@@ -52,6 +61,8 @@ describe("Expression", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 		expect(asmRes.obj.CODE).toStrictEqual(readHexLine("EA 60"));
 	});
+
 });

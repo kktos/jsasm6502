@@ -111,6 +111,9 @@ function parse_cmp(exprCtx: TExprCtx) {
 
 	// console.log("parse_cmp", {stack: exprCtx.stack});
 
+
+	if (exprCtx.endSet?.has(exprCtx.ctx.lexer.tokenType()??0)) return;
+
 	let op: TExprStackOperation;
 
 	switch (exprCtx.ctx.lexer.tokenType()) {
@@ -427,7 +430,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	// log("parseVarLabel VALUE-2", exprCtx.ctx.pass, ns, name, JSON.stringify(value));
 
-	if (!value && exprCtx.ctx.pass > 1) {
+	if (!value && checkIfExists) {
 		throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
 	}
 

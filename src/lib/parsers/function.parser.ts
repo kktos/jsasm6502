@@ -7,11 +7,13 @@ import { fnEval } from "../functions/eval.function";
 import { TValueType } from "../types/Value.type";
 import { TExprStackItem } from "./expression/TExprStackItem.class";
 import { fnSplit } from "../functions/split.function";
+import { fnJson } from "../functions/json.function";
+import { fnArray } from "../functions/array.function";
 
 export type TFunctionFlags = {
 	allowUndef?: boolean;
 };
-type THandlerFn = (ctx: Context, parms: TValueType[]) => TExprStackItem;
+type THandlerFn = (ctx: Context, parms: (TExprStackItem | undefined)[]) => TExprStackItem;
 type TFunctionDef = {
 	handlerFn: THandlerFn;
 	parmCount: number;
@@ -31,11 +33,13 @@ const functionDefs: TFunctionDefs = {};
 
 addFunctionDef(fnDef, 1, ALLOW_UNDEF, ["DEF"]);
 addFunctionDef(fnUndef, 1, ALLOW_UNDEF, ["UNDEF"]);
-addFunctionDef(fnHex, 1, {}, ["HEX"]);
+addFunctionDef(fnHex, -1, {}, ["HEX"]);
 addFunctionDef(fnLen, 1, {}, ["LEN"]);
 addFunctionDef(fnType, 1, {}, ["TYPE"]);
 addFunctionDef(fnEval, 1, {}, ["EVAL"]);
 addFunctionDef(fnSplit, -1, {}, ["SPLIT"]);
+addFunctionDef(fnJson, 1, {}, ["JSON"]);
+addFunctionDef(fnArray, -1, {}, ["ARRAY"]);
 
 export function isFunctionExists(name: string) {
 	return functionDefs[name] !== undefined;
@@ -49,6 +53,6 @@ export function fnFlags(name: string) {
 	return functionDefs[name]?.flags;
 }
 
-export function execFunction(ctx: Context, name: string, parms: TValueType[]) {
+export function execFunction(ctx: Context, name: string, parms: (TExprStackItem | undefined)[]) {
 	return functionDefs[name].handlerFn(ctx, parms);
 }
