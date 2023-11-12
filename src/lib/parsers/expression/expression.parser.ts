@@ -111,8 +111,7 @@ function parse_cmp(exprCtx: TExprCtx) {
 
 	// console.log("parse_cmp", {stack: exprCtx.stack});
 
-
-	if (exprCtx.endSet?.has(exprCtx.ctx.lexer.tokenType()??0)) return;
+	if (exprCtx.endSet?.has(exprCtx.ctx.lexer.tokenType() ?? 0)) return;
 
 	let op: TExprStackOperation;
 

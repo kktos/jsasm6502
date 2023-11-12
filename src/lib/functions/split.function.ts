@@ -5,8 +5,7 @@ import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
 export function fnSplit(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	const str = parms[0];
-	if (str?.type !== TOKEN_TYPES.STRING)
-		throw new VAParseError(`SPLIT: First parameter should be a string  - "${str}"`);
+	if (str?.type !== TOKEN_TYPES.STRING) throw new VAParseError(`SPLIT: First parameter should be a string  - "${str}"`);
 
 	if (parms.length > 1 && parms[1]?.type !== TOKEN_TYPES.STRING)
 		throw new VAParseError(`SPLIT: Second parameter should be a string  - "${parms[1]}"`);

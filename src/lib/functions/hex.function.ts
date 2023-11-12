@@ -12,9 +12,9 @@ export function fnHex(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	if (parms.length > 1 && parms[1]?.type !== TOKEN_TYPES.NUMBER)
 		throw new VAParseError(`HEX: Second parameter should be a number  - "${parms[1]}"`);
 
-	const num= parm.number;
-	const numberOfDigits = parms[1] ? parms[1].number : (num > 0xff ? 4 : 2);
+	const num = parm.number;
+	const numberOfDigits = parms[1] ? parms[1].number : num > 0xff ? 4 : 2;
 
-	const hexStr= num.toString(16).toUpperCase();
+	const hexStr = num.toString(16).toUpperCase();
 	return TExprStackItem.newString(`$${numberOfDigits ? hexStr.padStart(numberOfDigits, "0") : hexStr}`);
 }

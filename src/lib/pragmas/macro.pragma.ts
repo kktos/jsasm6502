@@ -79,6 +79,9 @@ export function expandMacro(ctx: Context) {
 	ctx.lexer.next();
 
 	const parms = macro.hasRestParm ? macro.parms.slice(0, -1) : macro.parms;
+
+	// log("expandMacro parms", parms);
+
 	for (let idx = 0; idx < parms.length; idx++) {
 		let parm: TExprStackItem | undefined = undefined;
 
@@ -115,10 +118,12 @@ export function expandMacro(ctx: Context) {
 		}
 		const restParm = macro.parms[macro.parms.length - 1];
 		const restArray = [];
-		do {
-			// log("expandMacro REST parm", ctx.lexer.token());
+		while (ctx.lexer.token()) {
+			// log("expandMacro REST token", ctx.lexer.token());
 
 			const parm = parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
+
+			// log("expandMacro REST parm", parm);
 
 			if (ctx.lexer.token() && !ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 				throw new VAParseError("MACRO: Syntax Error; Missing comma");
@@ -126,7 +131,7 @@ export function expandMacro(ctx: Context) {
 			ctx.lexer.next();
 
 			restArray.push(parm);
-		} while (ctx.lexer.token());
+		}
 
 		ctx.symbols.override.override(restParm, new TExprStackItem(TOKEN_TYPES.ARRAY, restArray));
 	}
