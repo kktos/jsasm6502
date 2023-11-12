@@ -56,6 +56,7 @@ export const tokens = {
 	FUNCTION: "FUNCTION",
 	NAMESPACE: "NAMESPACE",
 	EXPORT: "EXPORT",
+	LET: "LET",
 };
 
 export const pragmaDefs: TPragmaDefs = {};

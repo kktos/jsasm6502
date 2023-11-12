@@ -21,6 +21,7 @@ import { processText } from "../pragmas/string.pragma";
 import { Context } from "../context.class";
 import { processFor } from "../pragmas/for.pragma";
 import { processFunction } from "../pragmas/function.pragma";
+import { processLet } from "../pragmas/let.pragma";
 
 function addPragmaDef(handlerFn: TPragmaHandlerFn | null, isBlock: boolean, pragmaNames: string[]) {
 	if (typeof handlerFn === "undefined")
@@ -81,6 +82,7 @@ addPragmaDef(processInclude, false, [tokens.INCLUDE]);
 addPragmaDef(processNamespace, false, [tokens.NAMESPACE]);
 addPragmaDef(processFunction, false, [tokens.FUNCTION]);
 addPragmaDef(processExport, false, [tokens.EXPORT]);
+addPragmaDef(processLet, false, [tokens.LET]);
 
 export function parsePragma(ctx: Context) {
 	ctx.lexer.next();
