@@ -38,8 +38,8 @@ str = firstname + " " + lastname
 
 // Boolean arithmetic
 // &:and |:or ^:xor
-char = $41 | $80 ; $C1
-flags = flags | %10000000
+char = $41 | $80             // $C1
+flags = flags | %1000_0000   // set bit7
 
 // 16-bit address operations
 // >:MSB <:LSB
