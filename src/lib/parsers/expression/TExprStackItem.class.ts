@@ -62,6 +62,10 @@ export class TExprStackItem implements IExprItem {
 		return this.val.type;
 	}
 
+	get typeAsString() {
+		return getTypeName(this.val.type ?? 0).toLowerCase();
+	}
+
 	get value() {
 		return this.val.value;
 	}

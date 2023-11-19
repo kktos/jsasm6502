@@ -60,7 +60,7 @@ describe("Macro", () => {
 
 	it("tests macro with variable numbers of params", () => {
 		const src = `
-			.macro toto id, ...parms
+			.macro toto id, ...parms {
 				.dw id
 				.repeat .len(parms) idx
 					.if .type(parms[idx]) = "string"
@@ -69,7 +69,7 @@ describe("Macro", () => {
 						.dw parms[idx]
 					.end
 				.end
-			.end
+			}
 			toto $CAFE, "ABCD", $1234
 		`;
 		const asmRes = assemble(src, opts);

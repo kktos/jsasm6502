@@ -65,7 +65,7 @@ export function isPragmaToken(ctx: Context) {
 	return ctx.lexer.isToken(TOKEN_TYPES.DOT) && ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER);
 }
 
-export function isPragmaBlock(ctx: Context) {
+export function isBlockPragma(ctx: Context) {
 	const isDot = ctx.lexer.isToken(TOKEN_TYPES.DOT);
 	const lookahead = ctx.lexer.lookahead();
 	const isPragma = isDot && lookahead?.type === TOKEN_TYPES.IDENTIFIER;

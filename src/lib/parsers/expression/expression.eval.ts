@@ -68,7 +68,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("DIV: Only Numbers are allowed here");
 
 				stack.unshift(TExprStackItem.newNumber(op1.number / op2.number));
 				break;
@@ -79,7 +79,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (exprCtx.ctx.pass > 1 && (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)) {
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("SUB: Only Numbers are allowed here");
 				}
 				const res = op1.number - op2.number;
 				stack.unshift(TExprStackItem.newNumber(res)); // { type: TOKEN_TYPES.NUMBER, value: (op1.value as number) - (op2.value as number)}
@@ -95,7 +95,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError(`LESS: Only Numbers are allowed here. types: ${op1.typeAsString}, ${op2.typeAsString}`);
 
 				const res = op1.number < op2.number ? 1 : 0;
 				stack.unshift(TExprStackItem.newNumber(res)); // { type: TOKEN_TYPES.NUMBER, value: (op1.value as number) < (op2.value as number)}
@@ -107,7 +107,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("LESSEQ: Only Numbers are allowed here");
 
 				const res = op1.number <= op2.number ? 1 : 0;
 				stack.unshift(TExprStackItem.newNumber(res));
@@ -119,7 +119,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("GREAT: Only Numbers are allowed here");
 
 				const res = op1.number > op2.number ? 1 : 0;
 				stack.unshift(TExprStackItem.newNumber(res));
@@ -131,7 +131,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (!op1 || !op2) throw new VAExprError("Need two operands here");
 
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
-					throw new VAExprError("Only Numbers are allowed here");
+					throw new VAExprError("GREATEQ: Only Numbers are allowed here");
 
 				const res = op1.number >= op2.number ? 1 : 0;
 				stack.unshift(TExprStackItem.newNumber(res));
@@ -176,7 +176,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 			//
 			case "!": {
 				const op1 = localStack.pop();
-				if (!op1 || op1.type !== TOKEN_TYPES.NUMBER) throw new VAExprError("Only Numbers are allowed here");
+				if (!op1 || op1.type !== TOKEN_TYPES.NUMBER) throw new VAExprError("NOT: Only Numbers are allowed here");
 				stack.unshift(TExprStackItem.newNumber(op1.number ? 0 : 1));
 				break;
 			}

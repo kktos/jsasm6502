@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { TMacro } from "../helpers/macroManager";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { readBlock } from "../parsers/block.parser";
+import { readBlock, TReadBlockOptions } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
@@ -13,6 +13,7 @@ const log = console.log;
 
 export function processMacro(ctx: Context) {
 	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
+	const opts: TReadBlockOptions = { isClikeBlock: false };
 
 	const tok = ctx.lexer.token();
 	if (!tok || tok.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("MACRO: Need a name");
@@ -36,7 +37,15 @@ export function processMacro(ctx: Context) {
 
 		ctx.lexer.next();
 
-		if (!ctx.lexer.token()) break;
+		if (ctx.lexer.eol()) break;
+
+		if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
+			opts.isClikeBlock= true;
+			ctx.lexer.next();
+			if (!ctx.lexer.eol())
+				throw new VAParseError("MACRO: Syntax Error; Start Block { should be the last on the line");
+			break;
+		}
 
 		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 			throw new VAParseError("MACRO: Syntax Error; Needs a comma between parameter");
@@ -46,7 +55,7 @@ export function processMacro(ctx: Context) {
 		// 	throw new VAParseError("MACRO: Missing a parameter name");
 	}
 
-	const [block] = readBlock(ctx);
+	const [block] = readBlock(ctx, opts);
 	if (!block) throw new VAParseError("MACRO: empty block");
 
 	macro.block = block;
