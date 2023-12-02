@@ -55,27 +55,35 @@ export class Dict<T extends TDict> {
 
 			if (entries.length) out += `${name}:\n`;
 
-			for (const entry of entries) {
-				const val = ns[entry];
-				out += `  ${entry}: ${val}`;
-				// out += this.exp.isExported(entry, name) ? "exported" : "";
+			out += entries
+				.map((entry) => {
+					const val = ns[entry];
+					return `  ${entry}: ${val}`;
+				})
+				.join("\n");
+			out += "\n";
 
-				// out += getTypeName(val?.type).toLowerCase();
-				// switch (val?.type) {
-				// 	case TOKEN_TYPES.ARRAY:
-				// 		out += ` = ${val?.value}`;
-				// 		break;
-				// 	case TOKEN_TYPES.STRING:
-				// 		out += ` = "${val?.value}"`;
-				// 		break;
-				// 	default:
-				// 		out += ` = $${val?.value.toString(16).toUpperCase()}`;
-				// }
+			// for (const entry of entries) {
+			// const val = ns[entry];
+			// out += `  ${entry}: ${val}`;
+			// out += this.exp.isExported(entry, name) ? "exported" : "";
 
-				// if (val?.extra) {
-				// 	out += ` ;${this.isExported(entry, name) ? "exported from" : ""} "${val?.extra?.file}":${val?.extra?.line}\n`;
-				// }
-			}
+			// out += getTypeName(val?.type).toLowerCase();
+			// switch (val?.type) {
+			// 	case TOKEN_TYPES.ARRAY:
+			// 		out += ` = ${val?.value}`;
+			// 		break;
+			// 	case TOKEN_TYPES.STRING:
+			// 		out += ` = "${val?.value}"`;
+			// 		break;
+			// 	default:
+			// 		out += ` = $${val?.value.toString(16).toUpperCase()}`;
+			// }
+
+			// if (val?.extra) {
+			// 	out += ` ;${this.isExported(entry, name) ? "exported from" : ""} "${val?.extra?.file}":${val?.extra?.line}\n`;
+			// }
+			// }
 		}
 
 		// out += "\n";
@@ -84,7 +92,9 @@ export class Dict<T extends TDict> {
 		// 	out += `${key} = ${this.exports[key]}\n`;
 		// }
 
+		// log("DUMP");
 		// log(out);
+
 		return out;
 	}
 }

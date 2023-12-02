@@ -12,5 +12,5 @@ export function fnSplit(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 
 	const splitOn = parms.length > 1 && parms[1] ? parms[1].string : " ";
 	const value = str.string.split(splitOn);
-	return TExprStackItem.newArray(value);
+	return TExprStackItem.newArray(value.map((str) => TExprStackItem.newString(str)));
 }

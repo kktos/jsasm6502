@@ -40,10 +40,9 @@ export function processMacro(ctx: Context) {
 		if (ctx.lexer.eol()) break;
 
 		if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
-			opts.isClikeBlock= true;
+			opts.isClikeBlock = true;
 			ctx.lexer.next();
-			if (!ctx.lexer.eol())
-				throw new VAParseError("MACRO: Syntax Error; Start Block { should be the last on the line");
+			if (!ctx.lexer.eol()) throw new VAParseError("MACRO: Syntax Error; Start Block { should be the last on the line");
 			break;
 		}
 
