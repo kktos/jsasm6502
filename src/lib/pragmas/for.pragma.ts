@@ -48,11 +48,13 @@ export function processFor(ctx: Context) {
 
 	const getItem = (idx: number) => {
 		arrayItem = array[idx];
-		arrayItemType = tokenTypeOf(arrayItem);
-		if (!arrayItemType) throw new VAParseError(`FOR: Invalid type for item ${idx}`);
-		IteratorValue.renew(arrayItemType, arrayItem);
-		// IteratorValue.type = arrayItemType;
-		// IteratorValue.value = arrayItem as TExprStackItemValueType;
+		if (arrayItem instanceof TExprStackItem) {
+			IteratorValue.renew(arrayItem.type ?? 0, arrayItem.value);
+		} else {
+			arrayItemType = tokenTypeOf(arrayItem);
+			if (!arrayItemType) throw new VAParseError(`FOR: Invalid type for item ${idx}`);
+			IteratorValue.renew(arrayItemType, arrayItem);
+		}
 	};
 
 	getItem(arrayIdx);
