@@ -128,4 +128,29 @@ describe("FOR PRAGMA", () => {
 		].join("\n"));
 	});
 
+	it("should iterate of an .array()", () => {
+		const src = `
+		neededLabels = .array("LAC00","LAC20","LAC40","LAC60")
+		missingLabels = .array()
+
+		.for label of neededLabels
+			.if .undef(label)
+				t= .push(missingLabels, label)
+			.end
+		.end
+		.log .len(missingLabels)=0
+
+		LAC00 = $300
+		LAC20 = $320
+		LAC40 = $340
+		LAC60 = $360
+		`;
+		opts.output= "";
+
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toStrictEqual("1");
+	});
+
 });

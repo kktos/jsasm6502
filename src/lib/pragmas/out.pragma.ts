@@ -1,9 +1,10 @@
 import { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
+import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { parseExpression } from "../parsers/expression/expression.parser";
 
-// const log= console.log;
+const log = console.log;
 
 export function processASMOuput(ctx: Context, pragma: string) {
 	let msg = "";
@@ -12,7 +13,24 @@ export function processASMOuput(ctx: Context, pragma: string) {
 		const res = parseExpression(ctx);
 		if (!res) throw new VAParseError("OUT: Missing value here");
 
-		msg += typeof res.value === "object" ? JSON.stringify(res.value) : res.value;
+		// log("OUT parm", JSON.stringify(res));
+
+		switch (res.type) {
+			case TOKEN_TYPES.OBJECT:
+				msg += JSON.stringify(res.value);
+				break;
+			case TOKEN_TYPES.ARRAY: {
+				const items = (res.value as unknown[]).map((item) => {
+					if (item instanceof TExprStackItem) return TExprStackItem.asString(item, { withType: false });
+					else return JSON.stringify(item);
+				});
+				msg += `[${items}]`;
+				break;
+			}
+			default:
+				msg += res.value;
+		}
+
 		if (ctx.lexer.isToken(TOKEN_TYPES.COMMA)) {
 			ctx.lexer.next();
 			if (!ctx.lexer.token()) throw new VAParseError("OUT: Missing value here");

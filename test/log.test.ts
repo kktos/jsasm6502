@@ -40,7 +40,7 @@ describe("log", () => {
 			.define obj
 				key: value
 			.end
-			.log .type(obj) " " obj
+			.log .type(obj), " ", obj
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();

@@ -4,49 +4,52 @@ import { fnHex } from "../functions/hex.function";
 import { fnLen } from "../functions/len.function";
 import { fnType } from "../functions/type.function";
 import { fnEval } from "../functions/eval.function";
-import { TValueType } from "../types/Value.type";
 import { TExprStackItem } from "./expression/TExprStackItem.class";
 import { fnSplit } from "../functions/split.function";
 import { fnJson } from "../functions/json.function";
 import { fnArray } from "../functions/array.function";
+import { fnPush } from "../functions/push.function";
+import { fnPop } from "../functions/pop.function";
 
 export type TFunctionFlags = {
 	allowUndef?: boolean;
+	minParmCount?: number;
+	maxParmCount?: number;
 };
 type THandlerFn = (ctx: Context, parms: (TExprStackItem | undefined)[]) => TExprStackItem;
 type TFunctionDef = {
 	handlerFn: THandlerFn;
-	parmCount: number;
 	flags: TFunctionFlags;
 };
 type TFunctionDefs = Record<string, TFunctionDef>;
 
-const ALLOW_UNDEF = { allowUndef: true };
-
-function addFunctionDef(handlerFn: THandlerFn, parmCount: number, flags: TFunctionFlags, functionNames: string[]) {
+function addFunctionDef(handlerFn: THandlerFn, functionNames: string[], flags: TFunctionFlags) {
 	for (const fn of functionNames) {
-		functionDefs[fn] = { handlerFn, parmCount, flags };
+		functionDefs[fn] = { handlerFn, flags };
 	}
 }
 
 const functionDefs: TFunctionDefs = {};
 
-addFunctionDef(fnDef, 1, ALLOW_UNDEF, ["DEF"]);
-addFunctionDef(fnUndef, 1, ALLOW_UNDEF, ["UNDEF"]);
-addFunctionDef(fnHex, -1, {}, ["HEX"]);
-addFunctionDef(fnLen, 1, {}, ["LEN"]);
-addFunctionDef(fnType, 1, {}, ["TYPE"]);
-addFunctionDef(fnEval, 1, {}, ["EVAL"]);
-addFunctionDef(fnSplit, -1, {}, ["SPLIT"]);
-addFunctionDef(fnJson, 1, {}, ["JSON"]);
-addFunctionDef(fnArray, -1, {}, ["ARRAY"]);
+addFunctionDef(fnDef, ["DEF"], { maxParmCount: 1, allowUndef: true });
+addFunctionDef(fnUndef, ["UNDEF"], { maxParmCount: 1, allowUndef: true });
+addFunctionDef(fnHex, ["HEX"], { maxParmCount: 2, minParmCount: 1 });
+addFunctionDef(fnLen, ["LEN"], { maxParmCount: 1 });
+addFunctionDef(fnType, ["TYPE"], { maxParmCount: 1 });
+addFunctionDef(fnEval, ["EVAL"], { maxParmCount: 1 });
+addFunctionDef(fnSplit, ["SPLIT"], { maxParmCount: 2, minParmCount: 1 });
+addFunctionDef(fnJson, ["JSON"], { maxParmCount: 1 });
+addFunctionDef(fnArray, ["ARRAY"], { minParmCount: 0 });
+addFunctionDef(fnPush, ["PUSH"], { minParmCount: 2 });
+addFunctionDef(fnPop, ["POP"], { maxParmCount: 0 });
 
 export function isFunctionExists(name: string) {
 	return functionDefs[name] !== undefined;
 }
 
 export function fnParmCount(name: string) {
-	return functionDefs[name]?.parmCount;
+	const fn = functionDefs[name];
+	return { minParmCount: fn.flags.minParmCount, maxParmCount: fn.flags.maxParmCount };
 }
 
 export function fnFlags(name: string) {

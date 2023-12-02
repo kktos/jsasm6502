@@ -10,6 +10,10 @@ type TExtra = {
 	exported?: number;
 };
 
+type DumpOptions = {
+	withType: boolean;
+};
+
 export class TExprStackItem implements IExprItem {
 	val: TValue;
 	op?: TExprStackOperation;
@@ -90,31 +94,41 @@ export class TExprStackItem implements IExprItem {
 		return this.val.value as unknown[];
 	}
 
-	static asString(obj: TExprStackItem) {
-		let out = getTypeName(obj.val.type ?? 0).toLowerCase();
-		switch (obj.val.type) {
-			case TOKEN_TYPES.ARRAY:
-				out += " = [";
+	static asString(obj: TExprStackItem, options: DumpOptions = { withType: true }) {
+		let type: string | null = getTypeName(obj.val?.type ?? 0).toLowerCase();
+		let out = "";
+		switch (obj.val?.type) {
+			case TOKEN_TYPES.ARRAY: {
+				// out += "[";
+				const items = [];
 				for (const item of obj.val.value as unknown[]) {
 					if (item instanceof TExprStackItem) {
-						out += TExprStackItem.asString(item);
+						// out += TExprStackItem.asString(item).replace("\n","");
+						items.push(TExprStackItem.asString(item));
 					} else {
-						out += JSON.stringify(item);
+						// out += JSON.stringify(item);
+						items.push(JSON.stringify(item));
 					}
-					out += ", ";
+					// out += ", ";
 				}
-				out += "]";
+				// out += "]";
+				out += `[${items.join(", ")}]`;
 				break;
+			}
 			case TOKEN_TYPES.STRING:
-				out += ` = "${obj.string}"`;
+				out += `"${obj.string}"`;
+				break;
+			case TOKEN_TYPES.OBJECT:
+				type = null;
+				out += `${obj.val.value instanceof TExprStackItem ? obj.val.value : JSON.stringify(obj.val.value)}`;
 				break;
 			default:
-				out += ` = $${obj.number?.toString(16).toUpperCase()}`;
+				out += `$${obj.number?.toString(16).toUpperCase()}`;
 		}
 		if (obj.extra) {
 			out += ` ; "${obj.extra?.file}":${obj.extra?.line}`;
 		}
-		return `${out}\n`;
+		return `${options.withType && type ? `${type} = ` : ""}${out}`;
 	}
 
 	toString() {

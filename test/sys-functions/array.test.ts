@@ -24,7 +24,7 @@ describe("Expression", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
-		expect(opts.output.trim()).toStrictEqual(`array : [{"val":{"type":768,"value":1}},{"val":{"type":768,"value":2}},{"val":{"type":768,"value":3}}]`);
+		expect(opts.output.trim()).toStrictEqual("array : [$1,$2,$3]");
 	});
 
 	it("tests define array function .array()", () => {
@@ -38,7 +38,7 @@ describe("Expression", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
-		expect(opts.output.trim()).toStrictEqual(`array : [{"val":{"type":768,"value":1}},{"val":{"type":768,"value":2}},{"val":{"type":768,"value":3}}]`);
+		expect(opts.output.trim()).toStrictEqual("array : [$1,$2,$3]");
 	});
 
 });
