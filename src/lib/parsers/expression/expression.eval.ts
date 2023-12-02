@@ -10,7 +10,13 @@ const log = console.log;
 export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 	// exprCtx.ctx.pass >1 && log("evalExpr BEGIN", stack);
 
-	const localStack = [];
+	const localStack: TExprStackItem[] = [];
+
+	if (stack.length === 1 && !Array.isArray(stack[0]) && stack[0].op === "FN") {
+		stack[0] = evalFunction(exprCtx, localStack, stack[0]);
+		return stack[0];
+	}
+
 	while (stack.length > 1) {
 		let item;
 		while (stack.length) {
@@ -262,12 +268,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 			// functions
 			//
 			case "FN": {
-				const parms: (TExprStackItem | undefined)[] = [];
-				let parmCount = item.paramCount ?? 0;
-				while (parmCount-- && localStack.length) {
-					parms.unshift(localStack.pop());
-				}
-				const res = execFunction(exprCtx.ctx, item.fn as string, parms);
+				const res = evalFunction(exprCtx, localStack, item);
 				stack.unshift(res);
 				break;
 			}
@@ -296,4 +297,16 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 	// exprCtx.ctx.pass >1 && log("evalExpr END", stack[0]);
 
 	return stack[0] as TExprStackItem;
+}
+
+function evalFunction(exprCtx: TExprCtx, localStack: TExprStackItem[], item: TExprStackItem) {
+	const parms: (TExprStackItem | undefined)[] = [];
+	let parmCount = item.paramCount ?? 0;
+	while (parmCount-- && localStack.length) {
+		parms.unshift(localStack.pop());
+	}
+	// log(`expression FN parms : (${parms.join(", ")})`);
+	const res = execFunction(exprCtx.ctx, item.fn as string, parms);
+	// log(`expression FN res : (${JSON.stringify(res)})`);
+	return res;
 }

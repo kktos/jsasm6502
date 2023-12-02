@@ -44,13 +44,14 @@ export function parseExpression(ctx: Context, endSet?: Set<number>, expectedType
 	// ctx.pass >1 && log("parseExpression LINE", ctx.lexer.line());
 
 	while (true) {
-		// log("parseExpression token", ctx.lexer.tokens);
+		// ctx.pass >1 && log("parseExpression tokens", ctx.lexer.tokens);
 
 		parseExpr(exprCtx);
 
 		// log("parseExpression token", ctx.lexer.token());
 
-		// ctx.pass >1 && log("parseExpression parseExpr", exprCtx.stack);
+		// ctx.pass >1 && log("parseExpression Stack", JSON.stringify(exprCtx.stack));
+		// ctx.pass >1 && log("parseExpression Stack Len", exprCtx.stack.length);
 
 		if (exprCtx.stack.length) res = evalExpr(exprCtx, exprCtx.stack);
 
@@ -464,30 +465,47 @@ function parse_function(exprCtx: TExprCtx) {
 
 	if (!isFunctionExists(fnName)) throw new VAExprError(`TERM: Unknown function "${fnName}"`);
 
+	// log("ExprParser FN", fnName);
+
 	exprCtx.ctx.lexer.next();
 	exprCtx.ctx.lexer.next();
 
-	const desiredParmCount = fnParmCount(fnName);
-	const flags = fnFlags(fnName);
+	const { minParmCount, maxParmCount } = fnParmCount(fnName);
 	let parmCount = 0;
-	do {
-		const ctx = duplicateContext(exprCtx);
-		ctx.stack = [];
-		ctx.flags = flags;
 
-		parseExpr(ctx);
-		exprCtx.stack.push(ctx.stack as Array<TExprStackItem>);
-		parmCount++;
-	} while (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.COMMA) && exprCtx.ctx.lexer.next());
+	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) {
+		if (minParmCount !== 0)
+			throw new VAExprError(
+				`TERM: Wrong number of parameters for function "${fnName}". Expected ${
+					maxParmCount ?? minParmCount
+				} Got ${parmCount}`,
+			);
+	} else {
+		const flags = fnFlags(fnName);
+		do {
+			const ctx = duplicateContext(exprCtx);
+			ctx.stack = [];
+			ctx.flags = flags;
 
-	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAExprError('TERM: Syntax Error: Missing ")"');
+			parseExpr(ctx);
 
-	if (desiredParmCount >= 0 ? parmCount !== desiredParmCount : parmCount < Math.abs(desiredParmCount))
-		throw new VAExprError(
-			`TERM: Wrong number of parameters for function "${fnName}". Expected ${Math.abs(
-				desiredParmCount,
-			)} Got ${parmCount}`,
-		);
+			// log("ExprParser FN stack", JSON.stringify(ctx.stack));
+
+			exprCtx.stack.push(ctx.stack as Array<TExprStackItem>);
+			parmCount++;
+		} while (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.COMMA) && exprCtx.ctx.lexer.next());
+
+		if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAExprError('TERM: Syntax Error: Missing ")"');
+
+		if ((minParmCount && parmCount < minParmCount) || (maxParmCount && parmCount > maxParmCount))
+			throw new VAExprError(
+				`TERM: Wrong number of parameters for function "${fnName}". Expected ${
+					maxParmCount ?? minParmCount
+				} Got ${parmCount}`,
+			);
+	}
+
+	// log("ExprParser FN", fnName, parmCount);
 
 	exprCtx.stack.push(TExprStackItem.newFunction(fnName, parmCount)); // { op: "FN", fn: fnName, parmCount, type: 0, value: 0 }
 	exprCtx.ctx.lexer.next();
