@@ -92,10 +92,22 @@ params= .split("one two three")        // ["one","two","three"]
 // with delimiter
 params= .split("one,two,three", ",")   // ["one","two","three"]
 ```
-#### .array( parameter1 [,parameter2, ...] )
+#### .array( [parameter1 ,parameter2, ...] )
 ```as
 // returns an array made of all the parameters 
 list= .array($45,$46,89)               // [$45,$46,89]
+list= .array()               		   // []
+```
+#### .push( <value as array>, item1 [,item2, ...] )
+```as
+// adds one to many items at the end of the given array and returns it
+numbers= .array(0,1)                   // [$00,$01]
+list= .push(numbers, 2,3)              // [$00,$01,$02,$03]
+```
+#### .pop( <value as array> )
+```as
+// removes one item at the end of the given array
+last= .array(numbers)                  // 3
 ```
 
 ## System variables
