@@ -23,6 +23,10 @@ type TFunctionDef = {
 };
 type TFunctionDefs = Record<string, TFunctionDef>;
 
+const NO_PARM = { minParmCount: 0, maxParmCount: 0 };
+const NONE_TO_MANY = { minParmCount: 0 };
+const ONE_PARM = { maxParmCount: 1 };
+
 function addFunctionDef(handlerFn: THandlerFn, functionNames: string[], flags: TFunctionFlags) {
 	for (const fn of functionNames) {
 		functionDefs[fn] = { handlerFn, flags };
@@ -34,14 +38,14 @@ const functionDefs: TFunctionDefs = {};
 addFunctionDef(fnDef, ["DEF"], { maxParmCount: 1, allowUndef: true });
 addFunctionDef(fnUndef, ["UNDEF"], { maxParmCount: 1, allowUndef: true });
 addFunctionDef(fnHex, ["HEX"], { maxParmCount: 2, minParmCount: 1 });
-addFunctionDef(fnLen, ["LEN"], { maxParmCount: 1 });
-addFunctionDef(fnType, ["TYPE"], { maxParmCount: 1 });
-addFunctionDef(fnEval, ["EVAL"], { maxParmCount: 1 });
+addFunctionDef(fnLen, ["LEN"], ONE_PARM);
+addFunctionDef(fnType, ["TYPE"], ONE_PARM);
+addFunctionDef(fnEval, ["EVAL"], ONE_PARM);
 addFunctionDef(fnSplit, ["SPLIT"], { maxParmCount: 2, minParmCount: 1 });
-addFunctionDef(fnJson, ["JSON"], { maxParmCount: 1 });
-addFunctionDef(fnArray, ["ARRAY"], { minParmCount: 0 });
+addFunctionDef(fnJson, ["JSON"], ONE_PARM);
+addFunctionDef(fnArray, ["ARRAY"], NONE_TO_MANY);
 addFunctionDef(fnPush, ["PUSH"], { minParmCount: 2 });
-addFunctionDef(fnPop, ["POP"], { maxParmCount: 0 });
+addFunctionDef(fnPop, ["POP"], ONE_PARM);
 
 export function isFunctionExists(name: string) {
 	return functionDefs[name] !== undefined;

@@ -481,6 +481,8 @@ function parse_function(exprCtx: TExprCtx) {
 				} Got ${parmCount}`,
 			);
 	} else {
+		if (maxParmCount === 0) throw new VAExprError(`TERM: function "${fnName}" admits no parameter.`);
+
 		const flags = fnFlags(fnName);
 		do {
 			const ctx = duplicateContext(exprCtx);

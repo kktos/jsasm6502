@@ -49,6 +49,10 @@ export class TExprStackItem implements IExprItem {
 		return new TExprStackItem(tok.type ?? 0, tok.value);
 	}
 
+	static duplicate(item: TExprStackItem) {
+		return new TExprStackItem(item.type ?? 0, item.value);
+	}
+
 	constructor(typeOrToken: number | Token, value: TValueType, op?: TExprStackOperation) {
 		if (typeOrToken instanceof Token) {
 			this.val = typeOrToken;

@@ -74,7 +74,7 @@ export function parseLabel(ctx: Context, token: Token) {
 			ctx.lexer.next();
 			ctx.lexer.next();
 			const res = parseExpression(ctx);
-			if (!res) throw new VAParseError("undefined value");
+			if (!res) throw new VAParseError("LABEL: undefined value");
 			value = res;
 
 			// log("LABEL SET", ctx.pass, name, value);

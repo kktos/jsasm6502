@@ -3,15 +3,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { assemble } from "../../src/lib/assembler";
 import { opts } from "../shared/options";
 
-describe("Expression", () => {
+describe("function .array()", () => {
 
 	beforeEach(()=>{
 		opts.output= "";
+		opts.listing= true;
 	});
 
 	it("tests define array with macro", () => {
-		opts.listing= true;
-
 		const src = `
 			.macro defineArray varname, ...params
 				.let varname = params
@@ -27,9 +26,7 @@ describe("Expression", () => {
 		expect(opts.output.trim()).toStrictEqual("array : [$1,$2,$3]");
 	});
 
-	it("tests define array function .array()", () => {
-		opts.listing= true;
-
+	it("tests define array with function .array()", () => {
 		const src = `
 			list= .array(1, 2, 3)
 
@@ -39,6 +36,18 @@ describe("Expression", () => {
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
 		expect(opts.output.trim()).toStrictEqual("array : [$1,$2,$3]");
+	});
+
+	it("tests define empty array with function .array()", () => {
+		const src = `
+			list= .array()
+
+			.log .type(list), " : ",list
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toStrictEqual("array : []");
 	});
 
 });
