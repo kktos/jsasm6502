@@ -1,8 +1,8 @@
 {
-  "name": "virtual-6502-asm",
+  "name": "jsasm6502",
   "version": "1.0.0",
   "type": "module",
-  "description": "65c02 assembler highly inspired on virtual assembler by mass:werk",
+  "description": "6502/65C02 assembler in typescript",
   "exports": "./index.js",
   "scripts": {
     "build-lib": "tsc -noEmit && esbuild src/lib/assembler.ts --bundle --platform=node --outfile=dist/libasm6502.js --format=esm",
