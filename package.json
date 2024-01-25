@@ -1,9 +1,10 @@
 {
   "name": "jsasm6502",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "6502/65C02 assembler in typescript",
-  "exports": "./index.js",
+  "author": "kktos",
+  "description": "6502/65C02 assembler in typescript. Either as a CLI and a library.",
+  "license": "MIT",
   "scripts": {
     "build-lib": "tsc -noEmit && esbuild src/lib/assembler.ts --bundle --platform=node --outfile=dist/libasm6502.js --format=esm",
     "build": "tsc -noEmit && esbuild src/cli/main.ts --bundle --platform=node --outfile=dist/asm.js --format=esm",
@@ -17,8 +18,6 @@
     "lint:fix": "biome check --apply-unsafe ./src",
     "format:fix": "biome format --write ./src"
   },
-  "author": "kktos",
-  "license": "ISC",
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
     "@types/js-yaml": "^4.0.9",
