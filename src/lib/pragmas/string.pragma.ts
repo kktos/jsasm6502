@@ -44,7 +44,7 @@ export function processText(ctx: Context, pragma: string) {
 
 export function makeString(ctx: Context | null, str: string, opts: TStringOptions) {
 	const buffer = [];
-	let char;
+	let char: number;
 
 	for (let idx = 0; idx < str.length; idx++) {
 		if (opts.charSize < 0) for (let padIdx = 1; padIdx < -opts.charSize; padIdx++) buffer.push(0);

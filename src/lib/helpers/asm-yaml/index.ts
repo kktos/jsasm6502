@@ -11,7 +11,7 @@ import { intType } from "./int";
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const schema: any = DEFAULT_SCHEMA;
 
-let idx;
+let idx: number;
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 idx = schema.compiledImplicit.findIndex((type: any) => {
@@ -33,7 +33,7 @@ const error = console.error;
 
 export const load = (src: string) => {
 	// log("YAML LOAD");
-	let res;
+	let res: unknown;
 	try {
 		res = yamlLoad(src, { schema });
 	} catch (e) {

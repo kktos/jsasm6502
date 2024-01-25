@@ -12,7 +12,10 @@ export class BaseDict<T extends TDict> {
 		return new BaseDict<T>(namespaces, fn);
 	}
 
-	constructor(public namespaces: TNamespaceDict<T>, public fn: TNamespace<T> | null) {}
+	constructor(
+		public namespaces: TNamespaceDict<T>,
+		public fn: TNamespace<T> | null,
+	) {}
 
 	get global() {
 		return this.namespaces[NS_GLOBAL];

@@ -1,4 +1,5 @@
 import { Context } from "./context.class";
+import { dbgStringList } from "./helpers/debug";
 import { VAParseError } from "./helpers/errors.class";
 import { getHexWord } from "./helpers/utils";
 import { TOKEN_TYPES, Token } from "./lexer/token.class";
@@ -39,10 +40,13 @@ export function assemble(src: string | { name: string; content: string }, opts: 
 		return null;
 	};
 
+	log("========================== PASS 1 ==========================");
+
 	// first pass
 	let error = tryAsm();
 
 	if (!error) {
+		log("========================== PASS 2 ==========================");
 		ctx.reset();
 		ctx.pass = 2;
 		// second pass
@@ -63,14 +67,15 @@ function asm(ctx: Context): string {
 	let disasm = "";
 	let lastVarname = "";
 
-	// log("ASM", ctx.pass, ctx.lexer.pos());
+	// log(">> ASM", ctx.pass, ctx.lexer.pos());
 
 	while (!ctx.wannaStop && ctx.lexer.nextLine()) {
 		const token = ctx.lexer.token();
 
 		if (!token) continue;
 
-		// console.log("---- LINE 0", ctx.lexer.line(), token);
+		log(`---- LINE [${ctx.lexer.id}] <${ctx.lexer.line().trim()}>`, token);
+		log(dbgStringList(ctx.lexer.lines()));
 
 		if (token.type === TOKEN_TYPES.INVALID) throw new VAParseError(`Invalid character ${token.value}`);
 
@@ -136,7 +141,7 @@ function asm(ctx: Context): string {
 			if (isPragmaToken(ctx)) {
 				parsePragma(ctx);
 
-				// console.log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
+				// log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
 				break;
 			}
 
@@ -164,10 +169,15 @@ function asm(ctx: Context): string {
 			break;
 		}
 
-		// log("LOOP", ctx.lexer.token(), ctx.pass);
+		log(`MAINLOOP(${ctx.pass})`, ctx.needNewline ? "needNewline" : "noNewline", ctx.lexer.token());
 
-		const tok = ctx.lexer.token();
-		if (tok) throw new VAParseError(`Syntax Error on line ${ctx.lexer.pos().line} at "${tok.text}"`);
+		if (ctx.needNewline) {
+			const tok = ctx.lexer.token();
+			if (tok) {
+				throw new VAParseError(`Syntax Error on line ${ctx.lexer.pos().line} at "${tok.text}"`);
+			}
+		}
+		ctx.needNewline = true;
 
 		if (ctx.pass === 2) {
 			const asmOut = ctx.code.output;

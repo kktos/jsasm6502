@@ -1,4 +1,5 @@
 import { CharMapManager } from "../helpers/charMapManager";
+import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { TOKEN_TYPES, Token } from "./token.class";
@@ -77,13 +78,23 @@ class LexerContext {
 	public curTokIdx = 0;
 	public tokCount = 0;
 	public comment: string | null = null;
+	public id: number;
+	public wannaAdvance: boolean;
+
+	private static nextID = 0;
+
+	static reset() {
+		LexerContext.nextID = 0;
+	}
 
 	constructor(src: string) {
 		this.lines = src ? src.split(/\r?\n/) : [];
-		this.nextLine();
+		this.newLine();
+		this.id = LexerContext.nextID++;
+		this.wannaAdvance = true;
 	}
 
-	nextLine() {
+	newLine() {
 		this.currChar = null;
 		this.posInLine = 0;
 		this.currLine = "";
@@ -105,14 +116,26 @@ export class Lexer {
 		this.helpers = helpers;
 	}
 
+	get id() {
+		return this.ctx.id;
+	}
+
+	reset() {
+		LexerContext.reset();
+		this.ctx = new LexerContext("");
+		this.contexts = [];
+	}
+
 	pushSource(src: string) {
 		this.contexts.push(this.ctx);
 		this.ctx = new LexerContext(src);
+		// log(`** pushSource [${this.ctx.id}]`, dbgStringList(this.ctx.lines) );
 	}
 
 	popSource() {
 		const ctx = this.contexts.pop();
 		if (ctx) this.ctx = ctx;
+		// log(`** popSource ${this.ctx.id}`);
 	}
 
 	addEventListener(type: TEVENT_TYPES, listener: TEventListenerHandler) {
@@ -147,38 +170,61 @@ export class Lexer {
 	}
 
 	nextLine() {
-		while (true) {
-			this.ctx.nextLine();
+		let wantNewLine = this.ctx.wannaAdvance;
 
-			// log("nextLine", this.ctx.lineIdx, this.ctx.lines.length);
+		// log(`nextLine currLine [${this.ctx.id}]`, wantNewLine?"NEXT":"STAY");
 
-			if (this.ctx.lineIdx < this.ctx.lines.length) break;
+		while (wantNewLine && true) {
+			while (true) {
+				this.ctx.newLine();
 
-			// log("Lexer.nextLine", this.ctx.eventHandlers);
-			if (this.ctx.eventHandlers.get(EVENT_TYPES.EOS)) this.executeEventListener(EVENT_TYPES.EOS);
+				// log("nextLine", this.ctx.lineIdx, this.ctx.lines.length, this.ctx.lines);
 
-			// if(this.onEOF)
-			// 	this.onEOF();
+				if (this.ctx.lineIdx < this.ctx.lines.length) break;
 
-			// this.ctx = this.contexts.pop() ?? null;
-			const lastCtx = this.contexts.pop() ?? null;
+				// log("Lexer.nextLine", this.ctx.eventHandlers);
+				if (this.ctx.eventHandlers.get(EVENT_TYPES.EOS)) this.executeEventListener(EVENT_TYPES.EOS);
 
-			if (lastCtx) {
-				this.ctx = lastCtx;
-			} else {
-				return false;
+				// if(this.onEOF)
+				// 	this.onEOF();
+
+				const lastCtx = this.contexts.pop() ?? null;
+
+				// log("nextLine contexts.pop", lastCtx?.id);
+
+				if (lastCtx) {
+					// need to update wannaAdvance in the current context ?
+					this.ctx = lastCtx;
+				} else {
+					return false;
+				}
+
+				wantNewLine = this.ctx.wannaAdvance;
+				// log("Lexer.nextLine ctx", this.ctx);
 			}
-			// log("Lexer.nextLine ctx", this.ctx);
+
+			if (wantNewLine) {
+				this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
+			} else {
+				this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx - 1];
+			}
+
+			this._tokenize();
+
+			// log("nextLine", this.ctx.tokens);
+
+			if (this.ctx.tokens.length) break;
 		}
 
-		this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
+		this.ctx.wannaAdvance = true;
 
-		// log("nextLine", this.ctx.currLine);
+		// log(`nextLine currLine [${this.ctx.id}]`, this.ctx.lineIdx-1, this.ctx.currLine.trim());
 
-		this._tokenize();
-
-		// console.log("nextLine", this.ctx.tokens);
 		return true;
+	}
+
+	keepOnLine() {
+		this.ctx.wannaAdvance = false;
 	}
 
 	saveState() {
@@ -211,6 +257,9 @@ export class Lexer {
 	}
 	line() {
 		return this.ctx.currLine;
+	}
+	lines() {
+		return this.ctx.lines;
 	}
 	eof() {
 		return this.ctx.lineIdx >= this.ctx.lines.length;
@@ -338,16 +387,15 @@ export class Lexer {
 				}
 
 				comments += this.ctx.currLine.slice(startPos);
-				this.ctx.nextLine();
+				this.ctx.newLine();
 				this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
 
 				startPos = 0;
 			}
 
 			throw new VAParseError("Unclosed Comments");
-		} else {
-			this.ctx.comment = this.ctx.currLine.slice(startPos);
 		}
+		this.ctx.comment = this.ctx.currLine.slice(startPos);
 	}
 
 	_advance() {

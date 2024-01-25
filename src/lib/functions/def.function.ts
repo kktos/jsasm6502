@@ -6,7 +6,7 @@ const log = console.log;
 
 export function fnDef(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	const parm = parms[0];
-	let value;
+	let value: boolean;
 
 	// log("fnDef parm", parm, JSON.stringify(parm));
 

@@ -35,7 +35,7 @@ function addPragmaDef(handlerFn: TPragmaHandlerFn | null, isBlock: boolean, prag
 }
 
 addPragmaDef(processIf, true, [tokens.IF]);
-addPragmaDef(null, false, [tokens.ELSE]);
+addPragmaDef(null, true, [tokens.ELSE]);
 
 addPragmaDef(processRepeat, true, [tokens.REPEAT]);
 addPragmaDef(processFor, true, [tokens.FOR]);
@@ -92,7 +92,7 @@ export function parsePragma(ctx: Context) {
 
 	const pragmaDef = pragmaDefs[token.asString];
 	if (!pragmaDef) throw new VAParseError(`PRAGMA: Unknown pragma "${token.asString}"`);
-	if (!pragmaDef.handlerFn) throw new VAParseError("PRAGMA: Syntax Error");
+	if (!pragmaDef.handlerFn) throw new VAParseError(`PRAGMA: No handler for pragma "${token.asString}"`);
 
 	ctx.lexer.next();
 

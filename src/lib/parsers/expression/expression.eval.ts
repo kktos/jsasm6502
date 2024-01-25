@@ -18,7 +18,7 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 	}
 
 	while (stack.length > 1) {
-		let item;
+		let item: TExprStackItem | undefined;
 		while (stack.length) {
 			item = stack.shift() as TExprStackItem;
 			if (Array.isArray(item)) item = evalExpr(exprCtx, item);

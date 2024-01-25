@@ -22,7 +22,7 @@ export function processASMOuput(ctx: Context, pragma: string) {
 			case TOKEN_TYPES.ARRAY: {
 				const items = (res.value as unknown[]).map((item) => {
 					if (item instanceof TExprStackItem) return TExprStackItem.asString(item, { withType: false });
-					else return JSON.stringify(item);
+					return JSON.stringify(item);
 				});
 				msg += `[${items}]`;
 				break;

@@ -34,7 +34,7 @@ function duplicateContext(exprCtx: TExprCtx): TExprCtx {
 //type ReadFileFunction= <T extends boolean>(filename: string, fromFile?: string, asBin?: T) => (T extends true ? ReadFileReturnBuffer : ReadFileReturnString);
 
 export function parseExpression(ctx: Context, endSet?: Set<number>, expectedType?: number): TExprStackItem | undefined {
-	let res;
+	let res: TExprStackItem | undefined;
 	const exprCtx: TExprCtx = {
 		ctx: ctx,
 		stack: [],

@@ -22,7 +22,7 @@ function resolveYamlInteger(data: string | null) {
 	const max = data.length;
 	let index = 0;
 	let hasDigits = false;
-	let ch;
+	let ch: string;
 
 	if (!max) return false;
 
@@ -118,7 +118,7 @@ function resolveYamlInteger(data: string | null) {
 function constructYamlInteger(data: string) {
 	let value = data;
 	let sign = 1;
-	let ch;
+	let ch: string;
 
 	if (value.indexOf("_") !== -1) {
 		value = value.replace(/_/g, "");
@@ -165,25 +165,20 @@ export const intType = new Type("tag:yaml.org,2002:int", {
 	construct: constructYamlInteger,
 	predicate: isInteger,
 	represent: {
-		binary: function (obj: object) {
-			return (obj as unknown as number) >= 0
+		binary: (obj: object) =>
+			(obj as unknown as number) >= 0
 				? `0b${(obj as unknown as number).toString(2)}`
-				: `-0b${(obj as unknown as number).toString(2).slice(1)}`;
-		},
-		octal: function (obj: object) {
-			return (obj as unknown as number) >= 0
+				: `-0b${(obj as unknown as number).toString(2).slice(1)}`,
+		octal: (obj: object) =>
+			(obj as unknown as number) >= 0
 				? `0o${(obj as unknown as number).toString(8)}`
-				: `-0o${(obj as unknown as number).toString(8).slice(1)}`;
-		},
-		decimal: function (obj: object) {
-			return (obj as unknown as number).toString(10);
-		},
+				: `-0o${(obj as unknown as number).toString(8).slice(1)}`,
+		decimal: (obj: object) => (obj as unknown as number).toString(10),
 		/* eslint-disable max-len */
-		hexadecimal: function (obj: object) {
-			return (obj as unknown as number) >= 0
+		hexadecimal: (obj: object) =>
+			(obj as unknown as number) >= 0
 				? `0x${(obj as unknown as number).toString(16).toUpperCase()}`
-				: `-0x${(obj as unknown as number).toString(16).toUpperCase().slice(1)}`;
-		},
+				: `-0x${(obj as unknown as number).toString(16).toUpperCase().slice(1)}`,
 	},
 	defaultStyle: "hexadecimal",
 	styleAliases: {

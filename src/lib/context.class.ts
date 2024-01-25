@@ -38,6 +38,8 @@ export class Context {
 	public lastLabel: { name: string; value: TExprStackItem } | null = null;
 	// private _deferredMsg: string | null = null;
 
+	public needNewline = true;
+
 	static createContext(opts: Options, src: string | { name: string; content: string }) {
 		const symbols = Dict.newDict<TExprStackItem>();
 		const charMapManager = new CharMapManager(symbols);
@@ -112,6 +114,7 @@ export class Context {
 	}
 
 	reset() {
+		this.lexer.reset();
 		this.pushFile(this._mainFile);
 		this.code.reset();
 		// this._deferredMsg = "";
