@@ -1,13 +1,22 @@
 {
   "name": "jsasm6502",
-  "version": "1.0.1",
+  "version": "1.0.6",
   "type": "module",
   "author": "kktos",
   "description": "6502/65C02 assembler in typescript. Either as a CLI and a library.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kktos/jsasm6502"
+  },
+  "main": "libasm6502.js",
+  "bin": {
+    "asm6502": "./asm.js"
+  },
   "scripts": {
-    "build-lib": "tsc -noEmit && esbuild src/lib/assembler.ts --bundle --platform=node --outfile=dist/libasm6502.js --format=esm",
-    "build": "tsc -noEmit && esbuild src/cli/main.ts --bundle --platform=node --outfile=dist/asm.js --format=esm",
+    "build-lib": "esbuild src/lib/assembler.ts --bundle --platform=node --outfile=dist/libasm6502.js --format=esm",
+    "build-cli": "esbuild src/cli/main.ts --bundle --platform=node --outfile=dist/asm.js --format=esm",
+    "build": "tsc -noEmit && pnpm build-lib && pnpm build-cli",
     "test": "vitest",
     "test-main": "node dist/asm.js test/asm/main.test.asm --conf test/asm/main.yaml",
     "test-lstoff": "node dist/asm.js --no-listing test/asm/main.test.asm",

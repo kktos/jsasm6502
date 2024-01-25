@@ -4,6 +4,39 @@
 
 inspired by virtual assembler by mass:werk and the fact I needed to have it running locally ;)
 
+## CLI
+```shell
+asm6502 sourcefile.asm
+```
+## Library
+
+```javascript
+import {assemble} from "jsasm6502";
+
+const opts= {
+	readFile: (filename, fromFile, asBin) => {
+		return { path: "", dir: "", content: filename, error:"" };
+	},
+};
+
+const src = `
+	loop:
+	lda #"A
+	sta $1000
+	bpl loop
+`;
+
+const asmRes = assemble(src, opts);
+
+console.log(asmRes.disasm.trim());
+/*
+loop:
+1000:  A9 41                      lda #"A
+1002:  8D 00 10                   sta $1000
+1005:  10 F9                      bpl loop
+*/
+```
+
 ## Expressions
 
 ```as

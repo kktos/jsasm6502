@@ -5,8 +5,7 @@ import { Options } from "../lib/types/Options.type";
 import { link } from "./linker";
 import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";
-
-console.log("jsAsm v1.00");
+import { name, version } from "../../package.json";
 
 const { conf, error } = readConf(process.argv.splice(2));
 if (!conf) {
@@ -19,6 +18,8 @@ if (!filename) {
 	console.error("need a source file to assemble\n");
 	process.exit(-1);
 }
+
+console.log(name, version);
 
 setRootDir(dirname(filename));
 

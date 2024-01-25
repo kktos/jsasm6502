@@ -1,9 +1,11 @@
 import yargs from "yargs";
 import { Arguments } from "./types";
+import { version } from "../../package.json";
 
 export function getParams(line: string[]): Arguments {
 	const argv = yargs(line)
-		.usage("Usage: jsasm [--listing] [--out filename] filename")
+		.usage("Usage: asm6502 [--listing] [--out filename] filename")
+		.version(version)
 		.options({
 			listing: {
 				describe: "with listing output",
