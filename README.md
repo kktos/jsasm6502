@@ -140,7 +140,7 @@ list= .push(numbers, 2,3)              // [$00,$01,$02,$03]
 #### .pop( <value as array> )
 ```as
 // removes one item at the end of the given array
-last= .array(numbers)                  // 3
+last= .pop(numbers)                  // 3
 ```
 
 ## System variables
