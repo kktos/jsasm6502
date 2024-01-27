@@ -1,6 +1,6 @@
 {
   "name": "jsasm6502",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "author": "kktos",
   "description": "6502/65C02 assembler in typescript. Either as a CLI and a library.",
@@ -14,9 +14,11 @@
     "asm6502": "./asm.js"
   },
   "scripts": {
+	"prebuild": "rimraf ./dist",
     "build-lib": "esbuild src/lib/assembler.ts --bundle --platform=node --outfile=dist/libasm6502.js --format=esm",
     "build-cli": "esbuild src/cli/main.ts --bundle --platform=node --outfile=dist/asm.js --format=esm",
     "build": "tsc -noEmit && pnpm build-lib && pnpm build-cli",
+    "postbuild": "node tools/postbuild.js",
     "test": "vitest",
     "test-main": "node dist/asm.js test/asm/main.test.asm --conf test/asm/main.yaml",
     "test-lstoff": "node dist/asm.js --no-listing test/asm/main.test.asm",
@@ -26,7 +28,7 @@
     "lint:ci": "biome ci ./src",
     "lint:fix": "biome check --apply-unsafe ./src",
     "format:fix": "biome format --write ./src",
-    "publish": "node tools/publish.js"
+    "publishIt": "cd dist && npm publish"
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",

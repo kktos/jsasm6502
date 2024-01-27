@@ -1,6 +1,6 @@
 
 import * as json from "../package.json" assert { type: "json" };
-import { writeFileSync } from "node:fs";
+import { writeFileSync, copyFileSync } from "node:fs";
 
 const keys= [ "name", "version", "type", "author", "description", "license", "main", "bin", "repository", "dependencies"];
 
@@ -11,3 +11,4 @@ const packageJson = Object.keys(json.default)
 					}, {});
 
 writeFileSync("./dist/package.json", JSON.stringify(packageJson, null, 4));
+copyFileSync("./README.md","./dist/README.md");
