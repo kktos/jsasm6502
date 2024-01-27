@@ -25,7 +25,8 @@
     "lint": "biome check ./src",
     "lint:ci": "biome ci ./src",
     "lint:fix": "biome check --apply-unsafe ./src",
-    "format:fix": "biome format --write ./src"
+    "format:fix": "biome format --write ./src",
+    "publish": "node tools/publish.js"
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
@@ -34,6 +35,7 @@
     "@types/yargs": "^17.0.32",
     "@vitest/ui": "^1.2.1",
     "esbuild": "^0.19.12",
+    "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "vitest": "^1.2.1"
