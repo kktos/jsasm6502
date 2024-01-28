@@ -1,9 +1,9 @@
 {
   "name": "jsasm6502",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "type": "module",
   "author": "kktos",
-  "description": "6502/65C02 assembler in typescript. Either as a CLI and a library.",
+  "description": "6502/65C02 assembler in typescript. Either as a CLI or a library.",
   "license": "MIT",
   "repository": {
     "type": "git",

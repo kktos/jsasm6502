@@ -5,7 +5,8 @@
 inspired by virtual assembler by mass:werk and the fact I needed to have it running locally ;)
 
 
-![CI](https://github.com/kktos/jsasm6502/actions/workflows/CI.yml/badge.svg)
+![CI](https://github.com/kktos/jsasm6502/actions/workflows/CI.yml/badge.svg)  
+[RELEASES](https://github.com/kktos/jsasm6502/RELEASES.md)
 
 ## CLI
 ```shell
