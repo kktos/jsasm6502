@@ -12,7 +12,7 @@ describe("If", () => {
 		opts.listing= true;
 	});
 
-	it.skip("should deal with label defined after", () => {
+	it("should deal with label defined after", () => {
 		const src = `
 		.if loadLevel
 			.out "loadLevel : ",.hex(loadLevel)
@@ -27,7 +27,7 @@ describe("If", () => {
 		].join("\n"));
 	});
 
-	it.skip("should work with C-like block as {} - same line", () => {
+	it("should work with C-like block as {} - same line", () => {
 		const src = `
 		.if level { b = "B"
 			.out "level : ", level, " : ", b
@@ -39,7 +39,7 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("level : 10 : B");
 	});
 
-	it.skip("should work with C-like block as {} - next line", () => {
+	it("should work with C-like block as {} - next line", () => {
 		const src = `
 		.if level
 		{
@@ -57,7 +57,7 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("level : 10");
 	});
 
-	it.skip("should work with C-like block IF/ELSE - ELSE", () => {
+	it("should work with C-like block IF/ELSE - ELSE", () => {
 		const src = `
 		level= 10
 		.if level<10 {
@@ -71,7 +71,7 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("high level");
 	});
 
-	it.skip("should work with C-like block IF/ELSE - IF", () => {
+	it("should work with C-like block IF/ELSE - IF", () => {
 		const src = `
 		level= 6
 		.if level<10 {
@@ -85,7 +85,28 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("low level");
 	});
 
-	it.skip("should work with C-like block embedded", () => {
+	it("should work with ASM-like block embedded", () => {
+		const src = `
+		level= 6
+		count=5
+		msg= ""
+		.if level<10
+			.if count<3
+				msg = msg + "extremely "
+			.else
+				msg = msg + "very "
+			.end
+			.out msg + "low level"
+		.else
+			.out "high level"
+		.end
+		`;
+		const asmRes= assemble(src, opts);
+		expect(asmRes.error).toStrictEqual(null);
+		expect(opts.output.trim()).toStrictEqual("very low level");
+	});
+
+	it("should work with C-like block embedded", () => {
 		const src = `
 		level= 6
 		count=5
@@ -130,7 +151,7 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("extremely low level");
 	});
 
-	it.skip("should work with C-like block mixed ELSE", () => {
+	it("should work with C-like block mixed ELSE", () => {
 		const src = `
 		level= 11
 		count= 2
@@ -151,10 +172,10 @@ describe("If", () => {
 		expect(opts.output.trim()).toStrictEqual("high level");
 	});
 
-	it.skip("should raise error with C-like block IF", () => {
+	it("should raise error with C-like block IF", () => {
 		const src = `
-		level= 11
-		count= 2
+		level= 9
+		count= 62
 		msg= ""
 		.if level<10 { count= 2  ; <- should raise an error
 			.if count<3
@@ -168,10 +189,10 @@ describe("If", () => {
 		}
 		`;
 		const asmRes= assemble(src, opts);
-		expect(asmRes.error).toStrictEqual("BLOCK: Start block { should be the last on the line");
+		expect(opts.output.trim()).toStrictEqual("extremely low level");
 	});
 
-	it.skip("should raise error with C-like block IF", () => {
+	it("should not raise an error with C-like block IF", () => {
 		const src = `
 		level= 11
 		count= 2
@@ -183,15 +204,15 @@ describe("If", () => {
 				msg = msg + "very "
 			.end
 			.out msg + "low level"
-		} .else {  count= 2        ; <- should raise an error
-			.out "high level"
+		} .else	{ count= 65
+			.out "high level : ", count
 		}
 		`;
 		const asmRes= assemble(src, opts);
-		expect(asmRes.error).toStrictEqual("BLOCK: Start block { should be the last on the line");
+		expect(opts.output.trim()).toStrictEqual("high level : 65");
 	});
 
-	it.skip("should raise error if expression is not a number", () => {
+	it("should raise error if expression is not a number", () => {
 		const src = `
 		.if "string" {
 			.out "wont be run"

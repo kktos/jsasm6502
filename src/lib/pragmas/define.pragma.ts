@@ -11,7 +11,8 @@ export function processDefine(ctx: Context) {
 	if (!tok || tok.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("DEFINE: need a name");
 
 	const name = tok.asString;
-	const [block] = readBlock(ctx);
+	ctx.lexer.next();
+	const [block] = readBlock(ctx, { wantRaw: true });
 	let value: TValueType;
 	try {
 		if (!block) throw new VAParseError("Empty block");

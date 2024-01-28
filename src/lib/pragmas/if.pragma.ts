@@ -46,10 +46,12 @@ export function processIf(ctx: Context) {
 
 	// log("if", ctx.lexer.line());
 
+	// log("IF BLOCK");
+
 	let blockFalse = "";
 	const [blockTrue] = readBlock(ctx, opts);
 
-	log(`IF BLOCK [${ctx.lexer.id}]`, dbgStringList(blockTrue.split("\n")));
+	// log(`IF BLOCK [${ctx.lexer.id}]`, dbgStringList(blockTrue.split("\n")));
 
 	if (ctx.lexer.eol()) ctx.lexer.nextLine();
 
@@ -65,11 +67,13 @@ export function processIf(ctx: Context) {
 		ctx.lexer.next();
 		ctx.lexer.next();
 
+		// log("ELSE BLOCK");
+
 		ctx.lexer.lines().push("} <-");
 		[blockFalse] = readBlock(ctx, opts);
 		ctx.lexer.lines().pop();
 
-		log("ELSE BLOCK", dbgStringList(blockFalse.split("\n")));
+		// log(`ELSE BLOCK [${ctx.lexer.id}]`, dbgStringList(blockFalse.split("\n")));
 
 		// log("ELSE", blockFalse);
 		// log("token", ctx.lexer.token());
@@ -87,7 +91,7 @@ export function processIf(ctx: Context) {
 		ctx.needNewline = false;
 	}
 
-	log(`IF END [${ctx.lexer.id}]`, !hasElseBlock ? "STAY" : "NEXT");
+	// log(`IF END [${ctx.lexer.id}]`, !hasElseBlock ? "STAY" : "NEXT");
 
 	if (block) ctx.lexer.pushSource(block);
 

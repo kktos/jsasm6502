@@ -33,7 +33,7 @@ export function processText(ctx: Context, pragma: string) {
 				break;
 			}
 			default:
-				throw new VAParseError(`STRING: Invalid Type "${res?.type}". Must be a string`);
+				throw new VAParseError(`STRING: Invalid Type "${res?.typeAsString}". Must be a string`);
 		}
 		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) return false;
 		ctx.lexer.next();

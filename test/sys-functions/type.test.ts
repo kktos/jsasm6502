@@ -12,11 +12,11 @@ describe("Type function", () => {
 	it("tests .type with various types", () => {
 		const src = `
 		.define arr
-		- one
-		- two
+			- one
+			- two
 		.end
 		.define obj
-		test:
+			test:
 		.end
 		.lst on
 		.log .type(arr)

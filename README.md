@@ -4,6 +4,9 @@
 
 inspired by virtual assembler by mass:werk and the fact I needed to have it running locally ;)
 
+
+![CI](https://github.com/kktos/jsasm6502/actions/workflows/CI.yml/badge.svg)
+
 ## CLI
 ```shell
 asm6502 sourcefile.asm
@@ -488,7 +491,7 @@ But if you are more into C-like comments, you can use instead the double slash "
 And if you cant to comment a whole section, you can use C-like the /* .... */.
 
 #### Line comment ; //
-```
+```as
 ; this is a comment
 
     printStr welcome ; this is another comment

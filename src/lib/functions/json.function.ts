@@ -5,7 +5,7 @@ export function fnJson(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	const parm = parms[0];
 	let json: string;
 	try {
-		json = JSON.stringify(parm);
+		json = JSON.stringify(parm, null, 4);
 	} catch (e) {
 		json = "";
 	}
