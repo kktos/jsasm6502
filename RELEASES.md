@@ -3,6 +3,9 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.1.2
+Documention complete... I hope.  
+
 ## 1.1
 First real working version !  
 At last !

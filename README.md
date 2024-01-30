@@ -1,45 +1,226 @@
 # jsasm6502
 
-6502/65C02 assembler in typescript
+- [Package](#introduction)
+  * [Introduction](#introduction)
+  * [Usage](#usage)
+  * [API](#api)
+  * [Examples](#examples)
+- [Assembler Syntax](#assembler-syntax)
+  * [Expressions](#expressions)
+  * [System Functions](#system-functions)
+  * [System Variables](#system-variables)
+  * [Variables & Labels](#variables-and-labels)
+  * [Data declaration](#data-declaration)
+  * [String declaration](#string-declaration)
+  * [Control Flow](#control-flow)
+  * [Namespaces](#namespaces)
+  * [Memory](#memory)
+  * [Macros](#macros)
+  * [Comments](#comments)
+  * [Miscellaneous](#miscellaneous)
 
-inspired by virtual assembler by mass:werk and the fact I needed to have it running locally ;)
-
+## Introduction
+6502/65C02 assembler in typescript  
+Inspired by virtual assembler by mass:werk and the fact I needed to have it running locally ;)
 
 ![CI](https://github.com/kktos/jsasm6502/actions/workflows/CI.yml/badge.svg)  
-[RELEASES](https://github.com/kktos/jsasm6502/RELEASES.md)
+[RELEASES](https://github.com/kktos/jsasm6502/blob/main/RELEASES.md)
 
-## CLI
+
+## Usage
 ```shell
 asm6502 sourcefile.asm
 ```
-## Library
+## API
 
+### assemble
+function assemble(source, options): TAssemblerResult
+
+### - source
+Either a string for a file pathname
+```
+source: string
+```
+Or an object containing the source code to assemble
+```
+source: { name: string; content: string }
+```
+### - options
+```typescript
+{	
+	/*
+		- cpu type : "6502" or "65C02"
+		- optional
+		- default : "6502"
+	*/
+	cpu: string;
+
+	/*
+		- activate or desactivate the listing print out
+		- optional
+		- default : false
+	*/
+	listing: boolean;
+
+	/*
+		- the console is used for all the listing output
+		  if you need to capture it, set it to your own console implementation
+		- optional
+		- default : system console
+	*/
+	console: TConsole;
+
+	/*
+		- the memory segments definition. See Memory for further explanation
+		- optional
+		- default : { CODE: { start: 0x1000, end: 0xffff } }
+	*/
+	segments: TSegments;
+
+	/*
+		- function called to read a source file
+		- mandatory
+
+		type ReadFileReturn = {
+			error: string;
+			path: string;
+			dir: string;
+			content: string | Buffer;
+		};
+
+		type ReadFileFunction = (filename: string, fromFile?: string, asBin?: boolean) => ReadFileReturn;
+	*/
+	readFile: ReadFileFunction;
+
+	/*
+		- function called by pragma .define to read a yaml file
+		- optional if you don't need .define
+	*/
+	YAMLparse: (filename: string) => Record<string, unknown> | boolean | number | string;
+}
+```
+### - TAssemblerResult
+```typescript
+{
+	/*
+		Dictionnary of symbols
+	*/
+	symbols: Dict<TExprStackItem>;
+	/*
+		Segments. Same as input.
+	*/
+	segments: TSegments;
+	/*
+		Dictionnary of segments where each entry is an array of bytes
+	*/
+	obj: TCodeObj;
+	/*
+		assembler output with bytes and disassembly
+	*/
+	disasm: string;
+	/*
+		hexdump of the specified segment
+	*/
+	dump: (segmentName: string, bytePerLine?: number) => void;
+	/*
+		if not null, the error which has stopped the assembler
+	*/
+	error: string | null;
+}
+```
+
+## Examples
+### browser
 ```javascript
 import {assemble} from "jsasm6502";
-
-const opts= {
-	readFile: (filename, fromFile, asBin) => {
-		return { path: "", dir: "", content: filename, error:"" };
-	},
-};
-
-const src = `
+const asmFile = `
 	loop:
 	lda #"A
 	sta $1000
 	bpl loop
 `;
-
+const src= { name: "test-file", content: asmFile };
 const asmRes = assemble(src, opts);
-
+console.log("----- DISASM -----");
 console.log(asmRes.disasm.trim());
+console.log("----- OBJ -----");
+console.log(asmRes.obj);
+console.log("----- HEXDUMP -----");
+asmRes.dump("CODE");
+console.log("----- SEGMENTS -----");
+console.log(asmRes.segments);
+console.log("----- SYMBOLS -----");
+console.log(asmRes.symbols.dump());
 /*
+----- DISASM -----
 loop:
-1000:  A9 41                      lda #"A
-1002:  8D 00 10                   sta $1000
-1005:  10 F9                      bpl loop
-*/
+1000:  A9 41                            lda #"A
+1002:  8D 00 10                         sta $1000
+1005:  10 F9                            bpl loop
+----- OBJ -----
+{
+  CODE: [
+    169, 65, 141, 0,
+     16, 16, 249
+  ]
+}
+----- HEXDUMP -----
+1000: A9 41 8D 00 10 10 F9
+----- SEGMENTS -----
+{ CODE: { start: 4096, end: 65535, size: 61440 } }
+----- SYMBOLS -----
+GLOBAL:
+  LOOP: number = $1000 ; "test-file":2
+*/  
 ```
+### node
+```javascript
+import { readFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { load } from "js-yaml";
+
+function readFile(filename: string, fromDir?: string, asBin?: boolean): ReadFileReturn {
+	try {
+		const includeDir = fromDir ?? "";
+		const path = (includeDir !== "" ? `${includeDir}/` : "") + filename;
+		const content = readFileSync(`${rootDir}/${path}`);
+		return {
+			path,
+			dir: dirname(path),
+			content: asBin ? content : content.toString(),
+			error: "",
+		};
+	} catch (e) {
+		return {
+			path: "",
+			dir: "",
+			content: "",
+			error: (e as Error).message,
+		};
+	}
+}
+
+function YAMLparse(yaml: string): Record<string, unknown> | boolean | number | string {
+	try {
+		return load(yaml) as Record<string, unknown>;
+	} catch (e) {
+		console.error("YAMLparse", e);
+		return "";
+	}
+}
+
+const opts: Options = {
+	readFile,
+	YAMLparse,
+};
+/*
+  ...
+*/
+const asmRes = assemble(filename, opts);
+
+```
+
+# Assembler Syntax
 
 ## Expressions
 
@@ -147,7 +328,7 @@ list= .push(numbers, 2,3)              // [$00,$01,$02,$03]
 last= .pop(numbers)                  // 3
 ```
 
-## System variables
+## System Variables
 
 System variables are readonly and they are prefixed by a dot "."
 #### .cpu
@@ -179,7 +360,7 @@ System variables are readonly and they are prefixed by a dot "."
 
 ```
 
-## Variables & Labels
+## Variables and Labels
 #### < name > = expression
 ```as
 // define a simple variable
