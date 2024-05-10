@@ -1,0 +1,27 @@
+export declare const cpu65x02: {
+    ALR: number[];
+    ANC: number[];
+    ANC2: number[];
+    ANE: number[];
+    ARR: number[];
+    DCP: number[];
+    ISC: number[];
+    LAS: number[];
+    LAX: number[];
+    LXA: number[];
+    NOP: number[];
+    RLA: number[];
+    RRA: number[];
+    SAX: number[];
+    USBC: number[];
+    SBX: number[];
+    SHA: number[];
+    SHX: number[];
+    SHY: number[];
+    SLO: number[];
+    SRE: number[];
+    TAS: number[];
+    JAM: number[];
+    DOP: number[];
+    TOP: number[];
+};
