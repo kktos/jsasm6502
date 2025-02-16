@@ -1,4 +1,4 @@
-import { TDict, NS_GLOBAL, TNamespaceDict, TNamespace, TNamespaceKey } from "./base.type";
+import { type TDict, NS_GLOBAL, type TNamespaceDict, type TNamespace, type TNamespaceKey } from "./base.type";
 
 const log = console.log;
 

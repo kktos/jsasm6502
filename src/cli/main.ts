@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname } from "node:path";
 import { assemble } from "../lib/assembler";
-import { Options } from "../lib/types/Options.type";
+import type { Options } from "../lib/types/Options.type";
 import { link } from "./linker";
 import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";

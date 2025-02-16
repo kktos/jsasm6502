@@ -1,4 +1,4 @@
-import { Context } from "../context.class.js";
+import type { Context } from "../context.class.js";
 import { VAParseError } from "../helpers/errors.class.js";
 import { TOKEN_TYPES } from "../lexer/token.class.js";
 

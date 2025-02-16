@@ -1,13 +1,13 @@
-import { Context } from "../../context.class";
+import type { Context } from "../../context.class";
 import { VAExprError } from "../../helpers/errors.class";
 import { getValueType } from "../../helpers/utils";
 import { TOKEN_TYPES, Token, getTypeName } from "../../lexer/token.class";
 import { getSysVarValue } from "../../sysvariable";
 import { fnFlags, fnParmCount, isFunctionExists } from "../function.parser";
-import { TExprCtx, TExprStackOperation } from "./expression.type";
+import type { TExprCtx, TExprStackOperation } from "./expression.type";
 import { TExprStackItem } from "./TExprStackItem.class";
 import { evalExpr } from "./expression.eval";
-import { TValueType } from "../../types/Value.type";
+import type { TValueType } from "../../types/Value.type";
 
 const log = console.log;
 
@@ -442,7 +442,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 
 	// log("parseVarLabel VALUE", exprCtx.ctx.pass, String(value).trim());
 
-	exprCtx.stack.push(new TExprStackItem(isDefined ? value?.type ?? 0 : 0, value?.value ?? null));
+	exprCtx.stack.push(new TExprStackItem(isDefined ? (value?.type ?? 0) : 0, value?.value ?? null));
 
 	// log("parseVarLabel END", { type: value?.type, value: value?.value });
 }

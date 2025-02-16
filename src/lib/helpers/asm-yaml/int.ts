@@ -135,16 +135,16 @@ function constructYamlInteger(data: string) {
 	if (value === "0") return 0;
 
 	if (ch === "$") {
-		return sign * parseInt(value.slice(1), 16);
+		return sign * Number.parseInt(value.slice(1), 16);
 	}
 
 	if (ch === "0") {
-		if (value[1] === "b") return sign * parseInt(value.slice(2), 2);
-		if (value[1] === "x") return sign * parseInt(value.slice(2), 16);
-		if (value[1] === "o") return sign * parseInt(value.slice(2), 8);
+		if (value[1] === "b") return sign * Number.parseInt(value.slice(2), 2);
+		if (value[1] === "x") return sign * Number.parseInt(value.slice(2), 16);
+		if (value[1] === "o") return sign * Number.parseInt(value.slice(2), 8);
 	}
 
-	return sign * parseInt(value, 10);
+	return sign * Number.parseInt(value, 10);
 }
 
 function isInteger(data: object) {

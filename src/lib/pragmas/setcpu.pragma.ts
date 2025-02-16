@@ -1,4 +1,4 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { cpu6502, cpu65c02, cpu65x02 } from "../opcodes/all";

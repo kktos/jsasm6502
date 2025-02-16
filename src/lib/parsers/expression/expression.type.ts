@@ -1,6 +1,6 @@
-import { Context } from "../../context.class";
-import { TFunctionFlags } from "../function.parser";
-import { TExprStackItem } from "./TExprStackItem.class";
+import type { Context } from "../../context.class";
+import type { TFunctionFlags } from "../function.parser";
+import type { TExprStackItem } from "./TExprStackItem.class";
 
 type TOperationCmp = "<" | "<=" | "=" | ">" | ">=" | "!=";
 type TOperationLogical = "AND" | "OR" | "!";

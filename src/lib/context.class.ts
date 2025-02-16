@@ -4,8 +4,8 @@ import { CharMapManager } from "./helpers/charMapManager";
 import { VAParseError } from "./helpers/errors.class";
 import { MacroManager } from "./helpers/macroManager";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class";
-import { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
-import { Options, TConsole } from "./types/Options.type";
+import type { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
+import type { Options, ReadFileFunction, TConsole } from "./types/Options.type";
 
 const log = console.log;
 
@@ -22,7 +22,7 @@ export class Context {
 	public wannaStop = false;
 	public opcodes: Record<string, number[]> = {};
 	public cpu = "??";
-	public _readFile;
+	public _readFile: ReadFileFunction;
 	public YAMLparse;
 	public _mainFile;
 	public wannaListing;

@@ -1,5 +1,5 @@
 import { VAParseError } from "../helpers/errors.class";
-import { TPragmaHandlerFn, pragmaDefs, tokens } from "./pragma.tokens";
+import { type TPragmaHandlerFn, pragmaDefs, tokens } from "./pragma.tokens";
 import { processAlign } from "../pragmas/align.pragma";
 import { processData, processHex } from "../pragmas/data.pragma";
 import { processDefine } from "../pragmas/define.pragma";
@@ -18,7 +18,7 @@ import { processRepeat } from "../pragmas/repeat.pragma";
 import { processSegment } from "../pragmas/segment.pragma";
 import { processSetCPU } from "../pragmas/setcpu.pragma";
 import { processText } from "../pragmas/string.pragma";
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { processFor } from "../pragmas/for.pragma";
 import { processFunction } from "../pragmas/function.pragma";
 import { processLet } from "../pragmas/let.pragma";

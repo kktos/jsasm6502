@@ -1,5 +1,5 @@
 import yargs from "yargs";
-import { Arguments } from "./types";
+import type { Arguments } from "./types";
 import { version } from "../../package.json";
 
 export function getParams(line: string[]): Arguments {

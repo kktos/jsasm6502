@@ -1,10 +1,10 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { getValueType } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
-import { TValueType } from "../types/Value.type";
+import type { TValueType } from "../types/Value.type";
 
 export function processDefine(ctx: Context) {
 	const tok = ctx.lexer.token();

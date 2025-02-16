@@ -1,6 +1,6 @@
 import { VAParseError } from "../helpers/errors.class";
-import { BaseDict } from "./base.class";
-import { TDict, TNamespaceDict } from "./base.type";
+import type { BaseDict } from "./base.class";
+import type { TDict, TNamespaceDict } from "./base.type";
 
 const FUNCTIONS = Symbol("functions");
 

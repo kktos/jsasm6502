@@ -1,8 +1,8 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { TReadBlockOptions, isPragma, readBlock } from "../parsers/block.parser";
+import { type TReadBlockOptions, isPragma, readBlock } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 
 const log = console.log;

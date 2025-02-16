@@ -1,10 +1,10 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { fnDef, fnUndef } from "../functions/def.function";
 import { fnHex } from "../functions/hex.function";
 import { fnLen } from "../functions/len.function";
 import { fnType } from "../functions/type.function";
 import { fnEval } from "../functions/eval.function";
-import { TExprStackItem } from "./expression/TExprStackItem.class";
+import type { TExprStackItem } from "./expression/TExprStackItem.class";
 import { fnSplit } from "../functions/split.function";
 import { fnJson } from "../functions/json.function";
 import { fnArray } from "../functions/array.function";

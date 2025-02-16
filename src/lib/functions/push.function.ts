@@ -1,7 +1,7 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
+import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
 const log = console.log;
 

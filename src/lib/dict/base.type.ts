@@ -1,4 +1,4 @@
-import { IExprItem } from "../types/ExprItem.type";
+import type { IExprItem } from "../types/ExprItem.type";
 
 export const NS_GLOBAL = "GLOBAL";
 

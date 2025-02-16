@@ -1,4 +1,4 @@
-import { Context } from "./context.class";
+import type { Context } from "./context.class";
 import { VAExprError } from "./helpers/errors.class";
 import { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
 

@@ -1,7 +1,7 @@
 import { TOKEN_TYPES, Token, getTypeName } from "../../lexer/token.class";
-import { IExprItem } from "../../types/ExprItem.type";
-import { TValue, TValueType } from "../../types/Value.type";
-import { TExprStackOperation } from "./expression.type";
+import type { IExprItem } from "../../types/ExprItem.type";
+import type { TValue, TValueType } from "../../types/Value.type";
+import type { TExprStackOperation } from "./expression.type";
 
 type TExtra = {
 	file?: string;

@@ -1,4 +1,4 @@
-import { TValue, TValueType } from "../types/Value.type";
+import type { TValue, TValueType } from "../types/Value.type";
 
 export const TOKEN_TYPES = {
 	DOT: 0x100,

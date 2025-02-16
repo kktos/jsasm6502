@@ -2,7 +2,7 @@ import { Context } from "./context.class";
 import { dbgStringList } from "./helpers/debug";
 import { VAParseError } from "./helpers/errors.class";
 import { getHexWord } from "./helpers/utils";
-import { TOKEN_TYPES, Token } from "./lexer/token.class";
+import { TOKEN_TYPES, type Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
 import { isIdentifierAnOpcode, parseOpcode } from "./parsers/opcode.parser";
 import { parseOrg } from "./parsers/org.parser";
@@ -10,8 +10,8 @@ import { parsePragma } from "./parsers/pragma.parser";
 import { isPragmaToken } from "./parsers/pragma.tokens";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
-import { Options } from "./types/Options.type";
-import { TAssemblerResult } from "./types/assembler.type";
+import type { Options } from "./types/Options.type";
+import type { TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 

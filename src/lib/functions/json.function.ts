@@ -1,4 +1,4 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
 export function fnJson(ctx: Context, parms: (TExprStackItem | undefined)[]) {

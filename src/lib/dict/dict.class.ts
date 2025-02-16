@@ -1,5 +1,5 @@
 import { BaseDict } from "./base.class";
-import { TDict, TNamespaceKey } from "./base.type";
+import type { TDict, TNamespaceKey } from "./base.type";
 import { ExportDict } from "./export.class";
 import { FunctionDict } from "./function.class";
 import { MarkerDict } from "./marker.class";

@@ -1,7 +1,7 @@
-import { CharMapManager } from "../helpers/charMapManager";
+import type { CharMapManager } from "../helpers/charMapManager";
 import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
-import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
+import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { TOKEN_TYPES, Token } from "./token.class";
 
 const log = console.log;
@@ -474,7 +474,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
-			this.ctx.currToken.value = parseInt(this.ctx.currToken.text, base);
+			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text, base);
 			return true;
 		}
 
@@ -484,7 +484,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
-			this.ctx.currToken.value = parseInt(this.ctx.currToken.text);
+			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text);
 			return true;
 		}
 
@@ -503,7 +503,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos + 1, this.ctx.posInLine);
-			this.ctx.currToken.value = parseInt(this.ctx.currToken.text, 16);
+			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text, 16);
 			return true;
 		}
 
@@ -521,7 +521,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos + 1, this.ctx.posInLine);
-			this.ctx.currToken.value = parseInt(this.ctx.currToken.text.replaceAll("_", ""), 2);
+			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text.replaceAll("_", ""), 2);
 			return true;
 		}
 

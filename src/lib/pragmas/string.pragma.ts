@@ -1,4 +1,4 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { parseExpression } from "../parsers/expression/expression.parser";
@@ -89,7 +89,7 @@ export function makeString(ctx: Context | null, str: string, opts: TStringOption
 					idx += 2;
 					if (idx >= str.length) throw new VAParseError(`STRING: Invalid character ${str[idx - 2]}`);
 					const hex = str.slice(idx - 1, idx + 1);
-					char = parseInt(`0x${hex}`, 16);
+					char = Number.parseInt(`0x${hex}`, 16);
 					if (Number.isNaN(char)) throw new VAParseError(`STRING: Invalid hexa value ${hex}`);
 					break;
 				}

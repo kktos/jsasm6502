@@ -1,6 +1,6 @@
 import { readConfFile } from "./file";
 import { getParams } from "./params";
-import { SchemaDict, TConf, confSchema } from "./types";
+import { SchemaDict, type TConf, confSchema } from "./types";
 
 export function readConf(args: string[]) {
 	const argv = getParams(args);

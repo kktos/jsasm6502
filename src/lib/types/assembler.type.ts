@@ -1,6 +1,6 @@
-import { TSegments, TCodeObj } from "../compiler.class";
-import { Dict } from "../dict/dict.class";
-import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
+import type { TSegments, TCodeObj } from "../compiler.class";
+import type { Dict } from "../dict/dict.class";
+import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
 export type TAssemblerResult = {
 	symbols: Dict<TExprStackItem>;

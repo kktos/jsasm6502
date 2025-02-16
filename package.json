@@ -26,7 +26,7 @@
     "format": "biome format ./src",
     "lint": "biome check ./src",
     "lint:ci": "biome ci ./src",
-    "lint:fix": "biome check --apply-unsafe ./src",
+    "lint:fix": "biome check --write --unsafe ./src",
     "format:fix": "biome format --write ./src",
     "publishIt": "cd dist && npm publish"
   },

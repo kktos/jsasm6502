@@ -1,7 +1,7 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { EVENT_TYPES } from "../lexer/lexer.class";
-import { TOKEN_TYPES, Token } from "../lexer/token.class";
+import { TOKEN_TYPES, type Token } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";

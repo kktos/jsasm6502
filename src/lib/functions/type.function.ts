@@ -1,4 +1,4 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { getTypeName } from "../lexer/token.class";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 

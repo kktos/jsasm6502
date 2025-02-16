@@ -1,9 +1,9 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
-import { TMacro } from "../helpers/macroManager";
+import type { TMacro } from "../helpers/macroManager";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { readBlock, TReadBlockOptions } from "../parsers/block.parser";
+import { readBlock, type TReadBlockOptions } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 

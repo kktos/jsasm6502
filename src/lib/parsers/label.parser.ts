@@ -1,8 +1,8 @@
 import { parseExpression } from "./expression/expression.parser";
 import { isMacroToken } from "../pragmas/macro.pragma";
 import { VAExprError, VAParseError } from "../helpers/errors.class";
-import { Context } from "../context.class";
-import { TOKEN_TYPES, Token } from "../lexer/token.class";
+import type { Context } from "../context.class";
+import { TOKEN_TYPES, type Token } from "../lexer/token.class";
 import { TExprStackItem } from "./expression/TExprStackItem.class";
 
 const log = console.log;

@@ -2,7 +2,7 @@ import { VAExprError } from "../../helpers/errors.class";
 import { TOKEN_TYPES } from "../../lexer/token.class";
 import { TValueType } from "../../types/Value.type";
 import { execFunction } from "../function.parser";
-import { TExprCtx, TExprStack } from "./expression.type";
+import type { TExprCtx, TExprStack } from "./expression.type";
 import { TExprStackItem } from "./TExprStackItem.class";
 
 const log = console.log;

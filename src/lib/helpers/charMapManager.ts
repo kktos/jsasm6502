@@ -1,5 +1,5 @@
-import { TDict } from "../dict/base.type";
-import { Dict } from "../dict/dict.class";
+import type { TDict } from "../dict/base.type";
+import type { Dict } from "../dict/dict.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { VAParseError } from "./errors.class";
 import { getHexWord } from "./utils";

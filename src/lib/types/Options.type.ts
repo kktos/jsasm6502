@@ -1,4 +1,4 @@
-import { TSegments } from "../compiler.class";
+import type { TSegments } from "../compiler.class";
 
 export type ReadFileReturn = {
 	error: string;
@@ -6,7 +6,7 @@ export type ReadFileReturn = {
 	dir: string;
 	content: string | Buffer;
 };
-type ReadFileFunction = (filename: string, fromFile?: string, asBin?: boolean) => ReadFileReturn;
+export type ReadFileFunction = (filename: string, fromFile?: string, asBin?: boolean) => ReadFileReturn;
 
 export type TConsole = {
 	log: (s?: string | null) => void;

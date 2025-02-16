@@ -1,4 +1,4 @@
-import { TSegmentsConf } from "../lib/types/Options.type";
+import type { TSegmentsConf } from "../lib/types/Options.type";
 
 export interface Arguments {
 	listing?: boolean;

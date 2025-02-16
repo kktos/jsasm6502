@@ -1,7 +1,7 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
-import { Lexer } from "../lexer/lexer.class";
+import type { Lexer } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { isBlockPragma } from "./pragma.tokens";
 

@@ -1,4 +1,4 @@
-import { TValueType } from "./Value.type";
+import type { TValueType } from "./Value.type";
 
 type TExtra = {
 	file?: string;

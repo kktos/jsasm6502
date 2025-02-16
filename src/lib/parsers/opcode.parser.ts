@@ -1,4 +1,4 @@
-import { Context } from "../context.class";
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { hexDump, high, low } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";

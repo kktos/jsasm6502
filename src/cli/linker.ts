@@ -1,4 +1,4 @@
-import { TAssemblerResult } from "../lib/types/assembler.type";
+import type { TAssemblerResult } from "../lib/types/assembler.type";
 
 type TSegmentItem = [string, number, number, number, number, number];
 type TSegmentList = TSegmentItem[];
