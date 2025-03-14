@@ -1,6 +1,6 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
-import { hexDump, high, low } from "../helpers/utils";
+import { high, low } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { ADDRMODE } from "../opcodes/65xxx.addrmodes";
 import { parseExpression, parseExpressionAsNumber } from "./expression/expression.parser";

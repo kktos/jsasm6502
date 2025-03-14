@@ -1,5 +1,4 @@
 import { Context } from "./context.class";
-import { dbgStringList } from "./helpers/debug";
 import { VAParseError } from "./helpers/errors.class";
 import { getHexWord } from "./helpers/utils";
 import { TOKEN_TYPES, type Token } from "./lexer/token.class";
@@ -86,6 +85,9 @@ function asm(ctx: Context): string {
 		let label = null;
 
 		const lblParser = (token: Token) => {
+
+			// log("lblParser", token, ctx.lexer.line());
+
 			switch (token.type) {
 				// LOCAL LABEL <!> <:>
 				case TOKEN_TYPES.BANG:

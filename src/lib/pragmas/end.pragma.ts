@@ -10,6 +10,9 @@ const log = console.log;
 // .end function
 // .end namespace
 export function processEnd(ctx: Context) {
+
+	// log("END");
+
 	if (ctx.lexer.token()) {
 		const isNS = ctx.lexer.isIdentifier(tokens.NAMESPACE);
 		const isFN = ctx.lexer.isIdentifier(tokens.FUNCTION);

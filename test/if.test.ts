@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { assemble } from "../src/lib/assembler";
 import { opts } from "./shared/options";
-import { readHexLine } from "../src/lib/pragmas/data.pragma";
 import { hexDump } from "../src/lib/helpers/utils";
 
 describe("If", () => {

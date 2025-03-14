@@ -1,5 +1,5 @@
 import { load } from "../../src/lib/helpers/asm-yaml";
-import { Options } from "../../src/lib/types/Options.type";
+import type { Options } from "../../src/lib/types/Options.type";
 
 let consoleOutput= "";
 export const opts: Options & { output: string }= {
