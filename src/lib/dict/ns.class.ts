@@ -1,4 +1,4 @@
-import type { BaseDict } from "./base.class";
+import type { BaseDict } from "./basedict.class";
 import { NS_GLOBAL, type TDict } from "./base.type";
 
 export class NSDict<T extends TDict> {

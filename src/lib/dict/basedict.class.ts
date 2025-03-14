@@ -28,12 +28,22 @@ export class BaseDict<T extends TDict> {
 	// get(name: typeof MARKERS, ns?: string): number[];
 	// get(name: typeof MARKERS | string, ns?: string): T | number[]
 	get(name: TNamespaceKey, ns?: string): T | undefined {
+
+		// if (ns) log(`---- GET ${this.namespaces[ns]?.[name]}`);
+
 		if (ns) return this.namespaces[ns]?.[name];
+
+		// if (this.fn) log(`---- GET FN ${this.fn?.[name]}`);
+		// else
+		// if (this.currNs[name]) log(`---- GET NS ${this.currNs[name]}`);
+		// else
+		//  log(`---- GET GLOBAL ${this.global[name]}`);
+
 		return this.fn?.[name] ?? this.currNs[name] ?? this.global[name];
 	}
 
 	set(name: TNamespaceKey, value: T) {
-		// log(`---- SET ${this.namespace}.${String(name)}= ${value.value}`);
+		// log(`---- SET ${this.fn?"()":this.namespace}.${String(name)}= ${value}`);
 		// log("NS", this.namespace, JSON.stringify(this.currNs));
 		// log("GLOBAL", JSON.stringify(this.global));
 

@@ -1,4 +1,4 @@
-import type { BaseDict } from "./base.class";
+import type { BaseDict } from "./basedict.class";
 import type { TDict } from "./base.type";
 
 export class ExportDict<T extends TDict> {

@@ -1,8 +1,8 @@
-import { BaseDict } from "./base.class";
+import { BaseDict } from "./basedict.class";
 import type { TDict, TNamespaceKey } from "./base.type";
 import { ExportDict } from "./export.class";
-import { FunctionDict } from "./function.class";
-import { MarkerDict } from "./marker.class";
+import { FunctionDict } from "./functiondict.class";
+import { MarkerDict } from "./markerdict.class";
 import { NSDict } from "./ns.class";
 import { OverrideDict } from "./override.class";
 

@@ -1,8 +1,9 @@
 import { VAParseError } from "../helpers/errors.class";
-import type { BaseDict } from "./base.class";
+import type { BaseDict } from "./basedict.class";
 import type { TDict, TNamespaceDict } from "./base.type";
 
 const FUNCTIONS = Symbol("functions");
+const log = console.log;
 
 export class FunctionDict<T extends TDict> {
 	private fnStack: (string | null)[] = [];
@@ -42,6 +43,9 @@ export class FunctionDict<T extends TDict> {
 	}
 
 	leave() {
+
+		// log(`leaving function ${ 	this.current}`);
+
 		const functionDict = this.getFunctionDict();
 		if (this.fnStack.length === 0) {
 			throw new VAParseError("Not in a function");
