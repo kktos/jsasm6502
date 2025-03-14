@@ -28,7 +28,6 @@ export class BaseDict<T extends TDict> {
 	// get(name: typeof MARKERS, ns?: string): number[];
 	// get(name: typeof MARKERS | string, ns?: string): T | number[]
 	get(name: TNamespaceKey, ns?: string): T | undefined {
-
 		// if (ns) log(`---- GET ${this.namespaces[ns]?.[name]}`);
 
 		if (ns) return this.namespaces[ns]?.[name];

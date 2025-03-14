@@ -43,7 +43,6 @@ export class FunctionDict<T extends TDict> {
 	}
 
 	leave() {
-
 		// log(`leaving function ${ 	this.current}`);
 
 		const functionDict = this.getFunctionDict();

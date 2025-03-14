@@ -10,7 +10,6 @@ const log = console.log;
 // .end function
 // .end namespace
 export function processEnd(ctx: Context) {
-
 	// log("END");
 
 	if (ctx.lexer.token()) {

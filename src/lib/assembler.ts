@@ -85,7 +85,6 @@ function asm(ctx: Context): string {
 		let label = null;
 
 		const lblParser = (token: Token) => {
-
 			// log("lblParser", token, ctx.lexer.line());
 
 			switch (token.type) {
