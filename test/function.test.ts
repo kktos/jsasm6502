@@ -64,12 +64,61 @@ describe("Function", () => {
 			jsr print
 			rts
 		`;
-		const asmRes = assemble({content:src}, opts);
+		const asmRes = assemble({name:"testFnCall", content: src}, opts);
 		expect(asmRes.error).toStrictEqual('IDENTIFIER : Unknown identifier "START" in GLOBAL');
 
 	});
 
+	it("tests that locals are seen before others", () => {
+		const src = `
+		counter
+			.db 00
+			.function clearByte2 {
+				counter
+					.db 00
+				lda counter
+			}
+			lda counter
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toBeNull();
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("00 00 AD 01 10 AD 00 10")
+			);
+	});
 
+	it("tests we can't have duplicate functions", () => {
+		const src = `
+		.function clearByte2 {
+			counter
+				.db 00
+			lda counter
+		}
+		.function clearByte2 {
+			counter
+				.db 00
+			lda counter
+		}
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("Duplicate function CLEARBYTE2 in GLOBAL");
+	});
 
+	it("tests we can't have nested functions", () => {
+		const src = `
+		.function clearByte2 {
+			counter
+				.db 00
+			lda counter
+			.function forbiddenFn {
+				counter
+					.db 00
+				lda counter
+			}
+		}
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes.error).toStrictEqual("BLOCK: Missing end block }");
+	});
 });
 

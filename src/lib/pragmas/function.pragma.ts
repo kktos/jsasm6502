@@ -1,8 +1,10 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
+import { readBlock } from "../parsers/block.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { addLabel } from "../parsers/label.parser";
+import { EVENT_TYPES } from "../lexer/lexer.class";
 
 const log = console.log;
 
@@ -13,10 +15,23 @@ export function processFunction(ctx: Context) {
 	if (ctx.pass === 1) ctx.symbols.fn.declare(token.asString);
 
 	addLabel(ctx, token.asString, TExprStackItem.newNumber(ctx.code.pc));
-	ctx.symbols.fn.enter(token.asString);
 
 	// log("processFunction", token.asString, ctx.symbols.dump());
 	ctx.lexer.next();
+
+	const [block] = readBlock(ctx, {});
+
+	log(block);
+
+	ctx.lexer.pushSource(block);
+
+	ctx.symbols.fn.enter(token.asString);
+
+	const onEndOfBlock = () => {
+		ctx.symbols.fn.leave();
+	};
+
+	ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);
 
 	return true;
 }

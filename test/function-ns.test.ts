@@ -52,4 +52,29 @@ describe("Function & Namespace", () => {
 
 	});
 
+	it("tests a C-like function", () => {
+		const src = `
+			.lst on
+
+			toto = $41
+
+			.function print {
+				toto = $20
+				ldx #toto
+			}
+				lda #toto
+				jsr print
+
+			.end
+		`;
+		const asmRes = assemble({name:"nsFromFn", content:src}, opts);
+
+		// expect(asmRes).toStrictEqual("");
+
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("A2 20 A9 41 20 00 10")
+			);
+
+	});
 });
