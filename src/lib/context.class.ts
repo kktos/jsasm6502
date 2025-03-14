@@ -129,7 +129,8 @@ export class Context {
 		// }
 		if (this.pass < 2) return;
 
-		this.wannaListing && console.log(msg);
+		this.wannaListing && this.console.log(msg);
+		// this.wannaListing && console.log(msg);
 
 		// if (this._deferredMsg !== "") {
 		// 	this.console.log(this._deferredMsg);
