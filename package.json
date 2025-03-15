@@ -1,17 +1,17 @@
 {
   "name": "jsasm6502",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "type": "module",
   "author": "kktos",
   "description": "6502/65C02 assembler in typescript. Either as a CLI or a library.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kktos/jsasm6502"
+    "url": "git+https://github.com/kktos/jsasm6502.git"
   },
   "main": "libasm6502.js",
   "bin": {
-    "asm6502": "./asm.js"
+    "asm6502": "asm.js"
   },
   "scripts": {
     "prebuild": "rimraf ./dist",

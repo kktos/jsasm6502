@@ -3,6 +3,10 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.2.0
+Add {} syntax for block (IF, MACRO, etc)
+Add function scope
+
 ## 1.1.2
 Documention complete... I hope.  
 
