@@ -37,20 +37,21 @@ const hexa = (v: number, len = 4) => {
 
 const outFilename = conf.out;
 const outDirname = dirname(outFilename);
-const outBasename = `${outDirname}/${basename(outFilename, extname(outFilename))}`;
+const outBasename = `${basename(outFilename, extname(outFilename))}`;
 
 try {
 	const asmRes = assemble(basename(filename), opts);
 
 	if (conf.options.symbols) {
 		mkdirSync(outDirname, { recursive: true });
-		writeFileSync(`${outBasename}.sym`, asmRes.symbols.dump());
+		writeFileSync(`${outDirname}/${outBasename}.sym`, asmRes.symbols.dump());
 	}
 
 	if (conf.options.listing) {
 		mkdirSync(outDirname, { recursive: true });
 		for (const disasmFile of asmRes.disasm) {
-			writeFileSync(`${disasmFile.name ?? outBasename}.lst`, disasmFile.content);
+			const filename = disasmFile.name ? `${basename(disasmFile.name, extname(disasmFile.name))}` : outBasename;
+			writeFileSync(`${outDirname}/${filename}.lst`, disasmFile.content);
 		}
 	}
 

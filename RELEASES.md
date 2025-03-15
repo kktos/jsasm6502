@@ -3,6 +3,9 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.3.1
+fix cli with listing in wrong dir
+
 ## 1.3.0
 add sysvar .filename  
 allow multiple listing file  
