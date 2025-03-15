@@ -132,4 +132,15 @@ describe("System Variables", () => {
 		].join("\n"));
 	});
 
+	it("should return the current filename", () => {
+		const src = `
+		  .echo .filename
+		`;
+		const asmRes = assemble({name:"test.asm", content:src}, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+
+		expect(opts.output.trim()).toStrictEqual("test.asm");
+	});
+
 });

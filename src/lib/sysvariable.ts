@@ -41,6 +41,10 @@ export function getSysVarValue(ctx: Context, name: string) {
 			return TExprStackItem.newNumber(ctx.code.pc);
 		}
 
+		case "FILENAME": {
+			return TExprStackItem.newString(ctx.filename ?? "");
+		}
+
 		// // for macros
 		// case "PARAMCOUNT": {
 		// 	const varDef= getNStempEntry(ctx, ".PARAMCOUNT");
