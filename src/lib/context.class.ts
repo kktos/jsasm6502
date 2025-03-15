@@ -25,7 +25,8 @@ export class Context {
 	public _readFile: ReadFileFunction;
 	public YAMLparse;
 	public _mainFile;
-	public wannaListing;
+	public wantListing;
+	public listingFile: string | null;
 	public macros = new MacroManager();
 	public console: TConsole;
 	public code: Compiler;
@@ -61,7 +62,8 @@ export class Context {
 		this._readFile = opts.readFile;
 		this.YAMLparse = opts.YAMLparse;
 		this._mainFile = src;
-		this.wannaListing = opts.listing;
+		this.wantListing = opts.listing;
+		this.listingFile = null;
 
 		this.console = opts.console ? opts.console : (console as unknown as TConsole);
 		globalThis.console = this.console as unknown as Console;
@@ -120,6 +122,7 @@ export class Context {
 		// this._deferredMsg = "";
 		this.lastLabel = null;
 		this.symbols.ns.select(); // .nsSelect();
+		this.listingFile = null;
 	}
 
 	print(msg: string, wantItDeferred = false) {
@@ -129,7 +132,7 @@ export class Context {
 		// }
 		if (this.pass < 2) return;
 
-		this.wannaListing && this.console.log(msg);
+		this.wantListing && this.console.log(msg);
 		// this.wannaListing && console.log(msg);
 
 		// if (this._deferredMsg !== "") {

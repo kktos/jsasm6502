@@ -1,6 +1,7 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
+import { parseExpression } from "../parsers/expression/expression.parser";
 
 export function processListing(ctx: Context) {
 	const token = ctx.lexer.token();
@@ -10,13 +11,20 @@ export function processListing(ctx: Context) {
 
 	switch (token.value) {
 		case "ON":
-			ctx.wannaListing = true;
+			ctx.wantListing = true;
 			break;
 		case "OFF":
-			ctx.wannaListing = false;
+			ctx.wantListing = false;
 			break;
+		case "FILE": {
+			ctx.lexer.next();
+			const res = parseExpression(ctx);
+			if (!res || res.type !== TOKEN_TYPES.STRING) throw new VAParseError("FILE: Need a filename");
+			ctx.listingFile = res.value as string;
+			break;
+		}
 		default:
-			throw new VAParseError("Needed a ON or OFF here");
+			throw new VAParseError("Needed a ON or OFF here. Or FILE");
 	}
 	ctx.lexer.next();
 

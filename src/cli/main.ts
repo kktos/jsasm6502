@@ -49,7 +49,9 @@ try {
 
 	if (conf.options.listing) {
 		mkdirSync(outDirname, { recursive: true });
-		writeFileSync(`${outBasename}.lst`, asmRes.disasm);
+		for (const disasmFile of asmRes.disasm) {
+			writeFileSync(`${disasmFile.name ?? outBasename}.lst`, disasmFile.content);
+		}
 	}
 
 	if (asmRes.error) {

@@ -10,7 +10,7 @@ import { isPragmaToken } from "./parsers/pragma.tokens";
 import { expandMacro, isMacroToken } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
 import type { Options } from "./types/Options.type";
-import type { TAssemblerResult } from "./types/assembler.type";
+import type { TAssemblerDisasm, TAssemblerResult } from "./types/assembler.type";
 
 const log = console.log;
 
@@ -22,34 +22,31 @@ export function assemble(src: string | { name: string; content: string }, opts: 
 
 	// if (ctx.symbols.dump().trim() !== "") throw `ARGL ! -> "${ctx.symbols.dump()}"`;
 
-	let disasm = "";
-
-	const tryAsm = () => {
+	const tryAsm = (): [TAssemblerDisasm | null, string | null] => {
 		try {
-			disasm += asm(ctx);
+			return [asm(ctx), null];
 		} catch (err) {
 			// handle internal errors
 			if ((err as Error)?.name?.match(/^VA/)) {
 				const errMsg = (err as Error).message;
 				ctx.error(errMsg);
-				return errMsg;
+				return [null, errMsg];
 			}
 			throw err;
 		}
-		return null;
 	};
 
 	// log("========================== PASS 1 ==========================");
 
 	// first pass
-	let error = tryAsm();
+	let [disasm, error] = tryAsm();
 
 	if (!error) {
 		// log("========================== PASS 2 ==========================");
 		ctx.reset();
 		ctx.pass = 2;
 		// second pass
-		error = tryAsm();
+		[disasm, error] = tryAsm();
 	}
 
 	return {
@@ -57,13 +54,13 @@ export function assemble(src: string | { name: string; content: string }, opts: 
 		segments: ctx.code.segments,
 		obj: ctx.code.obj,
 		dump: ctx.code.dump,
-		disasm,
+		disasm: disasm ?? [],
 		error,
 	};
 }
 
-function asm(ctx: Context): string {
-	let disasm = "";
+function asm(ctx: Context): TAssemblerDisasm {
+	const disasm: TAssemblerDisasm = [{ name: null, content: "" }];
 	let lastVarname = "";
 
 	// log(">> ASM", ctx.pass, ctx.lexer.pos());
@@ -180,36 +177,44 @@ function asm(ctx: Context): string {
 		}
 		ctx.needNewline = true;
 
-		if (ctx.pass === 2) {
-			const asmOut = ctx.code.output;
-			if (!asmOut) {
-				const entry = ctx.lastLabel?.value;
-				if (entry?.extra?.isVariable === true && lastVarname !== ctx.lastLabel?.name) {
-					lastVarname = ctx.lastLabel?.name ?? "";
-					switch (typeof entry.value) {
-						case "number":
-							disasm += getHexWord(entry.value);
-							break;
-						case "string":
-						case "object":
-							disasm += `${JSON.stringify(entry.value)}`;
-							break;
-						default:
-							disasm += entry.value;
-					}
+		if (ctx.pass === 1) continue;
+		if (!ctx.wantListing) continue;
+
+		let currentDisasmFile = disasm.filter((item) => item.name === ctx.listingFile)[0];
+		if (!currentDisasmFile) {
+			currentDisasmFile = { name: ctx.listingFile, content: "" };
+			disasm.push(currentDisasmFile);
+		}
+
+		const asmOut = ctx.code.output;
+		if (asmOut) {
+			for (let idx = 0; idx < asmOut.length; idx++) {
+				currentDisasmFile.content += asmOut[idx];
+				if (idx === 0) {
+					const padding = ASM_BYTES_LEN - asmOut[idx].length;
+					currentDisasmFile.content += `${"".padEnd(padding)}${currLine}`;
 				}
-				disasm += `${"".padEnd(ASM_BYTES_LEN)}${currLine}\n`;
-			} else {
-				for (let idx = 0; idx < asmOut.length; idx++) {
-					disasm += asmOut[idx];
-					if (idx === 0) {
-						const padding = ASM_BYTES_LEN - asmOut[idx].length;
-						disasm += `${"".padEnd(padding)}${currLine}`;
-					}
-					disasm += "\n";
-				}
+				currentDisasmFile.content += "\n";
+			}
+			continue;
+		}
+
+		const entry = ctx.lastLabel?.value;
+		if (entry?.extra?.isVariable === true && lastVarname !== ctx.lastLabel?.name) {
+			lastVarname = ctx.lastLabel?.name ?? "";
+			switch (typeof entry.value) {
+				case "number":
+					currentDisasmFile.content += getHexWord(entry.value);
+					break;
+				case "string":
+				case "object":
+					currentDisasmFile.content += `${JSON.stringify(entry.value)}`;
+					break;
+				default:
+					currentDisasmFile.content += entry.value;
 			}
 		}
+		currentDisasmFile.content += `${"".padEnd(ASM_BYTES_LEN)}${currLine}\n`;
 	}
 
 	ctx.wannaStop = false;
