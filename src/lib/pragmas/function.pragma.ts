@@ -21,7 +21,7 @@ export function processFunction(ctx: Context) {
 
 	const [block] = readBlock(ctx, {});
 
-	log(block);
+	// log(block);
 
 	ctx.lexer.pushSource(block);
 
