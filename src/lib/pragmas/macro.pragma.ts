@@ -13,7 +13,7 @@ const log = console.log;
 
 export function processMacro(ctx: Context) {
 	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
-	const opts: TReadBlockOptions = { isClikeBlock: false };
+	const opts: TReadBlockOptions = { isClikeBlock: false, wantRaw: true };
 
 	const tok = ctx.lexer.token();
 	if (!tok || tok.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("MACRO: Need a name");
