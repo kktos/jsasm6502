@@ -56,4 +56,18 @@ export class FunctionDict<T extends TDict> {
 	isOneActive() {
 		return this.current !== null;
 	}
+
+	dump(fnName: string) {
+		const fns = this.base.currNs[FUNCTIONS] as TNamespaceDict<T>;
+
+		const out = Object.keys(fns[fnName])
+			.sort()
+			.map((entry) => {
+				const val = fns[fnName][entry];
+				return `    ${entry}: ${val}`;
+			})
+			.join("\n");
+
+		return out;
+	}
 }

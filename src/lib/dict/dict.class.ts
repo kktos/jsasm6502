@@ -57,43 +57,19 @@ export class Dict<T extends TDict> {
 
 			out += entries
 				.map((entry) => {
+					const isFn = this.fn.has(entry);
 					const val = ns[entry];
-					return `  ${entry}: ${val}`;
+					let rez = `  ${entry}${isFn ? "()" : ""}: ${val}`;
+					if (isFn) {
+						rez += "\n";
+						rez += this.fn.dump(entry);
+					}
+					return rez;
 				})
 				.join("\n");
+
 			out += "\n";
-
-			// for (const entry of entries) {
-			// const val = ns[entry];
-			// out += `  ${entry}: ${val}`;
-			// out += this.exp.isExported(entry, name) ? "exported" : "";
-
-			// out += getTypeName(val?.type).toLowerCase();
-			// switch (val?.type) {
-			// 	case TOKEN_TYPES.ARRAY:
-			// 		out += ` = ${val?.value}`;
-			// 		break;
-			// 	case TOKEN_TYPES.STRING:
-			// 		out += ` = "${val?.value}"`;
-			// 		break;
-			// 	default:
-			// 		out += ` = $${val?.value.toString(16).toUpperCase()}`;
-			// }
-
-			// if (val?.extra) {
-			// 	out += ` ;${this.isExported(entry, name) ? "exported from" : ""} "${val?.extra?.file}":${val?.extra?.line}\n`;
-			// }
-			// }
 		}
-
-		// out += "\n";
-
-		// for (const key of Object.keys(this.exports)) {
-		// 	out += `${key} = ${this.exports[key]}\n`;
-		// }
-
-		// log("DUMP");
-		// log(out);
 
 		return out;
 	}

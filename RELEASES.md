@@ -3,6 +3,18 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.3.5
+fix symbols dump to display functions symbols
+
+## 1.3.4
+fix bad indentation in macro listing
+
+## 1.3.3
+add to lexerStack the listing flag
+
+## 1.3.2
+add to lexerStack the listing filename
+
 ## 1.3.1
 fix cli with listing in wrong dir
 
