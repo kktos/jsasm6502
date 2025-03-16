@@ -596,6 +596,14 @@ You can set the program counter but with addresses in the range defined by the c
 welcome
     .cstr "Welcome !"
 ```
+```as
+// they could also be declared with C-like block
+	.macro printStr str {
+		ldx #<str
+		ldy #>str
+		jsr printStr
+	}
+```
 #### Variable number of parameters
 ```as
 // you can capture all the parameters using the rest notation
@@ -738,11 +746,18 @@ welcome
 ]
 .end
 ```
-#### .list (on | off)
+#### .list (on | off) <br/> .list file < filename > 
 ```as
+// it works only if the listing is enabled globally (conf file)
 // enable or disable the printing of the dissasembly of your code
 .list on ; alias .listing or .lst
 .list off
+
+// set the listing filename for the current file
+// if current file is main.asm it will save the listing in main.lst
+.list file .filename
+// it will save the listing in test.lst
+.list file "test"
 ```
 #### .log [param1, param2, ...] <br/> .warning [param1, param2, ...] <br/> .error [param1, param2, ...]
 ```as

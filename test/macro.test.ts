@@ -14,11 +14,11 @@ describe("Macro", () => {
 
 	it("tests that labels work with expanded macro", () => {
 		const src = `
-			.macro test a,x,y
+			.macro test a,x,y {
 				lda.w a
 				ldx.w x
 				ldy.w y
-			.end
+			}
 
 			start:
 				nop
@@ -253,5 +253,75 @@ describe("Macro", () => {
 		expect(hexDump(asmRes.obj.CODE,6)).toStrictEqual(
 			hexDump(readHexLine("AE 00 10 E0 82 90 02 EA EA 60"),6),
 		);
+	});
+
+	it("tests expanded macro in listing", () => {
+		const src = `
+			.macro read_file filename
+				; WDM disk_read_file
+				.db $42, $11
+				.dw filename
+
+		!		bit $C0FF
+				bpl !-
+			.end
+
+			read_file fwelcome
+			rts
+			fwelcome	.cstr 'WELCOME'
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+
+		const output= [
+				"                                  			.macro read_file filename",
+				"                                  			read_file fwelcome",
+				"1000:  42 11                      				.db $42, $11",
+				"1002:  0A 10                      				.dw filename",
+				"1004:  2C FF C0                   		!		bit $C0FF",
+				"1007:  10 FB                      				bpl !-",
+				"1009:  60                         			rts",
+				"100A:  57 45 4C 43 4F 4D  WELCOM  			fwelcome	.cstr 'WELCOME'",
+				"1010:  45 00              E.",
+				""
+		].join("\n");
+
+		expect(asmRes.disasm[0].content).toStrictEqual(output);
+	});
+
+	it("tests expanded C-like macro in listing", () => {
+		const src = `
+			.macro read_file filename {
+				; WDM disk_read_file
+				.db $42, $11
+				.dw filename
+
+		!		bit $C0FF
+				bpl !-
+			}
+
+			read_file fwelcome
+			rts
+			fwelcome	.cstr 'WELCOME'
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+
+		const output= [
+				"                                  			.macro read_file filename {",
+				"                                  			read_file fwelcome",
+				"1000:  42 11                      				.db $42, $11",
+				"1002:  0A 10                      				.dw filename",
+				"1004:  2C FF C0                   		!		bit $C0FF",
+				"1007:  10 FB                      				bpl !-",
+				"1009:  60                         			rts",
+				"100A:  57 45 4C 43 4F 4D  WELCOM  			fwelcome	.cstr 'WELCOME'",
+				"1010:  45 00              E.",
+				""
+		].join("\n");
+
+		expect(asmRes.disasm[0].content).toStrictEqual(output);
 	});
 });
