@@ -12,6 +12,8 @@ const log = console.log;
 type LexerStackItem = {
 	filename: string | null;
 	filepath: string | null;
+	listingFile: string | null;
+	wantListing: boolean;
 };
 
 export class Context {
@@ -26,7 +28,8 @@ export class Context {
 	public YAMLparse;
 	public _mainFile;
 	public wantListing;
-	public listingFile: string | null;
+	public wantGlobalListing;
+	public listingFile: string | null = null;
 	public macros = new MacroManager();
 	public console: TConsole;
 	public code: Compiler;
@@ -63,7 +66,7 @@ export class Context {
 		this.YAMLparse = opts.YAMLparse;
 		this._mainFile = src;
 		this.wantListing = opts.listing;
-		this.listingFile = null;
+		this.wantGlobalListing = opts.listing;
 
 		this.console = opts.console ? opts.console : (console as unknown as TConsole);
 		globalThis.console = this.console as unknown as Console;
@@ -94,6 +97,9 @@ export class Context {
 		this.lexerStack.push({
 			filename: this.filename,
 			filepath: this.filepath,
+
+			listingFile: this.listingFile,
+			wantListing: this.wantListing,
 		});
 
 		this.filename = filename;
@@ -110,6 +116,11 @@ export class Context {
 
 			this.filename = lexCtx?.filename ?? null;
 			this.filepath = lexCtx?.filepath ?? "";
+
+			if (lexCtx?.listingFile !== this.listingFile) {
+				this.wantListing = lexCtx?.wantListing ?? this.wantGlobalListing;
+			}
+			this.listingFile = lexCtx?.listingFile ?? null;
 
 			// log("CONTEXT EOS", {filename:this.filename, filepath:this.filepath});
 		});
