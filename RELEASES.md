@@ -3,6 +3,10 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.4.0
+Move to rollup bundler  
+Reduce by 4 the package size
+
 ## 1.3.5
 fix symbols dump to display functions symbols
 

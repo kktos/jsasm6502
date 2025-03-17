@@ -1,11 +1,20 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname } from "node:path";
-import { assemble } from "../lib/assembler";
 import type { Options } from "../lib/types/Options.type";
 import { link } from "./linker";
 import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";
 import { name, version } from "../../package.json";
+
+const assemble = await import("../lib/assembler").then((m) => m.assemble);
+
+declare global {
+	var prg: {
+		name: string;
+		version: string;
+	};
+}
+globalThis.prg = { name, version };
 
 const { conf, error } = readConf(process.argv.splice(2));
 if (!conf) {
@@ -19,7 +28,7 @@ if (!filename) {
 	process.exit(-1);
 }
 
-console.log(name, version);
+console.log(prg.name, prg.version);
 
 setRootDir(dirname(filename));
 
