@@ -3,6 +3,11 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.4.1
+Add colors
+Fix dumping of function symbols
+Add --dir to set the sources directory
+
 ## 1.4.0
 Move to rollup bundler  
 Reduce by 4 the package size

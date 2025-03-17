@@ -1,6 +1,6 @@
 {
   "name": "jsasm6502",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "author": "kktos",
   "description": "6502/65C02 assembler in typescript. Either as a CLI or a library.",
