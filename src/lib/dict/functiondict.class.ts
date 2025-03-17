@@ -1,6 +1,6 @@
 import { VAParseError } from "../helpers/errors.class";
 import type { BaseDict } from "./basedict.class";
-import type { TDict, TNamespaceDict } from "./base.type";
+import type { TDict, TNamespaceDict, TNamespace } from "./base.type";
 
 const FUNCTIONS = Symbol("functions");
 const log = console.log;
@@ -11,15 +11,16 @@ export class FunctionDict<T extends TDict> {
 
 	constructor(private base: BaseDict<T>) {}
 
-	private getFunctionDict() {
-		if (!this.base.currNs[FUNCTIONS]) {
-			this.base.currNs[FUNCTIONS] = {} as T;
+	private getFunctionDict(fromNs?: TNamespace<T>) {
+		const ns = fromNs ?? this.base.currNs;
+		if (!ns[FUNCTIONS]) {
+			ns[FUNCTIONS] = {} as T;
 		}
-		return this.base.currNs[FUNCTIONS] as TNamespaceDict<T>;
+		return ns[FUNCTIONS] as TNamespaceDict<T>;
 	}
 
-	has(name: string) {
-		const functionDict = this.getFunctionDict();
+	has(name: string, ns?: TNamespace<T>) {
+		const functionDict = this.getFunctionDict(ns);
 		return functionDict[name] !== undefined;
 	}
 
@@ -57,8 +58,12 @@ export class FunctionDict<T extends TDict> {
 		return this.current !== null;
 	}
 
-	dump(fnName: string) {
-		const fns = this.base.currNs[FUNCTIONS] as TNamespaceDict<T>;
+	dump(ns: TNamespace<T>, fnName: string) {
+		const fns = ns[FUNCTIONS] as TNamespaceDict<T>;
+
+		if (!fns) {
+			return "";
+		}
 
 		const out = Object.keys(fns[fnName])
 			.sort()

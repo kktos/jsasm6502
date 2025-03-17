@@ -77,13 +77,9 @@ try {
 		for (const [name, offset, len, padLen, org, size] of linkRes.dir) {
 			console.log(
 				pc.blue(hexa(offset, 8)),
-				// "LEN:",
 				pc.blue(hexa(len)),
-				// "PAD:",
 				padLen ? pc.blue(hexa(padLen)) : "-----",
-				// "SIZE:",
 				pc.blue(hexa(size)),
-				// "ADDR:",
 				pc.blue(hexa(org)),
 				pc.green(name),
 			);

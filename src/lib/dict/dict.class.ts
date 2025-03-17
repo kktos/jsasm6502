@@ -57,12 +57,12 @@ export class Dict<T extends TDict> {
 
 			out += entries
 				.map((entry) => {
-					const isFn = this.fn.has(entry);
+					const isFn = this.fn.has(entry, ns);
 					const val = ns[entry];
 					let rez = `  ${entry}${isFn ? "()" : ""}: ${val}`;
 					if (isFn) {
-						rez += "\n";
-						rez += this.fn.dump(entry);
+						const fnDump = this.fn.dump(ns, entry);
+						if (fnDump) rez += `\n${fnDump}`;
 					}
 					return rez;
 				})
