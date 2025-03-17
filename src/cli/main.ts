@@ -5,6 +5,7 @@ import { link } from "./linker";
 import { readFile, parseYAML, setRootDir } from "./file";
 import { readConf } from "./conf";
 import { name, version } from "../../package.json";
+import pc from "./colors";
 
 const assemble = await import("../lib/assembler").then((m) => m.assemble);
 
@@ -28,7 +29,7 @@ if (!filename) {
 	process.exit(-1);
 }
 
-console.log(prg.name, prg.version);
+console.log(pc.magenta(prg.name), prg.version);
 
 setRootDir(dirname(filename));
 
@@ -72,18 +73,19 @@ try {
 
 	if (conf.options.segments) {
 		console.log("");
+		console.log(pc.underline("OFFSET    LEN   PAD   SIZE  ADDR  NAME          ."));
 		for (const [name, offset, len, padLen, org, size] of linkRes.dir) {
 			console.log(
-				hexa(offset, 8),
-				"LEN:",
-				hexa(len),
-				"PAD:",
-				padLen ? hexa(padLen) : "-----",
-				"SIZE:",
-				hexa(size),
-				"ADDR:",
-				hexa(org),
-				name,
+				pc.blue(hexa(offset, 8)),
+				// "LEN:",
+				pc.blue(hexa(len)),
+				// "PAD:",
+				padLen ? pc.blue(hexa(padLen)) : "-----",
+				// "SIZE:",
+				pc.blue(hexa(size)),
+				// "ADDR:",
+				pc.blue(hexa(org)),
+				pc.green(name),
 			);
 		}
 	}
@@ -103,7 +105,6 @@ try {
 		const buffer = Buffer.from(bin as number[]);
 		mkdirSync(outDirname, { recursive: true });
 		writeFileSync(outFilename, buffer);
-		// console.log("binary output", outFilename);
 	} else {
 		console.log("no code to save !");
 	}
