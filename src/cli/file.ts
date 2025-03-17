@@ -37,7 +37,6 @@ export function readConfFile(path?: string) {
 
 export function readFile(filename: string, fromDir?: string, asBin?: boolean): ReadFileReturn {
 	try {
-		// const includeDir = fromFile ? dirname(fromFile) : "";
 		const includeDir = fromDir ?? "";
 		const path = (includeDir !== "" ? `${includeDir}/` : "") + filename;
 		const content = readFileSync(`${rootDir}/${path}`);

@@ -22,6 +22,10 @@ export function getParams(line: string[]): Arguments {
 				describe: "output file name",
 				type: "string",
 			},
+			dir: {
+				describe: "source directory",
+				type: "string",
+			},
 			conf: {
 				describe: "configuration file",
 				type: "string",
@@ -29,7 +33,7 @@ export function getParams(line: string[]): Arguments {
 		})
 		.parseSync();
 
-	const { listing, symbols, segments, segdir, out, conf, _ } = argv;
+	const { listing, symbols, segments, dir, out, conf, _ } = argv;
 
 	return {
 		listing,
@@ -37,6 +41,7 @@ export function getParams(line: string[]): Arguments {
 		segments,
 		out,
 		conf,
+		dir,
 		src: _[0] as string,
 	};
 }

@@ -1,9 +1,14 @@
 import { readConfFile } from "./file";
 import { getParams } from "./params";
 import { SchemaDict, type TConf, confSchema } from "./types";
+import { chdir } from "node:process";
 
 export function readConf(args: string[]) {
 	const argv = getParams(args);
+
+	if (argv.dir) {
+		chdir(argv.dir);
+	}
 
 	const confRez = readConfFile(argv.conf);
 	if (confRez?.error) {

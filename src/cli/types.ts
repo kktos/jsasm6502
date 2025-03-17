@@ -8,6 +8,7 @@ export interface Arguments {
 	out?: string;
 	conf?: string;
 	src?: string;
+	dir?: string;
 }
 
 export type TConf = {
