@@ -10,6 +10,7 @@ import { fnJson } from "../functions/json.function";
 import { fnArray } from "../functions/array.function";
 import { fnPush } from "../functions/push.function";
 import { fnPop } from "../functions/pop.function";
+import { fnIif } from "../functions/iif.function";
 
 export type TFunctionFlags = {
 	allowUndef?: boolean;
@@ -46,6 +47,7 @@ addFunctionDef(fnJson, ["JSON"], ONE_PARM);
 addFunctionDef(fnArray, ["ARRAY"], NONE_TO_MANY);
 addFunctionDef(fnPush, ["PUSH"], { minParmCount: 2 });
 addFunctionDef(fnPop, ["POP"], ONE_PARM);
+addFunctionDef(fnIif, ["IIF"], { minParmCount: 3, maxParmCount: 3 });
 
 export function isFunctionExists(name: string) {
 	return functionDefs[name] !== undefined;

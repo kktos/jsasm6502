@@ -187,7 +187,7 @@ describe("If", () => {
 			.out "high level"
 		}
 		`;
-		const asmRes= assemble(src, opts);
+		assemble(src, opts);
 		expect(opts.output.trim()).toStrictEqual("extremely low level");
 	});
 
@@ -207,7 +207,7 @@ describe("If", () => {
 			.out "high level : ", count
 		}
 		`;
-		const asmRes= assemble(src, opts);
+		assemble(src, opts);
 		expect(opts.output.trim()).toStrictEqual("high level : 65");
 	});
 
