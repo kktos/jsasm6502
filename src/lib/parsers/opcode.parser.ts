@@ -7,7 +7,7 @@ import { parseExpression, parseExpressionAsNumber } from "./expression/expressio
 
 const log = console.log;
 
-export function isIdentifierAnOpcode(ctx: Context) {
+export function isOpcode(ctx: Context) {
 	const token = ctx.lexer.token();
 	if (!token || token.type !== TOKEN_TYPES.IDENTIFIER) return false;
 	return Boolean(ctx.opcodes[token.asString]);

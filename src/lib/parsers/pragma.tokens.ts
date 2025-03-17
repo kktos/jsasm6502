@@ -61,7 +61,7 @@ export const tokens = {
 
 export const pragmaDefs: TPragmaDefs = {};
 
-export function isPragmaToken(ctx: Context) {
+export function isPragma(ctx: Context) {
 	return ctx.lexer.isToken(TOKEN_TYPES.DOT) && ctx.lexer.isLookahead(TOKEN_TYPES.IDENTIFIER);
 }
 

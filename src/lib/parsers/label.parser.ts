@@ -1,5 +1,5 @@
 import { parseExpression } from "./expression/expression.parser";
-import { isMacroToken } from "../pragmas/macro.pragma";
+import { isMacro } from "../pragmas/macro.pragma";
 import { VAParseError } from "../helpers/errors.class";
 import type { Context } from "../context.class";
 import { TOKEN_TYPES, type Token } from "../lexer/token.class";
@@ -95,7 +95,7 @@ export function parseLabel(ctx: Context, token: Token) {
 			break;
 
 		default:
-			if (ctx.opcodes[name] !== undefined || isMacroToken(ctx)) return null;
+			if (ctx.opcodes[name] !== undefined || isMacro(ctx)) return null;
 
 			// log("LABEL", name, ctx.pass);
 

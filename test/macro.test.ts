@@ -12,6 +12,79 @@ describe("Macro", () => {
 		opts.listing= true;
 	});
 
+	it("tests a c-like macro with no parameters", () => {
+		const src = `
+			.macro nopnopnop {
+				nop
+				nop
+				nop
+			}
+
+			start:
+				nopnopnop
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("EA EA EA"),
+		);
+	});
+
+	it("tests a macro with no parameters", () => {
+		const src = `
+			.macro nopnopnop
+				nop
+				nop
+				nop
+			.end
+
+			start:
+				nopnopnop
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("EA EA EA"),
+		);
+	});
+
+	it("tests a macro with extra parameters", () => {
+		const src = `
+			.macro nopnopnop
+				nop
+				nop
+				nop
+			.end
+
+			start:
+				nopnopnop 98
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("MACRO: Syntax Error; Extra/Unknown parameter");
+	});
+
+	it("tests a macro with extra parameters", () => {
+		const src = `
+			.macro test
+				nop
+				nop
+				nop
+			.end
+
+			start:
+				test()
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("EA EA EA"),
+		);
+	});
+
 	it("tests that labels work with expanded macro", () => {
 		const src = `
 			.macro test a,x,y {
@@ -25,7 +98,7 @@ describe("Macro", () => {
 				test 1,2,3
 			end:
 				nop
-				jmp start
+				jmp start ; should compute once macro is expanded
 				jmp end
 				.out .hex(start)," ", .hex(end)
 		`;
@@ -60,7 +133,7 @@ describe("Macro", () => {
 
 	it("tests macro with variable numbers of params", () => {
 		const src = `
-			.macro toto id, ...parms {
+			.macro toto(id, ...parms) {
 				.dw id
 				.repeat .len(parms) idx
 					.if .type(parms[idx]) = "string"
@@ -70,7 +143,7 @@ describe("Macro", () => {
 					.end
 				.end
 			}
-			toto $CAFE, "ABCD", $1234
+			toto($CAFE, "ABCD", $1234)
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
@@ -82,11 +155,11 @@ describe("Macro", () => {
 
 	it("tests macro with label", () => {
 		const src = `
-			.macro read_file filename
+			.macro read_file(filename)
 				.dw filename
 			.end
 
-				read_file fwelcome
+				read_file(fwelcome)
 				rts
 
 			fwelcome

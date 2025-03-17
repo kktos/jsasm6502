@@ -288,6 +288,11 @@ export class Lexer {
 		return this.lookahead(idx)?.type ?? null;
 	}
 
+	/**
+	 *
+	 * @param identifier
+	 * @returns true if the current token is an identifier equal to the param
+	 */
 	isIdentifier(identifier: string) {
 		return (
 			this.ctx.curTokIdx < this.ctx.tokCount &&
@@ -305,12 +310,17 @@ export class Lexer {
 	}
 
 	token() {
-		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null; //new Token(TOKEN_TYPES.EOF);
-
+		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
 		return this.ctx.tokens[this.ctx.curTokIdx];
 	}
 
-	token2() {
+	identifier() {
+		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
+		if (TOKEN_TYPES.IDENTIFIER !== this.ctx.tokens[this.ctx.curTokIdx].type) return null;
+		return this.ctx.tokens[this.ctx.curTokIdx].asString;
+	}
+
+	tokenOrThrow() {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) throw new VAParseError("No more token !?!");
 
 		return this.ctx.tokens[this.ctx.curTokIdx];

@@ -349,7 +349,7 @@ function parse_local_label(exprCtx: TExprCtx) {
 }
 
 function parse_scalar(exprCtx: TExprCtx) {
-	const tok = exprCtx.ctx.lexer.token2();
+	const tok = exprCtx.ctx.lexer.tokenOrThrow();
 	// log("parse_scalar 1", tok);
 
 	exprCtx.ctx.lexer.next();
@@ -404,7 +404,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 		if (!exprCtx.ctx.symbols.exists(name) && exprCtx.ctx.symbols.ns.has(name)) {
 			ns = name;
 			exprCtx.ctx.lexer.next();
-			name = exprCtx.ctx.lexer.token2().asString;
+			name = exprCtx.ctx.lexer.tokenOrThrow().asString;
 			exprCtx.ctx.lexer.next();
 		}
 	}
@@ -461,7 +461,7 @@ function parse_fn_var(exprCtx: TExprCtx) {
 function parse_function(exprCtx: TExprCtx) {
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) throw new VAExprError("TERM: expecting a function name here");
 
-	const fnName = exprCtx.ctx.lexer.token2().asString;
+	const fnName = exprCtx.ctx.lexer.tokenOrThrow().asString;
 
 	if (!isFunctionExists(fnName)) throw new VAExprError(`TERM: Unknown function "${fnName}"`);
 
@@ -518,7 +518,7 @@ function parse_function(exprCtx: TExprCtx) {
 function parse_variable(exprCtx: TExprCtx) {
 	if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER)) throw new VAExprError("TERM: expecting a variable name here");
 
-	const varName = exprCtx.ctx.lexer.token2().asString;
+	const varName = exprCtx.ctx.lexer.tokenOrThrow().asString;
 	let value: TExprStackItem = getSysVarValue(exprCtx.ctx, varName);
 
 	exprCtx.ctx.lexer.next();
@@ -551,9 +551,9 @@ function parse_object_and_array(
 					throw new VAExprError(`IDENTIFIER : Not an object: "${name}" ${JSON.stringify(value)}`);
 
 				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
-					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.ctx.lexer.token2().text}"`);
+					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.ctx.lexer.tokenOrThrow().text}"`);
 
-				name = exprCtx.ctx.lexer.token2().text;
+				name = exprCtx.ctx.lexer.tokenOrThrow().text;
 				const obj = value?.value as Record<string, TValueType>;
 				const fieldValue = obj?.[name];
 

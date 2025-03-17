@@ -7,51 +7,59 @@ import { readBlock, type TReadBlockOptions } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
-// const macros = {};
-
 const log = console.log;
 
-export function processMacro(ctx: Context) {
-	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
-	const opts: TReadBlockOptions = { isClikeBlock: false, wantRaw: true };
+function processMacroParams(ctx: Context, macro: TMacro, opts: TReadBlockOptions) {
+	const hasParenthesis = ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT);
+	if (hasParenthesis) ctx.lexer.next();
 
-	const tok = ctx.lexer.token();
-	if (!tok || tok.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("MACRO: Need a name");
-
-	const macroName = tok.asString.toUpperCase();
-
-	ctx.lexer.next();
-
-	let isLastParam = false;
 	while (ctx.lexer.match([TOKEN_TYPES.IDENTIFIER, TOKEN_TYPES.REST])) {
 		if (ctx.lexer.isToken(TOKEN_TYPES.REST)) {
-			isLastParam = true;
 			ctx.lexer.next();
 			macro.hasRestParm = true;
 		}
 
-		const tok = ctx.lexer.token();
-		if (!tok || tok.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("MACRO: Need a param name");
+		const paramName = ctx.lexer.identifier();
+		if (!paramName) throw new VAParseError("MACRO: Need a param name");
 
-		macro.parms.push(tok.asString);
+		macro.parms.push(paramName);
 
 		ctx.lexer.next();
 
 		if (ctx.lexer.eol()) break;
 
-		if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
-			opts.isClikeBlock = true;
-			// ctx.lexer.next();
-			// if (!ctx.lexer.eol()) throw new VAParseError("MACRO: Syntax Error; Start Block { should be the last on the line");
-			break;
-		}
-
-		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA))
-			throw new VAParseError("MACRO: Syntax Error; Needs a comma between parameter");
+		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
 
 		ctx.lexer.next();
-		// if(!ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
-		// 	throw new VAParseError("MACRO: Missing a parameter name");
+	}
+
+	if (hasParenthesis) {
+		if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) {
+			throw new VAParseError("MACRO: Syntax Error; Missing closing parenthesis");
+		}
+		ctx.lexer.next();
+	}
+
+	if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
+		opts.isClikeBlock = true;
+	} else if (!ctx.lexer.eol()) throw new VAParseError("MACRO: Syntax Error; Needs a comma between parameter");
+
+	return true;
+}
+
+export function processMacro(ctx: Context) {
+	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
+	const opts: TReadBlockOptions = { isClikeBlock: false, wantRaw: true };
+
+	const macroName = ctx.lexer.identifier();
+	if (!macroName) throw new VAParseError("MACRO: Need a name");
+
+	ctx.lexer.next();
+
+	if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
+		opts.isClikeBlock = true;
+	} else if (!ctx.lexer.eol()) {
+		const isEndOfParams = processMacroParams(ctx, macro, opts);
 	}
 
 	const [block] = readBlock(ctx, opts);
@@ -60,25 +68,25 @@ export function processMacro(ctx: Context) {
 	macro.block = block;
 
 	if (ctx.pass === 1) {
-		ctx.macros.add(macroName, macro);
+		ctx.macros.add(macroName.toUpperCase(), macro);
 	}
 
 	return true;
 }
 
-export function isMacroToken(ctx: Context) {
-	const tok = ctx.lexer.token();
-	return (tok?.type === TOKEN_TYPES.IDENTIFIER && ctx.macros.exists(tok.asString)) ?? false;
+export function isMacro(ctx: Context) {
+	const macroName = ctx.lexer.identifier();
+	return macroName ? ctx.macros.exists(macroName) : false;
 }
 
 export function expandMacro(ctx: Context) {
-	const tok = ctx.lexer.token();
-	if (!tok) throw new VAParseError("MACRO: Missing name");
+	const macroName = ctx.lexer.identifier();
+	if (!macroName) throw new VAParseError("MACRO: Missing name");
 
 	// log("expandMacro", ctx.pass, tok);
 
-	const macro = ctx.macros.get(tok.asString);
-	if (!macro) throw new VAParseError(`MACRO: Unknown macro ${tok.asString}`);
+	const macro = ctx.macros.get(macroName);
+	if (!macro) throw new VAParseError(`MACRO: Unknown macro ${macroName}`);
 
 	const paramsCount = macro.parms.length;
 
@@ -90,12 +98,16 @@ export function expandMacro(ctx: Context) {
 
 	// log("expandMacro parms", parms);
 
+	const hasParenthesis = ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT);
+	if (hasParenthesis) ctx.lexer.next();
+
 	for (let idx = 0; idx < parms.length; idx++) {
 		let parm: TExprStackItem | undefined = undefined;
 
 		if (ctx.lexer.token()) {
 			if (idx > 0) {
-				if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) throw new VAParseError("MACRO: Syntax Error; Missing comma");
+				// if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) throw new VAParseError("MACRO: Syntax Error; Missing comma");
+				if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
 				ctx.lexer.next();
 			}
 
@@ -130,19 +142,28 @@ export function expandMacro(ctx: Context) {
 			// log("expandMacro REST token", ctx.lexer.token());
 
 			const parm = parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
+			restArray.push(parm);
 
 			// log("expandMacro REST parm", parm);
 
-			if (ctx.lexer.token() && !ctx.lexer.isToken(TOKEN_TYPES.COMMA))
-				throw new VAParseError("MACRO: Syntax Error; Missing comma");
+			// if (ctx.lexer.token() && !ctx.lexer.isToken(TOKEN_TYPES.COMMA))
+			// 	throw new VAParseError("MACRO: Syntax Error; Missing comma");
+			if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
 
 			ctx.lexer.next();
-
-			restArray.push(parm);
 		}
 
 		ctx.symbols.override.override(restParm, new TExprStackItem(TOKEN_TYPES.ARRAY, restArray));
 	}
+
+	if (hasParenthesis) {
+		if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) {
+			throw new VAParseError("MACRO: Syntax Error; Missing closing parenthesis");
+		}
+		ctx.lexer.next();
+	}
+
+	if (!ctx.lexer.eol()) throw new VAParseError("MACRO: Syntax Error; Extra/Unknown parameter");
 
 	const onEndOfBlock = () => {
 		for (const name of macro.parms) {

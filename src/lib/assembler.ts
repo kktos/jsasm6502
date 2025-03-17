@@ -3,11 +3,11 @@ import { VAParseError } from "./helpers/errors.class";
 import { getHexWord } from "./helpers/utils";
 import { TOKEN_TYPES, type Token } from "./lexer/token.class";
 import { parseLabel, parseLocalLabel } from "./parsers/label.parser";
-import { isIdentifierAnOpcode, parseOpcode } from "./parsers/opcode.parser";
+import { isOpcode, parseOpcode } from "./parsers/opcode.parser";
 import { parseOrg } from "./parsers/org.parser";
 import { parsePragma } from "./parsers/pragma.parser";
-import { isPragmaToken } from "./parsers/pragma.tokens";
-import { expandMacro, isMacroToken } from "./pragmas/macro.pragma";
+import { isPragma } from "./parsers/pragma.tokens";
+import { expandMacro, isMacro } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
 import type { Options } from "./types/Options.type";
 import type { TAssemblerDisasm, TAssemblerResult } from "./types/assembler.type";
@@ -116,7 +116,7 @@ function asm(ctx: Context): TAssemblerDisasm {
 				break;
 			}
 
-			if (isIdentifierAnOpcode(ctx)) {
+			if (isOpcode(ctx)) {
 				parseOpcode(ctx);
 				break;
 			}
@@ -136,7 +136,7 @@ function asm(ctx: Context): TAssemblerDisasm {
 
 			// log("PARSE PRAGMA", ctx.lexer.token());
 
-			if (isPragmaToken(ctx)) {
+			if (isPragma(ctx)) {
 				parsePragma(ctx);
 
 				// log("AFTER PRAGMA", ctx.lexer.token(), ctx.lexer.pos());
@@ -149,7 +149,7 @@ function asm(ctx: Context): TAssemblerDisasm {
 
 			// log("PARSE MACRO", ctx.lexer.token());
 
-			if (isMacroToken(ctx)) {
+			if (isMacro(ctx)) {
 				expandMacro(ctx);
 				break;
 			}
