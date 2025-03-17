@@ -3,6 +3,9 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.5.0
+Add IIF function
+
 ## 1.4.1
 Add colors
 Fix dumping of function symbols
