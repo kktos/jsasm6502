@@ -578,7 +578,8 @@ You can set the program counter but with addresses in the range defined by the c
 // set the program counter
 .org $B780
 * = $B780
-// as we're in the loader segment, the addresses range is $B700 to $B7FF. Org values ouside that range will raise an error.
+// as we're in the loader segment, the addresses range is $B700 to $B7FF.  
+// Org values ouside that range will raise an error.
 ```
 
 ## Macros
