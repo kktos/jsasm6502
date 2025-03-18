@@ -13,9 +13,10 @@ describe("If", () => {
 
 	it("should deal with label defined after", () => {
 		const src = `
-		.if loadLevel
+		.if(loadLevel)
+		{
 			.out "loadLevel : ",.hex(loadLevel)
-		.end
+		}
 		loadLevel	lda $10
 		`;
 		const asmRes= assemble(src, opts);
