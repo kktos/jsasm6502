@@ -13,7 +13,7 @@ describe("Segments", () => {
 			INTRO: { start: 0xA000, end: 0xBFFF, size: 0xBFFF-0xA000+1 }
 		};
 	});
-/*
+
 	it("tests with default segment", () => {
 		opts.segments= null;
 
@@ -86,20 +86,7 @@ describe("Segments", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(asmRes.error).toStrictEqual("SEGMENT: Invalid segment definition");
-	});
-
-	it("tests to define a segment with unknown fields", () => {
-		const src = `
-			.segment newOne {
-				start: $1000,
-				end: $1100,
-				test: "false"
-			}
-		`;
-		const asmRes = assemble(src, opts);
-		expect(asmRes).toBeDefined();
-		expect(asmRes.error).toStrictEqual("SEGMENT: Invalid segment definition");
+		expect(asmRes.error).toStrictEqual('SEGMENT: Invalid segment definition : CONF.string: Missing required key "end"');
 	});
 
 	it("tests to define a segment", () => {
@@ -118,7 +105,7 @@ describe("Segments", () => {
 			"start": 0x800
 		  });
 	});
-*/
+
 	it("tests to define a segment", () => {
 		const src = ".segment newSegment { start: 0x800, toto: 0, end: $8FF, pad: $FF }";
 		const asmRes = assemble(src, opts);
@@ -133,10 +120,22 @@ describe("Segments", () => {
 	});
 
 	it("tests to define a segment", () => {
-		const src = ".segment newSegment { start: 0x800, toto: 0, pad: $FF }";
+		const src = `
+		.segment newSegment { start: 0x800, toto: 0, pad: $FF }
+		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual('SEGMENT: Invalid segment definition : CONF.string: Missing required key "end"');
+	});
+
+	it("tests to define a segment", () => {
+		const src = `
+		.segment newSegment1 { start: 0x800, end: $8FF, pad: $FF }
+		.segment newSegment2 { start: 0x800, end: $8FF, pad: $FF }
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
 	});
 
 });

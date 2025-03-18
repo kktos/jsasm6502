@@ -23,7 +23,7 @@ export function processSegment(ctx: Context) {
 	const unparsedLine = ctx.lexer.unparsedLine();
 	if (unparsedLine?.match(/^\{/) && unparsedLine?.match(/\}$/)) {
 		block = unparsedLine;
-		ctx.lexer.nextLine();
+		while (ctx.lexer.next());
 	}
 
 	if (!block) {
