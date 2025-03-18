@@ -3,6 +3,10 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.6.0
+Add segment definition
+Add .if() syntax
+
 ## 1.5.0
 Add IIF function
 
