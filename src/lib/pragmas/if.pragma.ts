@@ -24,9 +24,19 @@ const log = console.log;
 export function processIf(ctx: Context) {
 	// log("if", ctx.lexer.line());
 
-	// const IF_LINE=  ctx.lexer.line();
+	const hasParenthesis = ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT);
+	if (hasParenthesis) {
+		ctx.lexer.next();
+	}
 
 	const res = parseExpression(ctx);
+
+	if (hasParenthesis) {
+		if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) {
+			throw new VAParseError("IF: Missing closing parenthesis");
+		}
+		ctx.lexer.next();
+	}
 
 	// log("if res", res);
 
@@ -36,13 +46,6 @@ export function processIf(ctx: Context) {
 	// log("if", ctx.lexer.token());
 
 	const opts: TReadBlockOptions = {};
-
-	// if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
-	// 	opts.isClikeBlock = true;
-	// 	ctx.lexer.next();
-	// 	if (!ctx.lexer.eol()) throw new VAParseError("BLOCK: Start block { should be the last on the line");
-	// }
-	// const line = ctx.lexer.line();
 
 	// log("if", ctx.lexer.line());
 
@@ -79,7 +82,7 @@ export function processIf(ctx: Context) {
 		// log("token", ctx.lexer.token());
 	}
 
-	// console.log({line, willdo: !!res.value, blockTrue, blockFalse});
+	// log({line, willdo: !!res.value, blockTrue, blockFalse});
 
 	const block = res?.value ? blockTrue : blockFalse;
 
