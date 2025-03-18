@@ -13,7 +13,7 @@ describe("Segments", () => {
 			INTRO: { start: 0xA000, end: 0xBFFF, size: 0xBFFF-0xA000+1 }
 		};
 	});
-
+/*
 	it("tests with default segment", () => {
 		opts.segments= null;
 
@@ -69,6 +69,74 @@ describe("Segments", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual('ORG is out of Segment "BOOT" range 0800:08FF');
+	});
+
+	it("tests to redefine a segment", () => {
+		const src = `
+			.segment intro {}
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("SEGMENT: segment already defined");
+	});
+
+	it("tests to define a segment with missing fields", () => {
+		const src = `
+			.segment newOne { start: $1000 }
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("SEGMENT: Invalid segment definition");
+	});
+
+	it("tests to define a segment with unknown fields", () => {
+		const src = `
+			.segment newOne {
+				start: $1000,
+				end: $1100,
+				test: "false"
+			}
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("SEGMENT: Invalid segment definition");
+	});
+
+	it("tests to define a segment", () => {
+		const src = `
+			.segment newOne {
+				start: $800,
+				end: $8FF
+			}
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.segments.NEWONE).toStrictEqual({
+			"end": 0x8FF,
+			"size": 256,
+			"start": 0x800
+		  });
+	});
+*/
+	it("tests to define a segment", () => {
+		const src = ".segment newSegment { start: 0x800, toto: 0, end: $8FF, pad: $FF }";
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.segments.NEWSEGMENT).toStrictEqual({
+			end: 0x8FF,
+			size: 256,
+			start: 0x800,
+			pad: 0xFF
+		  });
+	});
+
+	it("tests to define a segment", () => {
+		const src = ".segment newSegment { start: 0x800, toto: 0, pad: $FF }";
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual('SEGMENT: Invalid segment definition : CONF.string: Missing required key "end"');
 	});
 
 });

@@ -258,6 +258,11 @@ export class Lexer {
 	line() {
 		return this.ctx.currLine;
 	}
+	unparsedLine() {
+		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
+		const { posInLine } = this.ctx.tokens[this.ctx.curTokIdx];
+		return this.ctx.currLine.slice(posInLine);
+	}
 	lines() {
 		return this.ctx.lines;
 	}

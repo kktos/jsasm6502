@@ -7,7 +7,7 @@ const BYTECOUNTPERLINE = 6;
 const ADDR_PREFIX_LENGTH = 7;
 const BYTE_DUMP_LENGTH = ADDR_PREFIX_LENGTH + BYTECOUNTPERLINE * 3 + 1;
 
-type TSegment = {
+export type TSegment = {
 	start: number;
 	end: number;
 	size: number;
@@ -49,6 +49,21 @@ export class Compiler {
 	segment() {
 		if (!this.currentSegment) throw new VAExprError("No segment selected");
 		return { name: this.currentSegment, ...this.segments[this.currentSegment] };
+	}
+
+	has(segmentName: string) {
+		return this.segments[segmentName] !== undefined;
+	}
+
+	add(segmentName: string, segment: TSegment) {
+		if (this.has(segmentName)) throw new VAExprError("Segment already defined");
+		const newSegment: TSegment = {
+			start: segment.start,
+			end: segment.end,
+			size: segment.end - segment.start + 1,
+		};
+		if ("pad" in segment) newSegment.pad = segment.pad;
+		this.segments[segmentName] = newSegment;
 	}
 
 	select(segmentName: string) {
