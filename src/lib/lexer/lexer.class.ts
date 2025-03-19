@@ -337,7 +337,7 @@ export class Lexer {
 
 	next() {
 		this.ctx.curTokIdx++;
-		return this.ctx.curTokIdx < this.ctx.tokCount;
+		return this.ctx.curTokIdx < this.ctx.tokCount ? this.ctx.tokens[this.ctx.curTokIdx] : null;
 	}
 
 	eol() {
@@ -531,6 +531,7 @@ export class Lexer {
 			// if no binary digits after %, lets have the % token instead
 			if (endPos - startPos === 1) {
 				this.ctx.currToken.type = TOKEN_TYPES.PERCENT;
+				this.ctx.currToken.text = "%";
 				return true;
 			}
 
@@ -587,6 +588,10 @@ export class Lexer {
 
 	get tokens() {
 		return this.ctx.tokens;
+	}
+
+	get tokenIdx() {
+		return this.ctx.curTokIdx;
 	}
 
 	dump() {
