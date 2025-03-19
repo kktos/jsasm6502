@@ -397,4 +397,56 @@ describe("Macro", () => {
 
 		expect(asmRes.disasm[0].content).toStrictEqual(output);
 	});
+
+	it("tests meta macro", () => {
+		const src = `
+			.macro drawSprite %id, %x, %y {
+				ldx %x
+				ldy %y
+				lda %id+1
+				jsr $1500
+			}
+
+			id = $5D
+			drawSprite Lid + 1, #$62, #$31
+			drawSprite #id, #$62, #$31
+
+			Lid:
+				.Db $5D
+				.Db $FF
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("A2 62 A0 31 AD 15 10 20 00 15 A2 62 A0 31 A9 5E 20 00 15 5D FF"),
+		);
+	});
+
+	it("tests meta macro with unknown parameter", () => {
+		const src = `
+			.macro drawSprite %id, %x, %y {
+				ldx %xx
+				ldy %y
+			}
+			drawSprite 0, #$62, #$31
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("OPCODE: Unknown parameter XX");
+	});
+
+	it("tests normal macro won't accept #", () => {
+		const src = `
+			.macro drawSprite x, y {
+				ldx x
+				ldy y
+			}
+			drawSprite #$62, #$31
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("NUMBER : Syntax Error Token <14:HASH - '#'>");
+	});
+
 });

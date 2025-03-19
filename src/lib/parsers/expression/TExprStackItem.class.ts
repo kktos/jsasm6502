@@ -8,6 +8,7 @@ type TExtra = {
 	line?: number;
 	isVariable: boolean;
 	exported?: number;
+	tokens?: Token[];
 };
 
 type DumpOptions = {

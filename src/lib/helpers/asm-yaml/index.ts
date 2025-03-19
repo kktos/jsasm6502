@@ -1,13 +1,6 @@
 import { load as yamlLoad, DEFAULT_SCHEMA } from "js-yaml";
 import { intType } from "./int";
 
-// function getTypes(list) {
-// 	return list.reduce((acc, curr) => {
-// 		acc.push(curr.tag);
-// 		return acc;
-// 	}, []);
-// }
-
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 const schema: any = DEFAULT_SCHEMA;
 

@@ -8,32 +8,61 @@ import { parseExpression, parseExpressionAsNumber } from "./expression/expressio
 const log = console.log;
 
 export function isOpcode(ctx: Context) {
-	const token = ctx.lexer.token();
-	if (!token || token.type !== TOKEN_TYPES.IDENTIFIER) return false;
-	return Boolean(ctx.opcodes[token.asString]);
+	const op = ctx.lexer.identifier();
+	return op && Boolean(ctx.opcodes[op]);
+}
+
+function interpolateString(ctx: Context) {
+	ctx.lexer.next();
+	const res = parseExpression(ctx, undefined, TOKEN_TYPES.STRING);
+	if (!res) throw new VAParseError(`OPCODE: No value for %(<expr)"`);
+
+	if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
+		throw new VAParseError(`OPCODE: Missing Right Parenthesis for %(<expr)"`);
+	ctx.lexer.next();
+
+	// log("%() VALUE",ctx.pass, `\n${res} - ${JSON.stringify(res)}`);
+
+	ctx.lexer.pushSource(res.string);
+	ctx.lexer.nextLine();
+	const tokens = ctx.lexer.tokens;
+
+	// log("%() PARM", `\n${ctx.lexer.dump()}`);
+
+	ctx.lexer.popSource();
+	ctx.lexer.insertTokens(tokens);
+
+	// log("%() LINE", `\n${ctx.lexer.dump()}`);
+
+	return ctx.lexer.token();
+}
+
+function interpolateVariable(ctx: Context) {
+	const varName = ctx.lexer.identifier() ?? "";
+	const varValue = ctx.symbols.get(varName);
+	if (!varValue?.extra?.tokens) throw new VAParseError(`OPCODE: Unknown parameter ${varName}`);
+	ctx.lexer.next();
+	ctx.lexer.insertTokens(varValue?.extra?.tokens);
+	return ctx.lexer.token();
 }
 
 export function parseOpcode(ctx: Context) {
 	let valueSize = 0;
-	let token = ctx.lexer.token();
-	if (!token || token.type !== TOKEN_TYPES.IDENTIFIER) return;
-
-	const opcode = token.asString;
+	const opcode = ctx.lexer.identifier();
+	if (!opcode) return;
 
 	// log("parseOpcode 1",token);
 
 	const opcodeTable = ctx.opcodes[opcode];
-	if (opcodeTable == null)
+	if (opcodeTable === null)
 		throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel?.name}`);
 
-	ctx.lexer.next();
-	token = ctx.lexer.token();
+	let token = ctx.lexer.next();
 
 	// instr.b forces 8bits
 	// instr.w forces 16bits
 	if (token?.type === TOKEN_TYPES.DOT && !token.hasSpaceBefore) {
-		ctx.lexer.next();
-		token = ctx.lexer.token();
+		token = ctx.lexer.next();
 		if (token?.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("OPCODE: Invalid data size; needs .w or .b");
 		switch (token.value) {
 			case "B":
@@ -45,41 +74,28 @@ export function parseOpcode(ctx: Context) {
 			default:
 				throw new VAParseError("OPCODE: Invalid data size; needs .w or .b");
 		}
-		ctx.lexer.next();
-		token = ctx.lexer.token();
+		token = ctx.lexer.next();
 	}
 
 	// log("parseOpcode 2",token);
 
 	// dynamic tokenisation
 	// LDA %( expr ) -> expr = "$1000,y" -> LDA $1000,Y
+	// LDA %macroParam -> macroParam = #$45 -> LDA #$45
 	if (token?.type === TOKEN_TYPES.PERCENT) {
 		ctx.lexer.next();
-		if (!ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT))
-			throw new VAParseError(`OPCODE: Missing Left Parenthesis for %(<expr)"`);
 
-		ctx.lexer.next();
-		const res = parseExpression(ctx, undefined, TOKEN_TYPES.STRING);
-		if (!res) throw new VAParseError(`OPCODE: No value for %(<expr)"`);
-
-		if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
-			throw new VAParseError(`OPCODE: Missing Right Parenthesis for %(<expr)"`);
-		ctx.lexer.next();
-
-		// log("%() VALUE",ctx.pass, `\n${res} - ${JSON.stringify(res)}`);
-
-		ctx.lexer.pushSource(res.string);
-		ctx.lexer.nextLine();
-		const tokens = ctx.lexer.tokens;
-
-		// log("%() PARM", `\n${ctx.lexer.dump()}`);
-
-		ctx.lexer.popSource();
-		ctx.lexer.insertTokens(tokens);
-
-		// log("%() LINE", `\n${ctx.lexer.dump()}`);
-
-		token = ctx.lexer.token();
+		switch (ctx.lexer.tokenType()) {
+			case TOKEN_TYPES.LEFT_PARENT:
+				token = interpolateString(ctx);
+				break;
+			case TOKEN_TYPES.IDENTIFIER: {
+				token = interpolateVariable(ctx);
+				break;
+			}
+			default:
+				throw new VAParseError(`OPCODE: Illegal character %"`);
+		}
 	}
 
 	//

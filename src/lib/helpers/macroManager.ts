@@ -1,8 +1,12 @@
-import { TOKEN_TYPES, Token } from "../lexer/token.class";
 import { VAParseError } from "./errors.class";
 
+export type TMacroParam = {
+	name: string;
+	isInterpolated?: boolean;
+};
+
 export type TMacro = {
-	parms: string[];
+	parms: TMacroParam[];
 	block: string;
 	hasRestParm: boolean;
 };
