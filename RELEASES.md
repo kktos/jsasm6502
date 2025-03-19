@@ -3,16 +3,19 @@
 - More doc about how to use the library.
 - Add some examples
 
+## 1.7.0
+Add meta param for macro to allow defineSprite(id, #x, #y)  
+
 ## 1.6.0
-Add segment definition
+Add segment definition  
 Add .if() syntax
 
 ## 1.5.0
 Add IIF function
 
 ## 1.4.1
-Add colors
-Fix dumping of function symbols
+Add colors  
+Fix dumping of function symbols  
 Add --dir to set the sources directory
 
 ## 1.4.0

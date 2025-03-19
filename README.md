@@ -316,18 +316,31 @@ params= .split("one,two,three", ",")   // ["one","two","three"]
 list= .array($45,$46,89)               // [$45,$46,89]
 list= .array()               		   // []
 ```
-#### .push( <value as array>, item1 [,item2, ...] )
+#### .push( < value as array >, item1 [,item2, ...] )
 ```as
 // adds one to many items at the end of the given array and returns it
 numbers= .array(0,1)                   // [$00,$01]
 list= .push(numbers, 2,3)              // [$00,$01,$02,$03]
 ```
-#### .pop( <value as array> )
+#### .pop( < value as array > )
 ```as
 // removes one item at the end of the given array
 last= .pop(numbers)                  // 3
 ```
-
+#### .eval( < string value > )
+```as
+// evaluates the string as asm source.
+count= .array(1,2,3)
+str= ".len(count)"
+.echo .eval(str) ; "3"
+```
+#### .iif( < expr as number >, < true value >, < false value > )
+```as
+// returns a value depending on a boolean expression (=0 or !=0)
+addr = $1000
+.echo .iif(addr>$1000, "greater", "not greater") ; "not greater"
+.echo .iif(addr=$1000, "equal", "not equal") ; "equal"
+```
 ## System Variables
 
 System variables are readonly and they are prefixed by a dot "."
@@ -467,6 +480,13 @@ All the string pragmas are using the currently defined charmap.
 .else
 	.log "str is valid"
 .end
+
+// C-like
+.if(.len(str)>10) {
+    .warning "str is too long !"
+} .else {
+	.log "str is valid"
+}
 ```
 #### .repeat < times > [< iterator >]
 ```as
@@ -558,7 +578,9 @@ Namespaces can be nested and they use a stack for this
 
 Memory can be segmented in parts and you can set your code to be assembled for a specific part.  
 This will allow you, for instance, to control whether your code can fit in a segment.  
-To set up segments, you will need a yaml conf file with an entry segments with hold the map of your segments.  
+To set up segments, you have 2 ways : the conf file or in your sources.
+
+In the yaml conf file, you'll have an entry "segments" which will hold the map of your segments.  
 For each segment, you have to define the starting and ending addresses. And optionally, a padding value to fill the unused space (default is $00).
 ```yaml
 # jsasm.conf
@@ -566,14 +588,24 @@ segments:
   BOOT1:		{ start: 0x0800, end: 0x08FF }
   LOADER:		{ start: 0xB700, end: 0xBFFF, pad: 0xFF }
 ```
+
+#### .segment < name > { start: < number >, end: < number > [, pad: < number >] }
+```as
+// add a segment
+.segment INTRO		{ start: $6000, end: $AFFF }
+// here the program counter will be set to $6000, the start of the INTRO segment  
+// And its value will be allowed to be between $6000 and $AFFF
+```
+
 #### .segment < name >
+And to use a segment :
 ```as
 // use a segment
 .segment loader
 // here the program counter will be set to $B700, the start of the loader segment
 ```
 
-You can set the program counter but with addresses in the range defined by the current segment.
+You can set the program counter but only with addresses in the range defined by the current segment.
 ```as
 // set the program counter
 .org $B780
@@ -583,7 +615,7 @@ You can set the program counter but with addresses in the range defined by the c
 ```
 
 ## Macros
-#### .macro < name > [param1 ,param2, ...]
+#### .macro < name > [param1 ,param2, ...] <br/>.macro < name > [param1 : param2 : ...]
 ```as
 // create a macro with a name and parameter(s)
 	.macro printStr str
@@ -627,7 +659,7 @@ welcome
 	000A: 34 12
 	*/
 ```
-#### Parameter Interpolation
+#### Parameter String Interpolation
 This is useful when you want to pass a label and an addressing mode, for instance
 ```as
 	.macro ifx ...parms
@@ -673,8 +705,44 @@ This is useful when you want to pass a label and an addressing mode, for instanc
 	0000: E0 82    ; cpx #130
 	0000: 90 xx    ; bcc next
 	*/
-
 ```
+#### Parameter Variable Interpolation
+When you want to use the addressing modes directly, as with an opcode.  
+In order to be able to use indexed addressing mode, you will have to use a colon : as separator for parameters.
+```
+	.org $1000
+
+	spriteIdx:
+		.db 00
+
+	.macro drawSprite(%id : %x : %y) {
+		lda %id
+		ldx %x
+		ldy %y
+		jsr $1500
+	}
+
+	ldx spriteIdx
+	drawSprite Lid,x : #$62 : #$31
+	rts
+
+	Lid:
+		.db $5D
+		.db $FF
+
+	/*
+	will emit
+	xxxx: AE 00 10 ; ldx spriteIdx
+	xxxx: BD 0E 10 ; lda Lid,x
+	xxxx: A2 62    ; ldx #$62
+	xxxx: A0 31    ; ldy #$31
+	xxxx: 20 00 15 ; jsr $1500
+	xxxx: 60 	   ; rts
+	xxxx: 5D 	   ;
+	xxxx: FF 	   ;
+	*/
+```
+
 ## Comments
 
 You can add a comment on any line with the semicolon, ";", as usual for assembler.  
