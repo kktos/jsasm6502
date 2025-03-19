@@ -4,6 +4,7 @@ import { high, low } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { ADDRMODE } from "../opcodes/65xxx.addrmodes";
 import { parseExpression, parseExpressionAsNumber } from "./expression/expression.parser";
+import type { TExprStackItem } from "./expression/TExprStackItem.class";
 
 const log = console.log;
 
@@ -39,8 +40,23 @@ function interpolateString(ctx: Context) {
 
 function interpolateVariable(ctx: Context) {
 	const varName = ctx.lexer.identifier() ?? "";
-	const varValue = ctx.symbols.get(varName);
-	if (!varValue?.extra?.tokens) throw new VAParseError(`OPCODE: Unknown parameter ${varName}`);
+	let varValue = ctx.symbols.get(varName);
+
+	if (varValue?.type === TOKEN_TYPES.ARRAY) {
+		ctx.lexer.next();
+		if (!ctx.lexer.isToken(TOKEN_TYPES.LEFT_BRACKET)) {
+			throw new VAParseError(`OPCODE: Missing index array for ${varName}`);
+		}
+		ctx.lexer.next();
+		const index = parseExpressionAsNumber(ctx, new Set([TOKEN_TYPES.RIGHT_BRACKET]));
+		if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET)) {
+			throw new VAParseError(`OPCODE: Missing index array for ${varName}`);
+		}
+		varValue = varValue.array[index.number] as TExprStackItem;
+	}
+
+	if (!varValue) throw new VAParseError(`OPCODE: Unknown parameter name ${varName}`);
+	if (!varValue.extra?.tokens) throw new VAParseError(`OPCODE: Unknown parameter ${varName}`);
 	ctx.lexer.next();
 	ctx.lexer.insertTokens(varValue?.extra?.tokens);
 	return ctx.lexer.token();

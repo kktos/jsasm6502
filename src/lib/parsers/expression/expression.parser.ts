@@ -385,7 +385,7 @@ function parse_scalar(exprCtx: TExprCtx) {
 
 // (ns.)? varname ( .fieldname | [expr] )*
 function parse_var_label(exprCtx: TExprCtx, tok: Token) {
-	let name = tok.asString;
+	let varname = tok.asString;
 	let ns = undefined;
 	const checkIfExists = exprCtx.ctx.pass > 1 && !exprCtx.flags?.allowUndef;
 
@@ -396,48 +396,48 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
 		// log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
 
-		if (exprCtx.ctx.symbols.fn.has(name))
+		if (exprCtx.ctx.symbols.fn.has(varname))
 			throw new VAExprError("IDENTIFIER : Labels inside a function can't be access");
 
 		// namespace.labelname
 		// not a label, being a namespace
-		if (!exprCtx.ctx.symbols.exists(name) && exprCtx.ctx.symbols.ns.has(name)) {
-			ns = name;
+		if (!exprCtx.ctx.symbols.exists(varname) && exprCtx.ctx.symbols.ns.has(varname)) {
+			ns = varname;
 			exprCtx.ctx.lexer.next();
-			name = exprCtx.ctx.lexer.tokenOrThrow().asString;
+			varname = exprCtx.ctx.lexer.tokenOrThrow().asString;
 			exprCtx.ctx.lexer.next();
 		}
 	}
 
 	// log("parse_var_label", exprCtx.ctx.pass, name, ns, exprCtx.ctx.symbols.exists(name, ns));
 
-	if (checkIfExists && !exprCtx.ctx.symbols.exists(name, ns)) {
+	if (checkIfExists && !exprCtx.ctx.symbols.exists(varname, ns)) {
 		// console.log("----- ", exprCtx.ctx.symbols.namespaces[NS_GLOBAL]);
 
 		let msg = "";
-		if (exprCtx.ctx.symbols.fn.has(name)) {
-			msg = `IDENTIFIER : labels in function ${name} cannot be access from outside the function`;
+		if (exprCtx.ctx.symbols.fn.has(varname)) {
+			msg = `IDENTIFIER : labels in function ${varname} cannot be access from outside the function`;
 		} else {
-			const namespaces = exprCtx.ctx.symbols.search(name);
-			msg = `IDENTIFIER : Unknown identifier "${name}" in ${ns ? ns : exprCtx.ctx.symbols.namespace}`;
-			if (namespaces.length) msg += `\nBut "${name}" exists in ${namespaces.join(", ")}`;
+			const namespaces = exprCtx.ctx.symbols.search(varname);
+			msg = `IDENTIFIER : Unknown identifier "${varname}" in ${ns ? ns : exprCtx.ctx.symbols.namespace}`;
+			if (namespaces.length) msg += `\nBut "${varname}" exists in ${namespaces.join(", ")}`;
 		}
 
 		throw new VAExprError(msg);
 	}
 
-	let value = exprCtx.ctx.symbols.get(name, ns);
+	let value = exprCtx.ctx.symbols.get(varname, ns);
 
 	const isDefined = value?.isDefined ?? false;
 
 	// log("parseVarLabel VALUE-1", exprCtx.ctx.pass, ns, name, JSON.stringify(value), !isDefined ?"UNDEFINED":"");
 
-	value = parse_object_and_array(exprCtx, ns, name, value);
+	value = parse_object_and_array(exprCtx, ns, varname, value);
 
 	// log("parseVarLabel VALUE-2", exprCtx.ctx.pass, ns, name, JSON.stringify(value));
 
 	if (!value && checkIfExists) {
-		throw new VAExprError(`IDENTIFIER: Cant find label ${name}`);
+		throw new VAExprError(`IDENTIFIER: Cant find label ${varname}`);
 	}
 
 	// log("parseVarLabel VALUE", exprCtx.ctx.pass, String(value).trim());
@@ -591,7 +591,7 @@ function parse_object_and_array(
 				// log(exprCtx.ctx.pass, "ARRAY", arrayIdx);
 
 				const valueArray = value?.value as Array<TExprStackItem | Token>;
-				const idx = arrayIdx.value as number;
+				const idx = arrayIdx.number;
 
 				if (idx >= valueArray.length)
 					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${valueArray.length}`);

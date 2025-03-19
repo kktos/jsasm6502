@@ -407,9 +407,9 @@ describe("Macro", () => {
 				jsr $1500
 			}
 
-			id = $5D
+			sprite_id = $5D
 			drawSprite Lid + 1, #$62, #$31
-			drawSprite #id, #$62, #$31
+			drawSprite #sprite_id, #$62, #$31
 
 			Lid:
 				.Db $5D
@@ -433,7 +433,7 @@ describe("Macro", () => {
 		`;
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
-		expect(asmRes.error).toStrictEqual("OPCODE: Unknown parameter XX");
+		expect(asmRes.error).toStrictEqual("OPCODE: Unknown parameter name XX");
 	});
 
 	it("tests normal macro won't accept #", () => {
@@ -447,6 +447,85 @@ describe("Macro", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual("NUMBER : Syntax Error Token <14:HASH - '#'>");
+	});
+
+	it("tests meta macro with ADDR,X using alternate parameter separator", () => {
+		const src = `
+			.macro drawSprite(%id : %x : %y) {
+				ldx %x
+				ldy %y
+				lda %id
+				jsr $1500
+			}
+
+			drawSprite Lid,x : #$62 : #$31
+
+			Lid:
+				.Db $5D
+				.Db $FF
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(asmRes.obj.CODE).toStrictEqual(
+			readHexLine("A2 62 A0 31 BD 0A 10 20 00 15 5D FF"),
+		);
+	});
+
+	it("tests meta macro using wrong parameter separator", () => {
+		const src = `
+			.macro drawSprite(%id : %x : %y) {
+				ldx %x
+				ldy %y
+				lda %id
+				jsr $1500
+			}
+
+			drawSprite Lid , #$62 , #$31
+
+			Lid:
+				.Db $5D
+				.Db $FF
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual("MACRO: DRAWSPRITE needs 3 parameters; Got only 1");
+	});
+
+	it("tests meta macro with variable numbers of params - repeat", () => {
+		const src = `
+			.macro toto(%id : %...parms) {
+				lda %id
+				.repeat .len(parms) idx
+					lda %parms[idx]
+				.end
+			}
+			toto($CAFE : #$45 : $1234)
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(hexDump(asmRes.obj.CODE)).toStrictEqual(
+			hexDump(readHexLine("AD FE CA A9 45 AD 34 12")),
+		);
+	});
+
+	it("tests meta macro with variable numbers of params - for", () => {
+		const src = `
+			.macro toto(%id : %...parms) {
+				lda %id
+				.for parm of parms
+					lda %parm
+				.end
+			}
+			toto($CAFE : #$45 : $1234)
+		`;
+		const asmRes = assemble(src, opts);
+		expect(asmRes).toBeDefined();
+		expect(asmRes.error).toStrictEqual(null);
+		expect(hexDump(asmRes.obj.CODE)).toStrictEqual(
+			hexDump(readHexLine("AD FE CA A9 45 AD 34 12")),
+		);
 	});
 
 });

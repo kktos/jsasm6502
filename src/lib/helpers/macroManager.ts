@@ -9,6 +9,7 @@ export type TMacro = {
 	parms: TMacroParam[];
 	block: string;
 	hasRestParm: boolean;
+	wantAlternateSep: boolean;
 };
 
 export class MacroManager {

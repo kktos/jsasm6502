@@ -63,8 +63,9 @@ export class TExprStackItem implements IExprItem {
 		this.op = op;
 	}
 
-	renew(type: number, value: TValueType) {
+	renew(type: number, value: TValueType, extra?: TExtra) {
 		this.val = { type, value };
+		if (extra) this.extra = extra;
 	}
 
 	get type() {

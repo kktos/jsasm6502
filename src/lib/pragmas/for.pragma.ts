@@ -15,8 +15,8 @@ const log = console.log;
 	.END
  */
 export function processFor(ctx: Context) {
-	const iterator = ctx.lexer.token();
-	if (!iterator || iterator.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("FOR: need an iterator");
+	const IteratorName = ctx.lexer.identifier();
+	if (!IteratorName) throw new VAParseError("FOR: need an iterator");
 
 	ctx.lexer.next();
 
@@ -24,14 +24,12 @@ export function processFor(ctx: Context) {
 
 	ctx.lexer.next();
 
-	if (!iterator || iterator.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("FOR: need an iterator");
-
 	// log("FOR iterator", ctx.pass, iterator);
 
 	const list = parseExpression(ctx, undefined, TOKEN_TYPES.ARRAY);
-	if (!list) throw new VAParseError("FOR: need an array to iterate of");
+	if (!list) throw new VAParseError("FOR: need an array to iterate on");
 
-	const array = list?.value as TValueType[];
+	const array = list.value as TValueType[];
 
 	// log("FOR list", ctx.pass, list);
 
@@ -40,7 +38,6 @@ export function processFor(ctx: Context) {
 
 	if (array.length === 0) return true;
 
-	const IteratorName = iterator.asString;
 	let arrayItem: TValueType;
 	let arrayItemType: number | null = 0;
 	let arrayIdx = 0;
@@ -49,7 +46,7 @@ export function processFor(ctx: Context) {
 	const getItem = (idx: number) => {
 		arrayItem = array[idx];
 		if (arrayItem instanceof TExprStackItem) {
-			IteratorValue.renew(arrayItem.type ?? 0, arrayItem.value);
+			IteratorValue.renew(arrayItem.type ?? 0, arrayItem.value, arrayItem.extra);
 		} else {
 			arrayItemType = tokenTypeOf(arrayItem);
 			if (!arrayItemType) throw new VAParseError(`FOR: Invalid type for item ${idx}`);
@@ -68,7 +65,7 @@ export function processFor(ctx: Context) {
 
 		if (arrayIdx >= array.length) {
 			// ctx.lexer.removeEventListener(EVENT_TYPES.EOS, onEndOfBlock)
-			ctx.symbols.override.restore((iterator as Token).asString);
+			ctx.symbols.override.restore(IteratorName);
 			return;
 		}
 		getItem(arrayIdx);

@@ -1,6 +1,6 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
-import type { TMacro } from "../helpers/macroManager";
+import type { TMacro, TMacroParam } from "../helpers/macroManager";
 import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { readBlock, type TReadBlockOptions } from "../parsers/block.parser";
@@ -12,6 +12,8 @@ const log = console.log;
 function processMacroParams(ctx: Context, macro: TMacro, opts: TReadBlockOptions) {
 	const hasParenthesis = ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT);
 	if (hasParenthesis) ctx.lexer.next();
+
+	let paramSep = null;
 
 	while (ctx.lexer.match([TOKEN_TYPES.IDENTIFIER, TOKEN_TYPES.REST, TOKEN_TYPES.PERCENT])) {
 		let isInterpolated = false;
@@ -35,7 +37,11 @@ function processMacroParams(ctx: Context, macro: TMacro, opts: TReadBlockOptions
 
 		if (ctx.lexer.eol()) break;
 
-		if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
+		if (paramSep && paramSep !== ctx.lexer.tokenType()) break;
+		if (!ctx.lexer.match([TOKEN_TYPES.COMMA, TOKEN_TYPES.COLON])) break;
+		if (!paramSep) {
+			paramSep = ctx.lexer.tokenType();
+		}
 
 		ctx.lexer.next();
 	}
@@ -50,10 +56,14 @@ function processMacroParams(ctx: Context, macro: TMacro, opts: TReadBlockOptions
 	if (ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) {
 		opts.isClikeBlock = true;
 	} else if (!ctx.lexer.eol()) throw new VAParseError("MACRO: Syntax Error; Needs a comma between parameter");
+
+	if (paramSep === TOKEN_TYPES.COLON) {
+		macro.wantAlternateSep = true;
+	}
 }
 
 export function processMacro(ctx: Context) {
-	const macro: TMacro = { parms: [], block: "", hasRestParm: false };
+	const macro: TMacro = { parms: [], block: "", hasRestParm: false, wantAlternateSep: false };
 	const opts: TReadBlockOptions = { isClikeBlock: false, wantRaw: true };
 
 	const macroName = ctx.lexer.identifier();
@@ -84,6 +94,28 @@ export function isMacro(ctx: Context) {
 	return macroName ? ctx.macros.exists(macroName) : false;
 }
 
+function expandMacroParam(ctx: Context, macroParam: TMacroParam, paramSep: number) {
+	let paramTokens = null;
+	let parm: TExprStackItem | undefined;
+	if (macroParam.isInterpolated) {
+		const start = ctx.lexer.tokenIdx;
+		while (!ctx.lexer.eol() && !ctx.lexer.match([paramSep, TOKEN_TYPES.RIGHT_PARENT])) ctx.lexer.next();
+		paramTokens = ctx.lexer.tokens.slice(start, ctx.lexer.tokenIdx);
+		parm = TExprStackItem.newNumber(0);
+	} else {
+		parm = parseExpression(ctx, new Set([paramSep]));
+	}
+
+	if (!parm) throw new VAParseError(`MACRO: missing parameter value for ${macroParam.name}`);
+
+	if (paramTokens) {
+		if (!parm.extra) parm.extra = { isVariable: false };
+		parm.extra.tokens = paramTokens;
+	}
+
+	return parm;
+}
+
 export function expandMacro(ctx: Context) {
 	const macroName = ctx.lexer.identifier();
 	if (!macroName) throw new VAParseError("MACRO: Missing name");
@@ -99,6 +131,10 @@ export function expandMacro(ctx: Context) {
 
 	ctx.lexer.next();
 
+	// macro parm1 , parm2 , parmx
+	// macro: parm1 : parm2 : parmx
+	const paramSep = macro.wantAlternateSep ? TOKEN_TYPES.COLON : TOKEN_TYPES.COMMA;
+
 	const parms = macro.hasRestParm ? macro.parms.slice(0, -1) : macro.parms;
 
 	// log("expandMacro parms", parms);
@@ -108,29 +144,22 @@ export function expandMacro(ctx: Context) {
 
 	for (let idx = 0; idx < parms.length; idx++) {
 		let parm: TExprStackItem | undefined = undefined;
-		let paramTokens = null;
 
 		if (ctx.lexer.token()) {
 			if (idx > 0) {
 				// if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) throw new VAParseError("MACRO: Syntax Error; Missing comma");
-				if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
+				// if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
+				if (!ctx.lexer.isToken(paramSep)) break;
 				ctx.lexer.next();
 			}
 
 			// log("expandMacro line", ctx.lexer.line());
 
-			const start = ctx.lexer.tokenIdx;
+			parm = expandMacroParam(ctx, parms[idx], paramSep);
+		}
 
-			// skip immediate addressing # when interpolating
-			if (parms[idx].isInterpolated && ctx.lexer.isToken(TOKEN_TYPES.HASH)) {
-				ctx.lexer.next();
-			}
-
-			parm = parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
-
-			if (parms[idx].isInterpolated) {
-				paramTokens = ctx.lexer.tokens.slice(start, ctx.lexer.tokenIdx);
-			}
+		if (idx < parms.length - 2 && ctx.lexer.eol()) {
+			throw new VAParseError(`MACRO: ${macroName} needs ${parms.length} parameters; Got only ${idx + 1}`);
 		}
 
 		if (!parm) throw new VAParseError(`MACRO: missing parameter value for ${parms[idx].name}`);
@@ -140,21 +169,18 @@ export function expandMacro(ctx: Context) {
 		// TODO: parm.type: number | null => not undefined
 		// we're using a label as parm but it's not yet defined (will be on pass 2)
 		if (ctx.pass === 1 && parm.type === undefined) {
-			// parm.type = TOKEN_TYPES.NUMBER;
-			parm = TExprStackItem.newNumber(0);
+			parm.renew(TOKEN_TYPES.NUMBER, 0);
+			// parm = TExprStackItem.newNumber(0);
 		}
 
-		if (paramTokens) {
-			if (!parm.extra) parm.extra = { isVariable: false };
-			parm.extra.tokens = paramTokens;
-		}
 		// if(ctx.pass == 2)
 		ctx.symbols.override.override(parms[idx].name, parm);
 	}
 
 	if (macro.hasRestParm) {
 		if (macro.parms.length > 1) {
-			if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) throw new VAParseError("MACRO: Syntax Error; Missing comma");
+			if (!ctx.lexer.isToken(paramSep))
+				throw new VAParseError("MACRO: Syntax Error; Missing parameter separator (, or :)");
 			ctx.lexer.next();
 		}
 		const restParm = macro.parms[macro.parms.length - 1];
@@ -162,14 +188,13 @@ export function expandMacro(ctx: Context) {
 		while (ctx.lexer.token()) {
 			// log("expandMacro REST token", ctx.lexer.token());
 
-			const parm = parseExpression(ctx, new Set([TOKEN_TYPES.COMMA]));
-			restArray.push(parm);
+			restArray.push(expandMacroParam(ctx, restParm, paramSep));
 
 			// log("expandMacro REST parm", parm);
 
 			// if (ctx.lexer.token() && !ctx.lexer.isToken(TOKEN_TYPES.COMMA))
 			// 	throw new VAParseError("MACRO: Syntax Error; Missing comma");
-			if (!ctx.lexer.isToken(TOKEN_TYPES.COMMA)) break;
+			if (!ctx.lexer.isToken(paramSep)) break;
 
 			ctx.lexer.next();
 		}
