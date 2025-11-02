@@ -115,31 +115,39 @@ export class Compiler {
 			);
 
 		if (pass > 1) {
-			let chars = "";
-			let hex = "";
-			// this._output= "";
+			const hexParts: string[] = [];
+			const charParts: string[] = [];
 			const offset = this.pc - seg.start;
 			const lines = [];
 			for (let idx = 0; idx < bytes.length; idx++) {
 				if (idx % BYTECOUNTPERLINE === 0) {
-					hex += `${getHexWord(this.pc + idx)}: `;
+					hexParts.push(`${getHexWord(this.pc + idx)}: `);
 				}
 
 				obj[offset + idx] = low(bytes[idx]);
-				hex += ` ${getHexByte(bytes[idx])}`;
+				hexParts.push(` ${getHexByte(bytes[idx])}`);
 
 				if (wannaShowChars) {
-					if (bytes[idx] >= 0x20 && bytes[idx] <= 0x7f) chars += String.fromCharCode(bytes[idx]);
-					else chars += ".";
+					if (bytes[idx] >= 0x20 && bytes[idx] <= 0x7f) {
+						charParts.push(String.fromCharCode(bytes[idx]));
+					} else {
+						charParts.push(".");
+					}
 				}
 
 				if (idx % BYTECOUNTPERLINE === BYTECOUNTPERLINE - 1) {
+					const hex = hexParts.join("");
+					const chars = charParts.join("");
 					lines.push(hex.padEnd(BYTE_DUMP_LENGTH) + chars);
-					hex = "";
-					chars = "";
+					hexParts.length = 0;
+					charParts.length = 0;
 				}
 			}
-			hex !== "" && lines.push(hex.padEnd(BYTE_DUMP_LENGTH) + chars);
+			if (hexParts.length > 0) {
+				const hex = hexParts.join("");
+				const chars = charParts.join("");
+				lines.push(hex.padEnd(BYTE_DUMP_LENGTH) + chars);
+			}
 			this._output = lines;
 		}
 
@@ -172,3 +180,4 @@ export class Compiler {
 		console.log(s);
 	}
 }
+
