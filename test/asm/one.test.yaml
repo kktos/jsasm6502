@@ -1,0 +1,8 @@
+segments:
+  TESTONE: { start: 0x2000, end: 0x2FFF }
+
+symbols:
+  START_ADDR: 0x2000
+  TARGET_ADDR: 0x2100
+  ENABLE_FEATURE: 1
+  FEATURE_VALUE: 0x42

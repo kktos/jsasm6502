@@ -4,7 +4,7 @@ import { CharMapManager } from "./helpers/charMapManager";
 import { VAParseError } from "./helpers/errors.class";
 import { MacroManager } from "./helpers/macroManager";
 import { EVENT_TYPES, Lexer } from "./lexer/lexer.class";
-import type { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
+import { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
 import type { Options, ReadFileFunction, TConsole } from "./types/Options.type";
 
 const log = console.log;
@@ -70,6 +70,12 @@ export class Context {
 
 		this.console = opts.console ? opts.console : (console as unknown as TConsole);
 		globalThis.console = this.console as unknown as Console;
+
+		if (opts.symbols) {
+			for (const key in opts.symbols) {
+				this.symbols.set(key, TExprStackItem.newFromValue(opts.symbols[key]));
+			}
+		}
 
 		this.code = new Compiler(opts.segments);
 

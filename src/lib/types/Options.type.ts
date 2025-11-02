@@ -22,6 +22,7 @@ export type Options = {
 
 	console: TConsole;
 	segments: TSegments | null;
+	symbols: Record<string, unknown> | null;
 
 	readFile: ReadFileFunction;
 

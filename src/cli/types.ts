@@ -13,6 +13,7 @@ export interface Arguments {
 
 export type TConf = {
 	segments?: TSegmentsConf;
+	symbols?: Record<string, unknown>;
 	src: string;
 	out: string;
 	options: {
@@ -49,4 +50,5 @@ export const confSchema = {
 		end: "number",
 		pad: "number",
 	}),
+	symbols: new SchemaDict({}),
 };

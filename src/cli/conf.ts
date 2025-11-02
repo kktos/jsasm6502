@@ -31,6 +31,7 @@ export function readConf(args: string[]) {
 		src: argv.src ?? tmpConf?.src,
 		out: argv.out ?? tmpConf?.out ?? "./a.out",
 		segments: tmpConf?.segments,
+		symbols: tmpConf?.symbols,
 		link: {
 			post: tmpConf?.link?.post,
 		},
@@ -58,6 +59,8 @@ function validateSchema(conf: TConf, schema: Dict) {
 					if (type !== "object")
 						throw new TypeError(`CONF.object: Invalid type for key ${key}:${schema[key]} -> ${type} `);
 					if (schema[key] instanceof SchemaDict) {
+						// for symbols, we don't validate the content, just that it's an object
+						if (key === "symbols") continue;
 						const dict = obj[key] as Dict;
 						for (const entry in dict) {
 							validate(dict[entry] as Dict, schema[key] as Dict);

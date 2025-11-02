@@ -34,8 +34,40 @@ For a comprehensive reference of all assembler commands, functions, opcodes, and
 
 ## Usage
 ```shell
-asm6502 sourcefile.asm
+asm6502 sourcefile.asm [-c <configfile.yml>]
 ```
+## Configuration File
+
+Configuration can be provided via a YAML file (e.g., `jsasm.conf`) passed with the `-c` command-line option.
+
+### `segments`
+
+Memory can be segmented into parts, and you can set your code to be assembled for a specific part. This allows you to control whether your code can fit in a segment.
+
+For each segment, you must define the `start` and `end` addresses. You can also optionally provide a `pad` value to fill unused space (defaults to `$00`).
+
+```yaml
+# jsasm.conf
+segments:
+  BOOT1:    { start: 0x0800, end: 0x08FF }
+  LOADER:   { start: 0xB700, end: 0xBFFF, pad: 0xFF }
+```
+
+### `symbols`
+
+You can define global symbols in the configuration file. These symbols are accessible from any part of your code.
+
+```yaml
+# jsasm.conf
+symbols:
+  SCREEN_WIDTH: 40
+  SCREEN_HEIGHT: 25
+  COLORS:
+    - RED
+    - GREEN
+    - BLUE
+```
+
 ## API
 
 ### assemble
@@ -386,7 +418,10 @@ cout = $FDED
 ```
 #### .define < name >
 ```as
-// define a complex variable with yaml or json
+// define a complex variable with yaml or json file
+.define spritesTable from "sprites.yml"
+
+// or inline
 .define spritesTable
     - { id: 0xaa, x: 0xa0, y: 0x10}
     - { id: 0xbb, x: 0xb0, y: 0x20}
@@ -585,14 +620,7 @@ Memory can be segmented in parts and you can set your code to be assembled for a
 This will allow you, for instance, to control whether your code can fit in a segment.  
 To set up segments, you have 2 ways : the conf file or in your sources.
 
-In the yaml conf file, you'll have an entry "segments" which will hold the map of your segments.  
-For each segment, you have to define the starting and ending addresses. And optionally, a padding value to fill the unused space (default is $00).
-```yaml
-# jsasm.conf
-segments:
-  BOOT1:		{ start: 0x0800, end: 0x08FF }
-  LOADER:		{ start: 0xB700, end: 0xBFFF, pad: 0xFF }
-```
+See the [Configuration File](#configuration-file) section for details on how to set up segments in the YAML configuration file.
 
 #### .segment < name > { start: < number >, end: < number > [, pad: < number >] }
 ```as

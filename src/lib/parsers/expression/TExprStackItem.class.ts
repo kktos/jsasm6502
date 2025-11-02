@@ -54,6 +54,23 @@ export class TExprStackItem implements IExprItem {
 		return new TExprStackItem(item.type ?? 0, item.value);
 	}
 
+	static newFromValue(value: unknown): TExprStackItem {
+		switch (typeof value) {
+			case "number":
+				return TExprStackItem.newNumber(value);
+			case "string":
+				return TExprStackItem.newString(value);
+			case "boolean":
+				return TExprStackItem.newNumber(value ? 1 : 0);
+			case "object":
+				if (Array.isArray(value)) {
+					return TExprStackItem.newArray(value.map((v) => TExprStackItem.newFromValue(v)));
+				}
+				return TExprStackItem.newObject(value as Record<string, unknown>);
+		}
+		return new TExprStackItem(0, null); // for null or undefined
+	}
+
 	constructor(typeOrToken: number | Token, value: TValueType, op?: TExprStackOperation) {
 		if (typeOrToken instanceof Token) {
 			this.val = typeOrToken;

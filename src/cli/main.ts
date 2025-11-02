@@ -38,6 +38,7 @@ const opts: Options = {
 	YAMLparse: parseYAML,
 	listing: conf.options.listing,
 	segments: conf.segments ?? null,
+	symbols: conf.symbols ?? null,
 	console,
 };
 
