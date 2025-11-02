@@ -92,7 +92,7 @@ describe("Namespace", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
-		expect(asmRes.symbols.dump()).toBe([
+		expect(asmRes.symbols.dump().symbols).toBe([
 			"GLOBAL:",
 			'  COUNT: number = $9 ; "":2',
 			"ONE:",

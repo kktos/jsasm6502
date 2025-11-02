@@ -1,6 +1,6 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
-import { high, low } from "../helpers/utils";
+import { getHexWord, high, low } from "../helpers/utils";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { ADDRMODE } from "../opcodes/65xxx.addrmodes";
 import { parseExpression, parseExpressionAsNumber } from "./expression/expression.parser";
@@ -300,6 +300,10 @@ export function parseOpcode(ctx: Context) {
 	if (obj === -1) throw new VAParseError(`OPCODE: IAM4 Invalid Address Mode for Opcode ${opcode} ${valueSize}`);
 
 	// log("CODE", valueSize.toString().padStart(2," "), ctx.lexer.line(), valueSize === 8 ? hexDump([obj, low(addr.number)]) : hexDump([obj, low(addr.number), high(addr.number)]));
+
+	if(ctx.pass>1 && ["JSR", "JMP"].includes(opcode)) {
+		log(opcode,addr ? getHexWord(addr.number ?? 0) : "????");
+	}
 
 	if (valueSize === 8) ctx.code.emits(ctx.pass, [obj, low(addr.number)]);
 	else ctx.code.emits(ctx.pass, [obj, low(addr.number), high(addr.number)]);

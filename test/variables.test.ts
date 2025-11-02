@@ -39,7 +39,7 @@ describe("Variables", () => {
 		const asmRes = assemble(src, opts);
 		expect(asmRes).toBeDefined();
 		expect(asmRes.error).toStrictEqual(null);
-		expect(asmRes.symbols.dump()).toStrictEqual([
+		expect(asmRes.symbols.dump().symbols).toStrictEqual([
 		"GLOBAL:",
 		'  LABEL2: number = $100 ; "":3',
 		'  VAR_SPRITEIDX: number = $14 ; "":2',

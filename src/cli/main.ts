@@ -54,7 +54,9 @@ try {
 
 	if (conf.options.symbols) {
 		mkdirSync(outDirname, { recursive: true });
-		writeFileSync(`${outDirname}/${outBasename}.sym`, asmRes.symbols.dump());
+		const { symbols, dict } = asmRes.symbols.dump();
+		writeFileSync(`${outDirname}/${outBasename}.sym`, symbols);
+		writeFileSync(`${outDirname}/${outBasename}.dict`, JSON.stringify(dict, null, 2));
 	}
 
 	if (conf.options.listing) {

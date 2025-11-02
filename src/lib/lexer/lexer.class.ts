@@ -67,6 +67,7 @@ type TEventListenerHandler = () => void;
 class LexerContext {
 	public lines: string[];
 	public lineIdx = 0;
+	public relativeToLineIdx = 0;
 	public states: LexerState[] = [];
 	public eventHandlers: Map<TEVENT_TYPES, TEventListenerHandler[]> = new Map();
 
@@ -87,11 +88,12 @@ class LexerContext {
 		LexerContext.nextID = 0;
 	}
 
-	constructor(src: string) {
+	constructor(src: string, relativeToLineIdx = 0) {
 		this.lines = src ? src.split(/\r?\n/) : [];
 		this.newLine();
 		this.id = LexerContext.nextID++;
 		this.wannaAdvance = true;
+		this.relativeToLineIdx = relativeToLineIdx;
 	}
 
 	newLine() {
@@ -126,9 +128,9 @@ export class Lexer {
 		this.contexts = [];
 	}
 
-	pushSource(src: string) {
+	pushSource(src: string, relativeToLineIdx = 0) {
 		this.contexts.push(this.ctx);
-		this.ctx = new LexerContext(src);
+		this.ctx = new LexerContext(src, relativeToLineIdx);
 		// log(`** pushSource [${this.ctx.id}]`, dbgStringList(this.ctx.lines) );
 	}
 
@@ -253,7 +255,7 @@ export class Lexer {
 	}
 
 	pos() {
-		return { posInLine: this.ctx.posInLine, line: this.ctx.lineIdx };
+		return { posInLine: this.ctx.posInLine, line: this.ctx.lineIdx, relativeToLine: this.ctx.relativeToLineIdx };
 	}
 	line() {
 		return this.ctx.currLine;

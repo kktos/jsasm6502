@@ -16,7 +16,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.asm6502",
-				"match": "(?i)(\\.if|\\.repeat|\\.for|\\.end|\\.include|\\.hex|\\.db)\\b"
+				"match": "(?i)(\\.if|\\.repeat|\\.for|\\of|\\.end|\\.include|\\.hex|\\.function|\\.define)\\b"
 			},
 			{
 				"name": "keyword.other.opcode.cpu.asm6502",
@@ -25,6 +25,14 @@
 			{
 				"name": "keyword.other.label.asm6502",
 				"match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)"
+			},
+			{
+				"name": "keyword.other.index.asm6502",
+				"match": ",(y|x)"
+			},
+			{
+				"name": "keyword.other.number.asm6502",
+				"match": "#?(\\$[0-9A-Fa-f]+|\\b[0-9]+\\b)"
 			}
 			]
 		},
@@ -44,6 +52,16 @@
 				{
 					"name": "comment.line.semicolon",
 					"match": ";[^\n]*\n"
+				},
+				{
+					"name": "comment.block.asm6502",
+					"begin": "/\\*",
+					"end": "\\*/",
+					"captures": {
+						"0": {
+							"name": "punctuation.definition.comment.asm6502"
+						}
+					}
 				}
 			]
 		}

@@ -162,10 +162,10 @@ export class Context {
 		// 	this._deferredMsg = "";
 		// }
 
-		const { posInLine, line: lineIdx } = this.lexer.pos();
+		const { posInLine, line: lineIdx, relativeToLine: relativeToLineIdx } = this.lexer.pos();
 		const line = this.lexer.line();
 		this.console.error(
-			`\n${msg} in ${this.filepath} at line ${lineIdx} at ${posInLine}\n${line?.slice(0, posInLine)}<>${line?.slice(
+			`\n${msg} in ${this.filepath} at line ${relativeToLineIdx || lineIdx} at ${posInLine}\n${line?.slice(0, posInLine)}<>${line?.slice(
 				posInLine + 1,
 			)}`,
 		);

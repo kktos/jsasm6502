@@ -5,6 +5,8 @@ import { FunctionDict } from "./functiondict.class";
 import { MarkerDict } from "./markerdict.class";
 import { NSDict } from "./ns.class";
 import { OverrideDict } from "./override.class";
+import { TOKEN_TYPES } from "../lexer/token.class";
+import { getHexWord } from "../helpers/utils";
 
 const log = console.log;
 
@@ -49,11 +51,27 @@ export class Dict<T extends TDict> {
 
 	dump() {
 		let out = "";
+		const json: Record<string, string[] | string> = {};
 		for (const name of Object.keys(this.base.namespaces).sort()) {
 			const ns = this.base.namespaces[name];
 			const entries = Object.keys(ns).sort();
 
 			if (entries.length) out += `${name}:\n`;
+
+			for (const entry of entries) {
+				const val = ns[entry];
+				if (val.type === TOKEN_TYPES.NUMBER) {
+					const addr = getHexWord(val.value as number);
+					if(!json[addr]) {
+						json[addr] = `${name}.${entry}`;
+					} else {
+						if(!Array.isArray(json[addr])) {
+							json[addr] = [json[addr]];
+						}
+						json[addr].push(`${name}.${entry}`);
+					}
+				}
+			}
 
 			out += entries
 				.map((entry) => {
@@ -71,6 +89,6 @@ export class Dict<T extends TDict> {
 			out += "\n";
 		}
 
-		return out;
+		return { symbols: out, dict: json };
 	}
 }

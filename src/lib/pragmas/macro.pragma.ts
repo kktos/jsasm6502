@@ -218,7 +218,7 @@ export function expandMacro(ctx: Context) {
 	};
 
 	// if(ctx.pass==2) {
-	ctx.lexer.pushSource(macro.block);
+	ctx.lexer.pushSource(macro.block, ctx.lexer.pos().line);
 	if (paramsCount) ctx.lexer.addEventListener(EVENT_TYPES.EOS, onEndOfBlock);
 	// }
 }

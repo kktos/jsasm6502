@@ -34,7 +34,7 @@ describe("Symbols", () => {
 			''
 		].join("\n");
 
-		expect(asmRes.symbols.dump()).toStrictEqual(expected);
+		expect(asmRes.symbols.dump().symbols).toStrictEqual(expected);
 	});
 
 });
