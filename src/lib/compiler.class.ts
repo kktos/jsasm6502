@@ -150,26 +150,25 @@ export class Compiler {
 		const obj = this.obj[segmentName];
 		if (obj === undefined || !obj.length) throw new VABuildError(`EMIT: No Object Code for Segment ${segmentName}`);
 
-		let s = "";
+		const parts: string[] = [];
 
 		const codeStart = this.segments[segmentName].start;
 		const codeEnd = codeStart + obj.length;
-		const offset = codeStart % 8;
+		const offset = codeStart % bytePerLine;
 		for (let addr = codeStart - offset; addr < codeEnd; addr++) {
-			if (addr % bytePerLine === 0) s += `${getHexWord(addr)}: `;
+			if (addr % bytePerLine === 0) {
+				parts.push(`${getHexWord(addr)}: `);
+			}
 
-			if (addr < codeStart) s += ".. ";
-			else {
-				s += getHexByte((obj[addr - codeStart] as number | undefined) || 0);
-				// s += getHexByte(
-				// 	typeof obj[addr - codeStart] === "undefined"
-				// 		? 0
-				// 		: obj[addr - codeStart] || 0,
-				// );
-				s += addr % bytePerLine === bytePerLine - 1 || addr === codeEnd - 1 ? "\n" : " ";
+			if (addr < codeStart) {
+				parts.push(".. ");
+			} else {
+				parts.push(getHexByte((obj[addr - codeStart] as number | undefined) || 0));
+				parts.push(addr % bytePerLine === bytePerLine - 1 || addr === codeEnd - 1 ? "\n" : " ");
 			}
 		}
 
+		const s = parts.join("");
 		console.log(s);
 	}
 }
