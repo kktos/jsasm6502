@@ -180,4 +180,3 @@ export class Compiler {
 		console.log(s);
 	}
 }
-

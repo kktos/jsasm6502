@@ -62,10 +62,10 @@ export class Dict<T extends TDict> {
 				const val = ns[entry];
 				if (val.type === TOKEN_TYPES.NUMBER) {
 					const addr = getHexWord(val.value as number);
-					if(!json[addr]) {
+					if (!json[addr]) {
 						json[addr] = `${name}.${entry}`;
 					} else {
-						if(!Array.isArray(json[addr])) {
+						if (!Array.isArray(json[addr])) {
 							json[addr] = [json[addr]];
 						}
 						json[addr].push(`${name}.${entry}`);

@@ -301,8 +301,8 @@ export function parseOpcode(ctx: Context) {
 
 	// log("CODE", valueSize.toString().padStart(2," "), ctx.lexer.line(), valueSize === 8 ? hexDump([obj, low(addr.number)]) : hexDump([obj, low(addr.number), high(addr.number)]));
 
-	if(ctx.pass>1 && ["JSR", "JMP"].includes(opcode)) {
-		log(opcode,addr ? getHexWord(addr.number ?? 0) : "????");
+	if (ctx.pass > 1 && ["JSR", "JMP"].includes(opcode)) {
+		log(opcode, addr ? getHexWord(addr.number ?? 0) : "????");
 	}
 
 	if (valueSize === 8) ctx.code.emits(ctx.pass, [obj, low(addr.number)]);

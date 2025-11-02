@@ -74,9 +74,9 @@ class LexerContext {
 	public currChar: string | null = null;
 	public currLine = "";
 	public currToken = new Token();
-	public processedTokens: Token[] = [];  // Already seen tokens (for lookback)
-	public pendingTokens: Token[] = [];      // Tokens to process
-	public curTokIdx = 0;                    // Index into pendingTokens
+	public processedTokens: Token[] = []; // Already seen tokens (for lookback)
+	public pendingTokens: Token[] = []; // Tokens to process
+	public curTokIdx = 0; // Index into pendingTokens
 	public tokCount = 0;
 	public comment: string | null = null;
 	public id: number;
@@ -312,7 +312,9 @@ export class Lexer {
 	}
 
 	isToken(tokenType: number) {
-		return this.ctx.curTokIdx < this.ctx.tokCount ? tokenType === this.ctx.pendingTokens[this.ctx.curTokIdx].type : false;
+		return this.ctx.curTokIdx < this.ctx.tokCount
+			? tokenType === this.ctx.pendingTokens[this.ctx.curTokIdx].type
+			: false;
 	}
 
 	match(tokens: Array<number | null>) {
