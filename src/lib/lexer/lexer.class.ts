@@ -1,5 +1,4 @@
 import type { CharMapManager } from "../helpers/charMapManager";
-import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
 import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { TOKEN_TYPES, Token } from "./token.class";
@@ -75,8 +74,9 @@ class LexerContext {
 	public currChar: string | null = null;
 	public currLine = "";
 	public currToken = new Token();
-	public tokens: Token[] = [];
-	public curTokIdx = 0;
+	public processedTokens: Token[] = [];  // Already seen tokens (for lookback)
+	public pendingTokens: Token[] = [];      // Tokens to process
+	public curTokIdx = 0;                    // Index into pendingTokens
 	public tokCount = 0;
 	public comment: string | null = null;
 	public id: number;
@@ -100,7 +100,8 @@ class LexerContext {
 		this.currChar = null;
 		this.posInLine = 0;
 		this.currLine = "";
-		this.tokens = [];
+		this.processedTokens = [];
+		this.pendingTokens = [];
 		this.curTokIdx = 0;
 		this.tokCount = 0;
 		this.comment = null;
@@ -215,7 +216,7 @@ export class Lexer {
 
 			// log("nextLine", this.ctx.tokens);
 
-			if (this.ctx.tokens.length) break;
+			if (this.ctx.pendingTokens.length) break;
 		}
 
 		this.ctx.wannaAdvance = true;
@@ -262,7 +263,7 @@ export class Lexer {
 	}
 	unparsedLine() {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
-		const { posInLine } = this.ctx.tokens[this.ctx.curTokIdx];
+		const { posInLine } = this.ctx.pendingTokens[this.ctx.curTokIdx];
 		return this.ctx.currLine.slice(posInLine);
 	}
 	lines() {
@@ -275,20 +276,22 @@ export class Lexer {
 	isLookahead(tokenType: number, identifier?: string) {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount - 1) return false;
 
-		const hasSameType = this.ctx.tokens[this.ctx.curTokIdx + 1].type === tokenType;
+		const hasSameType = this.ctx.pendingTokens[this.ctx.curTokIdx + 1].type === tokenType;
 
-		return hasSameType && (identifier ? this.ctx.tokens[this.ctx.curTokIdx + 1].value === identifier : true);
+		return hasSameType && (identifier ? this.ctx.pendingTokens[this.ctx.curTokIdx + 1].value === identifier : true);
 	}
 
 	lookahead(idx = 1) {
 		if (idx < 0) {
-			if (this.ctx.tokCount - idx < 0) return null;
-			return this.ctx.tokens[this.ctx.tokCount - idx];
+			// Negative index: look back in processedTokens
+			const backIdx = -idx - 1;
+			if (backIdx >= this.ctx.processedTokens.length) return null;
+			return this.ctx.processedTokens[this.ctx.processedTokens.length - 1 - backIdx];
 		}
 
 		if (this.ctx.curTokIdx >= this.ctx.tokCount - idx) return null;
 
-		return this.ctx.tokens[this.ctx.curTokIdx + idx];
+		return this.ctx.pendingTokens[this.ctx.curTokIdx + idx];
 	}
 
 	lookaheadType(idx = 1) {
@@ -303,34 +306,34 @@ export class Lexer {
 	isIdentifier(identifier: string) {
 		return (
 			this.ctx.curTokIdx < this.ctx.tokCount &&
-			TOKEN_TYPES.IDENTIFIER === this.ctx.tokens[this.ctx.curTokIdx].type &&
-			identifier === this.ctx.tokens[this.ctx.curTokIdx].value
+			TOKEN_TYPES.IDENTIFIER === this.ctx.pendingTokens[this.ctx.curTokIdx].type &&
+			identifier === this.ctx.pendingTokens[this.ctx.curTokIdx].value
 		);
 	}
 
 	isToken(tokenType: number) {
-		return this.ctx.curTokIdx < this.ctx.tokCount ? tokenType === this.ctx.tokens[this.ctx.curTokIdx].type : false;
+		return this.ctx.curTokIdx < this.ctx.tokCount ? tokenType === this.ctx.pendingTokens[this.ctx.curTokIdx].type : false;
 	}
 
 	match(tokens: Array<number | null>) {
-		return this.ctx.curTokIdx < this.ctx.tokCount && tokens.includes(this.ctx.tokens[this.ctx.curTokIdx].type);
+		return this.ctx.curTokIdx < this.ctx.tokCount && tokens.includes(this.ctx.pendingTokens[this.ctx.curTokIdx].type);
 	}
 
 	token() {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
-		return this.ctx.tokens[this.ctx.curTokIdx];
+		return this.ctx.pendingTokens[this.ctx.curTokIdx];
 	}
 
 	identifier() {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) return null;
-		if (TOKEN_TYPES.IDENTIFIER !== this.ctx.tokens[this.ctx.curTokIdx].type) return null;
-		return this.ctx.tokens[this.ctx.curTokIdx].asString;
+		if (TOKEN_TYPES.IDENTIFIER !== this.ctx.pendingTokens[this.ctx.curTokIdx].type) return null;
+		return this.ctx.pendingTokens[this.ctx.curTokIdx].asString;
 	}
 
 	tokenOrThrow() {
 		if (this.ctx.curTokIdx >= this.ctx.tokCount) throw new VAParseError("No more token !?!");
 
-		return this.ctx.tokens[this.ctx.curTokIdx];
+		return this.ctx.pendingTokens[this.ctx.curTokIdx];
 	}
 
 	tokenType() {
@@ -338,8 +341,12 @@ export class Lexer {
 	}
 
 	next() {
+		// Move current token to processedTokens when advancing
+		if (this.ctx.curTokIdx < this.ctx.tokCount) {
+			this.ctx.processedTokens.push(this.ctx.pendingTokens[this.ctx.curTokIdx]);
+		}
 		this.ctx.curTokIdx++;
-		return this.ctx.curTokIdx < this.ctx.tokCount ? this.ctx.tokens[this.ctx.curTokIdx] : null;
+		return this.ctx.curTokIdx < this.ctx.tokCount ? this.ctx.pendingTokens[this.ctx.curTokIdx] : null;
 	}
 
 	eol() {
@@ -349,9 +356,9 @@ export class Lexer {
 	_tokenize() {
 		while (this._advance()) {
 			// console.log("_tokenize", this.ctx.currToken);
-			this.ctx.tokens.push(this.ctx.currToken);
+			this.ctx.pendingTokens.push(this.ctx.currToken);
 		}
-		this.ctx.tokCount = this.ctx.tokens.length;
+		this.ctx.tokCount = this.ctx.pendingTokens.length;
 	}
 
 	private nextChar() {
@@ -584,12 +591,24 @@ export class Lexer {
 	}
 
 	insertTokens(tokens: Token[]) {
-		this.ctx.tokens.splice(this.ctx.curTokIdx, 0, ...tokens);
-		this.ctx.tokCount = this.ctx.tokens.length;
+		// Prepend to pendingTokens at current position - O(k) operation!
+		// Move tokens from curTokIdx onwards, then insert new tokens
+		if (this.ctx.curTokIdx === 0) {
+			// Inserting at start - simple prepend
+			this.ctx.pendingTokens.unshift(...tokens);
+		} else {
+			// Inserting in middle: split array and rejoin
+			const before = this.ctx.pendingTokens.slice(0, this.ctx.curTokIdx);
+			const after = this.ctx.pendingTokens.slice(this.ctx.curTokIdx);
+			this.ctx.pendingTokens = [...before, ...tokens, ...after];
+		}
+		this.ctx.tokCount = this.ctx.pendingTokens.length;
+		// curTokIdx stays the same (points to first inserted token)
 	}
 
 	get tokens() {
-		return this.ctx.tokens;
+		// Return combined view for backward compatibility
+		return [...this.ctx.processedTokens, ...this.ctx.pendingTokens];
 	}
 
 	get tokenIdx() {
@@ -599,7 +618,7 @@ export class Lexer {
 	dump() {
 		let output = `tok=${this.ctx.curTokIdx}\n`;
 		let count = 0;
-		for (const tok of this.ctx.tokens) {
+		for (const tok of this.ctx.pendingTokens) {
 			output += `${count} : ${tok}\n`;
 			count++;
 		}
