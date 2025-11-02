@@ -224,16 +224,24 @@ Define complex variable from YAML/JSON block.
     - { id: 0xbb, x: 0xb0, y: 0x20 }
 .end
 
-lda #spritesTable[0].id
+lda #spritesTable[0].id    ; Access array element
 ```
+
+**Note:** Array indices are checked at parse time. Out-of-bounds access (index >= array length) will throw an error.
 
 #### `.let <name> = <expression>`
 
-Define variable (pragma syntax). Functionally similar to `=` but can be used in more contexts.
+Define variable (pragma syntax). **Key difference from `=`**: The variable name can be a **string expression**, allowing dynamic variable names.
 
 ```as
 .let count = 10
+.let "var" + "Name" = 42  ; Creates variable "VARNAME" with value 42
 ```
+
+**Comparison:**
+
+- `<name> = <expression>` - Requires literal identifier name
+- `.let <name> = <expression>` - Allows string expression for dynamic variable names
 
 ---
 
@@ -442,10 +450,11 @@ Set CPU type: `6502`, `65C02`, or `65X02`.
 
 #### `.option charmap <name>` / `.opt charmap <name>`
 
-Set character map for string encoding.
+Set character map for string encoding. Use `NONE` to disable charmap (use raw character codes).
 
 ```as
 .option charmap apple2
+.option charmap NONE      ; Disable charmap, use raw codes
 ```
 
 Define custom charmap:
@@ -793,8 +802,10 @@ result = (a + b) / 2
 .if str = "test"
 ```
 
-- `<`, `<=`, `>`, `>=` - Numeric comparisons
-- `=`, `!=` - Equality (works for numbers and strings)
+- `<`, `<=`, `>`, `>=` - **Numeric comparisons only** (both operands must be numbers)
+- `=`, `!=` - Equality comparison (works for numbers and strings)
+  - **String comparison**: Compares string values directly
+  - **Number vs String**: Allows comparison between single-character strings and their character codes
 
 ### Boolean Logic
 
@@ -818,7 +829,10 @@ result = value ^ $FF    ; XOR: invert
 - `|` - Bitwise OR
 - `^` - Bitwise XOR
 
-**Note:** No shift operators (`<<`, `>>`) are currently supported.
+**Limitations:**
+
+- **No shift operators**: `<<` (left shift) and `>>` (right shift) are **not supported**
+- **No modulo operator**: `%` (modulo) is **not supported**; use division and manual calculation if needed
 
 ### 16-bit Address Operations
 
