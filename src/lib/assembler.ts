@@ -188,31 +188,36 @@ function asm(ctx: Context): TAssemblerDisasm {
 
 		const asmOut = ctx.code.output;
 		if (asmOut) {
+			const parts: string[] = [];
 			for (let idx = 0; idx < asmOut.length; idx++) {
-				currentDisasmFile.content += asmOut[idx];
+				parts.push(asmOut[idx]);
 				if (idx === 0) {
 					const padding = ASM_BYTES_LEN - asmOut[idx].length;
-					currentDisasmFile.content += `${"".padEnd(padding)}${currLine}`;
+					parts.push("".padEnd(padding));
+					parts.push(currLine);
 				}
-				currentDisasmFile.content += "\n";
+				parts.push("\n");
 			}
+			currentDisasmFile.content += parts.join("");
 			continue;
 		}
 
 		const entry = ctx.lastLabel?.value;
 		if (entry?.extra?.isVariable === true && lastVarname !== ctx.lastLabel?.name) {
 			lastVarname = ctx.lastLabel?.name ?? "";
+			const parts: string[] = [];
 			switch (typeof entry.value) {
 				case "number":
-					currentDisasmFile.content += getHexWord(entry.value);
+					parts.push(getHexWord(entry.value));
 					break;
 				case "string":
 				case "object":
-					currentDisasmFile.content += `${JSON.stringify(entry.value)}`;
+					parts.push(JSON.stringify(entry.value));
 					break;
 				default:
-					currentDisasmFile.content += entry.value;
+					parts.push(String(entry.value));
 			}
+			currentDisasmFile.content += parts.join("");
 		}
 		currentDisasmFile.content += `${"".padEnd(ASM_BYTES_LEN)}${currLine}\n`;
 	}
