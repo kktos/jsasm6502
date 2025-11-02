@@ -5,6 +5,7 @@
   * [Usage](#usage)
   * [API](#api)
   * [Examples](#examples)
+  * [Complete Reference](#complete-reference)
 - [Assembler Syntax](#assembler-syntax)
   * [Expressions](#expressions)
   * [System Functions](#system-functions)
@@ -26,6 +27,10 @@ Inspired by virtual assembler by mass:werk and the fact I needed to have it runn
 ![CI](https://github.com/kktos/jsasm6502/actions/workflows/CI.yml/badge.svg)  
 [RELEASES](https://github.com/kktos/jsasm6502/blob/main/RELEASES.md)
 
+
+## Complete Reference
+
+For a comprehensive reference of all assembler commands, functions, opcodes, and syntax, see **[REFERENCE.md](REFERENCE.md)**.
 
 ## Usage
 ```shell
