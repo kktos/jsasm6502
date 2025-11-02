@@ -786,6 +786,8 @@ value = 0b1010_1010 ; Binary with separator
 count = 1 + 1
 value = 6 * -1
 result = (a + b) / 2
+shifted = 1 << 4   ; 16
+remainder = 10 % 3  ; 1
 ```
 
 - `+` - Addition

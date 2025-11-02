@@ -85,7 +85,7 @@ function parseExpr(exprCtx: TExprCtx) {
 
 	// console.log(`parseExpr()`);
 
-	parse_cmp(exprCtx);
+	parse_cmp(exprCtx); // BUG FIX: parseExpr should start with parse_cmp (higher precedence than logical ops)
 
 	while (true) {
 		tok = exprCtx.ctx.lexer.token();
@@ -112,7 +112,7 @@ function parseExpr(exprCtx: TExprCtx) {
 function parse_cmp(exprCtx: TExprCtx) {
 	// console.log(`parse_cmp()`);
 
-	parse_add(exprCtx);
+	parse_shift(exprCtx); // BUG FIX: parse_cmp should start with parse_shift (higher precedence than comparison ops)
 
 	// console.log("parse_cmp", {stack: exprCtx.stack});
 
@@ -128,7 +128,7 @@ function parse_cmp(exprCtx: TExprCtx) {
 				op = "<=";
 				exprCtx.ctx.lexer.next();
 			}
-			parse_add(exprCtx);
+			parse_shift(exprCtx); // BUG FIX: Right-hand side of comparison should be a shift expression
 			exprCtx.stack.push(new TExprStackItem(0, 0, op)); // { op, type: 0, value: 0 }
 			break;
 		}
@@ -140,14 +140,14 @@ function parse_cmp(exprCtx: TExprCtx) {
 				op = ">=";
 				exprCtx.ctx.lexer.next();
 			}
-			parse_add(exprCtx);
+			parse_shift(exprCtx); // BUG FIX: Right-hand side of comparison should be a shift expression
 			exprCtx.stack.push(new TExprStackItem(0, 0, op)); // { op, type: 0, value: 0 }
 			break;
 		}
 
 		case TOKEN_TYPES.EQUAL:
 			exprCtx.ctx.lexer.next();
-			parse_add(exprCtx);
+			parse_shift(exprCtx); // BUG FIX: Right-hand side of comparison should be a shift expression
 			exprCtx.stack.push(new TExprStackItem(0, 0, "=")); // { op: "=", type: 0, value: 0 }
 			break;
 
@@ -156,7 +156,7 @@ function parse_cmp(exprCtx: TExprCtx) {
 
 			exprCtx.ctx.lexer.next();
 			exprCtx.ctx.lexer.next();
-			parse_add(exprCtx);
+			parse_shift(exprCtx); // BUG FIX: Right-hand side of comparison should be a shift expression
 			exprCtx.stack.push(new TExprStackItem(0, 0, "!=")); // { op: "!=", type: 0, value: 0 }
 			break;
 
@@ -166,22 +166,46 @@ function parse_cmp(exprCtx: TExprCtx) {
 }
 
 function parse_add(exprCtx: TExprCtx) {
-	parse_product(exprCtx);
+	parse_product(exprCtx); // BUG FIX: parse_add should start with parse_product (higher precedence than add/sub)
 
 	while (true) {
 		switch (exprCtx.ctx.lexer.tokenType()) {
 			case TOKEN_TYPES.PLUS:
 				exprCtx.ctx.lexer.next();
-				// parse_add(exprCtx);
-				parse_product(exprCtx);
+				parse_product(exprCtx); // BUG FIX: Right-hand side of addition should be a product expression
 				exprCtx.stack.push(new TExprStackItem(0, 0, "+")); // { op: "+", type: 0, value: 0 }
 				break;
 			case TOKEN_TYPES.MINUS:
 				exprCtx.ctx.lexer.next();
-				// parse_add(exprCtx);
-				parse_product(exprCtx);
+				parse_product(exprCtx); // BUG FIX: Right-hand side of subtraction should be a product expression
 				exprCtx.stack.push(new TExprStackItem(0, 0, "-")); // { op: "-", type: 0, value: 0 }
 				break;
+			default:
+				return;
+		}
+	}
+}
+
+function parse_shift(exprCtx: TExprCtx) {
+	parse_add(exprCtx); // BUG FIX: parse_shift should start with parse_add (higher precedence than shift)
+
+	while (true) {
+		switch (exprCtx.ctx.lexer.tokenType()) {
+			case TOKEN_TYPES.LOWER: // Correctly identifies the start of '<<'
+				if (!exprCtx.ctx.lexer.isLookahead(TOKEN_TYPES.LOWER)) return; // Not '<<', so return
+				exprCtx.ctx.lexer.next(); // Consume first '<'
+				exprCtx.ctx.lexer.next(); // Consume second '<'
+				parse_add(exprCtx); // BUG FIX: Right-hand side of shift should be an add expression
+				exprCtx.stack.push(new TExprStackItem(0, 0, "SHL"));
+				break;
+			case TOKEN_TYPES.GREATER:
+				if (!exprCtx.ctx.lexer.isLookahead(TOKEN_TYPES.GREATER)) return;
+				exprCtx.ctx.lexer.next();
+				exprCtx.ctx.lexer.next();
+				parse_add(exprCtx); // BUG FIX: Right-hand side of shift should be an add expression
+				exprCtx.stack.push(new TExprStackItem(0, 0, "SHR"));
+				break;
+
 			default:
 				return;
 		}
@@ -202,6 +226,11 @@ function parse_product(exprCtx: TExprCtx) {
 				exprCtx.ctx.lexer.next();
 				parse_term(exprCtx);
 				exprCtx.stack.push(new TExprStackItem(0, 0, "/")); // { op: "/", type: 0, value: 0 }
+				break;
+			case TOKEN_TYPES.PERCENT:
+				exprCtx.ctx.lexer.next();
+				parse_term(exprCtx);
+				exprCtx.stack.push(new TExprStackItem(0, 0, "MOD"));
 				break;
 			case TOKEN_TYPES.BAND:
 				exprCtx.ctx.lexer.next();

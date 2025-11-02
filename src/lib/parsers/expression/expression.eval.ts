@@ -1,6 +1,5 @@
 import { VAExprError } from "../../helpers/errors.class";
 import { TOKEN_TYPES } from "../../lexer/token.class";
-import { TValueType } from "../../types/Value.type";
 import { execFunction } from "../function.parser";
 import type { TExprCtx, TExprStack } from "./expression.type";
 import { TExprStackItem } from "./TExprStackItem.class";
@@ -77,6 +76,17 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 					throw new VAExprError("DIV: Only Numbers are allowed here");
 
 				stack.unshift(TExprStackItem.newNumber(op1.number / op2.number));
+				break;
+			}
+			case "MOD": {
+				const op2 = localStack.pop();
+				const op1 = localStack.pop();
+				if (!op1 || !op2) throw new VAExprError("Need two operands here");
+
+				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
+					throw new VAExprError("MOD: Only Numbers are allowed here");
+
+				stack.unshift(TExprStackItem.newNumber(op1.number % op2.number));
 				break;
 			}
 			case "-": {
@@ -261,6 +271,24 @@ export function evalExpr(exprCtx: TExprCtx, stack: TExprStack) {
 				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
 					throw new VAExprError("BXOR: Only Numbers are allowed here");
 				stack.unshift(TExprStackItem.newNumber(op1.number ^ op2.number));
+				break;
+			}
+			case "SHL": {
+				const op2 = localStack.pop();
+				const op1 = localStack.pop();
+				if (!op1 || !op2) throw new VAExprError("Need two operands here");
+				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
+					throw new VAExprError("SHL: Only Numbers are allowed here");
+				stack.unshift(TExprStackItem.newNumber(op1.number << op2.number));
+				break;
+			}
+			case "SHR": {
+				const op2 = localStack.pop();
+				const op1 = localStack.pop();
+				if (!op1 || !op2) throw new VAExprError("Need two operands here");
+				if (op1.type !== TOKEN_TYPES.NUMBER || op2.type !== TOKEN_TYPES.NUMBER)
+					throw new VAExprError("SHR: Only Numbers are allowed here");
+				stack.unshift(TExprStackItem.newNumber(op1.number >> op2.number));
 				break;
 			}
 

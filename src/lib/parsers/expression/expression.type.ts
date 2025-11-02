@@ -4,9 +4,10 @@ import type { TExprStackItem } from "./TExprStackItem.class";
 
 type TOperationCmp = "<" | "<=" | "=" | ">" | ">=" | "!=";
 type TOperationLogical = "AND" | "OR" | "!";
-type TOperationArithm = "+" | "-" | "*" | "/" | "NEG";
+type TOperationArithm = "+" | "-" | "*" | "/" | "MOD" | "NEG";
 type TOperationBool = "BXOR" | "BAND" | "BOR";
 type TOperationAddr = "MSB" | "LSB";
+type TOperationShift = "SHL" | "SHR";
 type TOperationFn = "FN";
 export type TExprStackOperation =
 	| TOperationCmp
@@ -14,6 +15,7 @@ export type TExprStackOperation =
 	| TOperationArithm
 	| TOperationBool
 	| TOperationAddr
+	| TOperationShift
 	| TOperationFn;
 
 export type TExprStack = Array<TExprStackItem | Array<TExprStackItem>>;
