@@ -1,9 +1,9 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		const token = assembler.activeTokens[tokenIndex];
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		const { token, tokenIndex } = context;
 		const filename = assembler.getFilenameArg(tokenIndex);
 
 		if (filename) {
@@ -20,10 +20,10 @@ export class IncbinDirective implements IDirective {
 		return assembler.skipToEndOfLine(tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
-		const token = assembler.activeTokens[tokenIndex];
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
+		const { token, tokenIndex } = context;
 		const instructionPC = assembler.currentPC;
-		const filename = assembler.getFilenameArg(tokenIndex);
+		const filename = assembler.getFilenameArg(tokenIndex); // This helper still uses index
 
 		if (filename) {
 			try {
@@ -50,6 +50,6 @@ export class IncbinDirective implements IDirective {
 				throw new Error(`Assembly failed on line ${token.line}: Binary include failed.`);
 			}
 		}
-		return assembler.skipToEndOfLine(tokenIndex);
+		return tokenIndex;
 	}
 }

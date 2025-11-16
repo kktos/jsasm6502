@@ -1,16 +1,13 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		const token = assembler.activeTokens[tokenIndex];
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		const { token, tokenIndex, evaluationContext } = context;
 		const orgExpressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
 
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluate(orgExpressionTokens, {
-				pc: assembler.currentPC,
-				allowForwardRef: true,
-			});
+			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, evaluationContext);
 		} catch (e) {
 			console.warn(
 				`[PASS 1] Warning on line ${token.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`,
@@ -21,19 +18,15 @@ export class OrgDirective implements IDirective {
 		return assembler.skipToEndOfLine(tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
-		const token = assembler.activeTokens[tokenIndex];
-		const orgExpressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
+		const orgExpressionTokens = assembler.getInstructionTokens(context.tokenIndex + 1);
 		try {
-			const streamState = assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1];
-			assembler.currentPC = assembler.expressionEvaluator.evaluate(orgExpressionTokens, {
-				pc: assembler.currentPC,
-				macroArgs: streamState?.macroArgs,
-			});
+			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context.evaluationContext);
 		} catch (e) {
-			console.error(`ERROR on line ${token.line}: Failed to evaluate .ORG expression. ${e}`);
+			console.error(`ERROR on line ${context.token.line}: Failed to evaluate .ORG expression. ${e}`);
 		}
 
-		return assembler.skipToEndOfLine(tokenIndex);
+		// The main loop handles index advancement for directives
+		return context.tokenIndex;
 	}
 }

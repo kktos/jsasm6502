@@ -6,7 +6,7 @@
 
 import type { IDirective } from "./directive.interface";
 import { OrgDirective } from "./org.directive";
-import { IncludeDirective } from "./include.directive";
+import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
 import { IncbinDirective } from "./incbin.directive";
 import { NamespaceDirective } from "./namespace.directive";
 import { ConditionalDirective } from "./conditional.directive";
@@ -14,6 +14,7 @@ import { DataDirective } from "./data.directive";
 import { MacroDirective } from "./macro/macro.directive";
 import { LoopDirective } from "./loop.directive";
 import type { Assembler } from "../polyasm";
+import type { DirectiveContext } from "./directive.interface";
 
 export class DirectiveHandler {
 	private readonly assembler: Assembler;
@@ -48,19 +49,19 @@ export class DirectiveHandler {
 		this.directiveMap.set(name, handler);
 	}
 
-	public handlePassOneDirective(directive: string, tokenIndex: number): number {
-		const handler = this.directiveMap.get(directive);
+	public handlePassOneDirective(context: DirectiveContext): number {
+		const handler = this.directiveMap.get(context.token.value.toUpperCase());
 		if (handler) {
-			return handler.handlePassOne(this.assembler, tokenIndex);
+			return handler.handlePassOne(this.assembler, context);
 		}
-		return tokenIndex + 1; // Default behavior for unknown directives
+		return context.tokenIndex + 1; // Default behavior for unknown directives
 	}
 
-	public handlePassTwoDirective(directive: string, tokenIndex: number): number {
-		const handler = this.directiveMap.get(directive);
+	public handlePassTwoDirective(context: DirectiveContext): number {
+		const handler = this.directiveMap.get(context.token.value.toUpperCase());
 		if (handler) {
-			return handler.handlePassTwo(this.assembler, tokenIndex);
+			return handler.handlePassTwo(this.assembler, context);
 		}
-		return tokenIndex + 1; // Default behavior for unknown directives
+		return context.tokenIndex + 1; // Default behavior for unknown directives
 	}
 }

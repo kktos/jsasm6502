@@ -107,30 +107,20 @@ export class PASymbolTable {
 	}
 
 	setSymbol(name: string, value: SymbolValue): void {
-		const namespace = this.getCurrentNamespace();
-
-		// Local labels start with a dot (e.g., '.loop')
-		const isLocal = name.startsWith(".");
-		if (isLocal) {
-			// Local labels are scoped to the current active global/named scope
-			// For simplicity, we'll store them under the current namespace.
-			// A more complex assembler would track the last global label for local scope.
+		// Search up the scope stack to find the symbol.
+		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
+			const scopeName = this.scopeStack[i];
+			const scope = this.symbols.get(scopeName);
+			if (scope?.has(name)) {
+				const symbol = scope.get(name)!;
+				symbol.value = value;
+				return;
+			}
 		}
 
-		const scope = this.symbols.get(namespace);
-		if (!scope) {
-			throw `[PASS 1] ERROR: PASymbol ${namespace} doesn't exist.`;
-		}
-
-		const symbol = scope.get(name);
-
-		if (!symbol) {
-			throw `[PASS 1] WARNING: PASymbol ${namespace}::${name} not defined.`;
-		}
-
-		symbol.value = value;
-
-		// console.log(`[PASS 1] Defined symbol: ${namespace}::${name} = ${value}`);
+		// If we get here, the symbol was not found in any active scope.
+		const currentScope = this.getCurrentNamespace();
+		throw new Error(`[SymbolTable] Attempted to set value for undefined symbol '${name}' in scope '${currentScope}'.`);
 	}
 
 	/**

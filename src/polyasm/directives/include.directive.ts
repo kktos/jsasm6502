@@ -1,9 +1,9 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		const token = assembler.activeTokens[tokenIndex];
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		const { token, tokenIndex } = context;
 		const filename = assembler.getFilenameArg(tokenIndex);
 
 		if (filename) {
@@ -22,8 +22,8 @@ export class IncludeDirective implements IDirective {
 		return tokenIndex + 1;
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		// .INCLUDE is fully handled in Pass 1, so this is a no-op in Pass 2.
-		return tokenIndex + 1;
+		return context.tokenIndex;
 	}
 }

@@ -1,14 +1,14 @@
 import type { Assembler } from "../../polyasm";
-import type { IDirective } from "../directive.interface";
+import type { DirectiveContext, IDirective } from "../directive.interface";
 
 export class MacroDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		return this.handleMacroDefinition(assembler, tokenIndex);
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		return this.handleMacroDefinition(assembler, context.tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		// Macro definitions are removed in Pass 1, so this should not be called.
-		return tokenIndex + 1;
+		return context.tokenIndex;
 	}
 
 	/** Pass 1: Parses and stores a macro definition. */

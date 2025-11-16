@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 import type { Token } from "../lexer/lexer.class";
 
 export class DataDirective implements IDirective {
@@ -9,22 +9,22 @@ export class DataDirective implements IDirective {
 		this.bytesPerElement = bytesPerElement;
 	}
 
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		assembler.currentPC += this.calculateDirectiveSize(assembler, tokenIndex);
-		return assembler.skipToEndOfLine(tokenIndex);
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		assembler.currentPC += this.calculateDirectiveSize(assembler, context.tokenIndex);
+		return assembler.skipToEndOfLine(context.tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		if (assembler.isAssembling) {
-			const bytes = this.encodeDataDirective(assembler, tokenIndex);
+			const bytes = this.encodeDataDirective(assembler, context);
 			assembler.outputBuffer.push(...bytes);
 			assembler.currentPC += bytes.length;
 		} else {
 			// If not assembling (e.g., inside a false .IF block), just calculate size to advance PC
-			assembler.currentPC += this.calculateDirectiveSize(assembler, tokenIndex);
+			assembler.currentPC += this.calculateDirectiveSize(assembler, context.tokenIndex);
 		}
 
-		return assembler.skipToEndOfLine(tokenIndex);
+		return context.tokenIndex;
 	}
 
 	private calculateDirectiveSize(assembler: Assembler, tokenIndex: number): number {
@@ -62,15 +62,17 @@ export class DataDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeDataDirective(assembler: Assembler, tokenIndex: number): number[] {
-		const argTokens = assembler.getInstructionTokens(tokenIndex + 1);
+	private encodeDataDirective(assembler: Assembler, context: DirectiveContext): number[] {
+		const argTokens = assembler.getInstructionTokens(context.tokenIndex + 1);
 		const outputBytes: number[] = [];
 		let currentExpression: Token[] = [];
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
 
-			const value = assembler.expressionEvaluator.evaluate(currentExpression, { pc: assembler.currentPC });
+			const value = assembler.expressionEvaluator.evaluateAsNumber(currentExpression, context.evaluationContext);
+			// This check is now redundant due to evaluateAsNumber, but good for safety
+			if (typeof value !== "number") throw new Error("Data directive expression must evaluate to a number.");
 			for (let i = 0; i < this.bytesPerElement; i++) {
 				outputBytes.push((value >> (i * 8)) & 0xff);
 			}

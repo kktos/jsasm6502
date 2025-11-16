@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 /** Represents a conditional block state. */
 interface ConditionalBlock {
@@ -10,34 +10,31 @@ interface ConditionalBlock {
 export class ConditionalDirective implements IDirective {
 	private conditionalStack: ConditionalBlock[] = [];
 
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		this.handleConditional(assembler, tokenIndex);
-		return assembler.skipToEndOfLine(tokenIndex);
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		this.handleConditional(assembler, context);
+		return assembler.skipToEndOfLine(context.tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
-		this.handleConditional(assembler, tokenIndex);
-		return assembler.skipToEndOfLine(tokenIndex);
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
+		this.handleConditional(assembler, context);
+		return context.tokenIndex;
 	}
 
-	/** Manages conditional assembly state (.IF/.ELSE/.END). */
-	private handleConditional(assembler: Assembler, index: number): void {
-		const token = assembler.activeTokens[index];
+	/**
+	 * Manages conditional assembly state (.IF/.ELSE/.END).
+	 * This method is now polymorphic and can be called from either Pass 1 or Pass 2,
+	 * as long as it receives the appropriate context.
+	 */
+	private handleConditional(assembler: Assembler, context: DirectiveContext): void {
+		const { token, tokenIndex, evaluationContext } = context;
 		const directive = token.value.toUpperCase();
 
 		// Only evaluate if we are not inside a non-assembling block
 		const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
 
-		const checkCondition = (startIndex: number): boolean => {
-			const expressionTokens = assembler.getInstructionTokens(startIndex);
-			if (expressionTokens.length === 0) return false;
-
+		const checkCondition = (expressionTokens: any): boolean => {
 			try {
-				const streamState = assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1];
-				const result = assembler.expressionEvaluator.evaluate(expressionTokens, {
-					pc: assembler.currentPC,
-					macroArgs: streamState?.macroArgs,
-				});
+				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, evaluationContext);
 				return result !== 0;
 			} catch (e) {
 				console.warn(
@@ -49,7 +46,8 @@ export class ConditionalDirective implements IDirective {
 
 		switch (directive) {
 			case ".IF": {
-				const condition = shouldEvaluate ? checkCondition(index + 1) : false;
+				const expressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+				const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 				this.conditionalStack.push({ isTrue: condition, hasPassed: condition });
 				break;
 			}
@@ -61,7 +59,8 @@ export class ConditionalDirective implements IDirective {
 				if (topIf.hasPassed) {
 					topIf.isTrue = false;
 				} else {
-					const condition = shouldEvaluate ? checkCondition(index + 1) : false;
+					const expressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+					const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 					topIf.isTrue = condition;
 					topIf.hasPassed = condition;
 				}

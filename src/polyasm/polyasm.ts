@@ -175,7 +175,17 @@ export class Assembler {
 			}
 
 			if (token.type === "DIRECTIVE") {
-				this.currentTokenIndex = this.directiveHandler.handlePassOneDirective(token.value, this.currentTokenIndex);
+				const directiveContext = {
+					token: token,
+					tokenIndex: this.currentTokenIndex,
+					evaluationContext: {
+						pc: this.currentPC,
+						allowForwardRef: true,
+						// macroArgs are not needed in Pass 1
+					},
+				};
+
+				this.currentTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
 				continue;
 			}
 
@@ -189,9 +199,13 @@ export class Assembler {
 
 		while (this.tokenStreamStack.length > 0) {
 			if (this.currentTokenIndex >= this.activeTokens.length) {
-				this.popTokenStream();
+				const poppedStream = this.popTokenStream(false); // Don't emit event yet
+
 				// If we popped the last stream, we're done.
 				if (this.tokenStreamStack.length === 0) break;
+
+				// NOW that the parent stream is active, emit the event.
+				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 				continue;
 			}
 
@@ -212,8 +226,7 @@ export class Assembler {
 
 					if (this.macroDefinitions.has(mnemonic)) {
 						// Macro expansion logic remains
-						// expandMacro pushes a new stream; the loop will handle it.
-						this.expandMacro(this.currentTokenIndex);
+						this.expandMacro(this.currentTokenIndex); // expandMacro now handles stream switching and index advancing.
 						continue;
 					}
 
@@ -280,22 +293,44 @@ export class Assembler {
 					continue;
 				}
 				case "DIRECTIVE": {
-					this.currentTokenIndex = this.directiveHandler.handlePassTwoDirective(token.value, this.currentTokenIndex);
+					const streamBefore = this.tokenStreamStack.length;
+					const directiveContext = {
+						token: token,
+						tokenIndex: this.currentTokenIndex,
+						evaluationContext: {
+							pc: this.currentPC,
+							macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+						},
+					};
+					this.directiveHandler.handlePassTwoDirective(directiveContext);
+
+					if (this.tokenStreamStack.length > streamBefore) {
+						// A new stream was pushed. The active context has changed, so we must start at its beginning.
+						this.currentTokenIndex = 0;
+					} else {
+						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+					}
 					continue;
 				}
 			}
 
-			// If we didn't continue, advance the token index.
-			if (this.currentTokenIndex < this.activeTokens.length) this.currentTokenIndex++;
+			// For any token that isn't a directive or macro (like labels, colons), just advance to the next token.
+			this.currentTokenIndex++;
 		}
 	}
 
+	/** Returns the ID that will be used for the next stream. */
+	public getNextStreamId(): number {
+		return this.streamIdCounter + 1;
+	}
+
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream(newTokens: Token[], macroArgs?: Map<string, Token[]>): number {
+	public pushTokenStream(newTokens: Token[], macroArgs?: Map<string, Token[]>, streamId?: number): number {
 		// Save current position and arguments
 		this.tokenStreamStack[this.tokenStreamStack.length - 1].index = this.currentTokenIndex;
 
-		const newStreamId = ++this.streamIdCounter;
+		const newStreamId = streamId ?? ++this.streamIdCounter;
+		if (streamId) this.streamIdCounter = Math.max(this.streamIdCounter, streamId);
 
 		// Push new context onto the stack
 		this.tokenStreamStack.push({
@@ -312,15 +347,16 @@ export class Assembler {
 	}
 
 	/** Restores the previous stream state after a macro/loop finishes. */
-	private popTokenStream(): void {
+	private popTokenStream(emitEvent = true): StreamState | undefined {
 		const poppedStream = this.tokenStreamStack.pop();
-		if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+		if (poppedStream && emitEvent) this.emitter.emit(`endOfStream:${poppedStream.id}`);
 
 		if (this.tokenStreamStack.length > 0) {
 			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1];
 			this.activeTokens = previousState.tokens;
 			this.currentTokenIndex = previousState.index;
 		}
+		return poppedStream;
 	}
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
@@ -454,6 +490,10 @@ export class Assembler {
 
 		while (i < this.activeTokens.length && this.activeTokens[i].line === startLine) {
 			const token = this.activeTokens[i];
+			// Stop if we hit a block delimiter, as it's not part of the instruction/expression.
+			if (token.type === "LBRACE" || token.type === "RBRACE") {
+				break;
+			}
 			tokens.push(token);
 			i++;
 		}
@@ -474,32 +514,25 @@ export class Assembler {
 	 * and plain '{' / '}' operator tokens emitted by the tokenizer.
 	 */
 	public findMatchingDirective(startIndex: number): number {
-		let depth = 0;
+		let depth = 1; // Start at depth 1 for the initial block.
 		const startToken = this.activeTokens[startIndex];
 		const startDirective = startToken.value.toUpperCase();
 
 		for (let i = startIndex + 1; i < this.activeTokens.length; i++) {
 			const token = this.activeTokens[i];
-			const tokenValue = token.value?.toUpperCase?.() ?? "";
+			const tokenValue = token.value?.toUpperCase() ?? "";
 
 			// Increase depth for nested same directives (.MACRO/.FOR/.REPEAT etc)
-			if (token.type === "DIRECTIVE" && tokenValue === startDirective) {
-				depth++;
-			}
-
-			// Also treat explicit block-start markers '{' (or token types) as nested starts
-			if (token.type === "LBRACE" || token.value === "{") {
+			if ((token.type === "DIRECTIVE" && tokenValue === startDirective) || token.value === "{") {
 				depth++;
 			}
 
 			// Decrease on .END or explicit block end '}' (or token types)
-			if (token.type === "DIRECTIVE" && tokenValue === ".END") {
+			if ((token.type === "DIRECTIVE" && tokenValue === ".END") || token.value === "}") {
 				depth--;
-				if (depth <= 0) return i;
-			}
-			if (token.type === "RBRACE" || token.value === "}") {
-				depth--;
-				if (depth === 0) return i;
+				if (depth === 0) {
+					return i; // Found the matching end.
+				}
 			}
 		}
 

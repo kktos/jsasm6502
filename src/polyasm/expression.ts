@@ -182,14 +182,16 @@ export class ExpressionEvaluator {
 
 				case "IDENTIFIER":
 				case "LABEL": {
+					const value = this.resolveValue(token, context);
+					if (typeof value === "number") {
+						stack.push(value);
+						break;
+					}
+
 					const argTokens = context.macroArgs?.get(token.value.toUpperCase());
 					if (argTokens) {
 						const result = this.evaluate(argTokens, context);
-						if (typeof result !== "number")
-							throw new Error("Macro argument must evaluate to a number in this context.");
-						stack.push(result);
-					} else {
-						stack.push(this.resolveValue(token, context));
+						if (typeof result === "number") stack.push(result);
 					}
 
 					break;
@@ -235,25 +237,26 @@ export class ExpressionEvaluator {
 		return stack[0];
 	}
 
-	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): number {
+	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
 		if (token.type === "NUMBER") {
 			return this.parseNumericArg(token);
 		}
 		if (token.type === "IDENTIFIER" || token.type === "LABEL") {
 			if (token.value === "*") return context.pc;
 
-			const value = this.symbolTable.lookupSymbol(token.value);
-
+			// First, check for macro arguments, as they have the highest precedence.
 			const argTokens = context.macroArgs?.get(token.value.toUpperCase());
 			if (argTokens) {
-				const result = this.evaluate(argTokens, context);
-				if (typeof result !== "number") throw new Error("Macro argument must evaluate to a number in this context.");
-				return result;
+				return this.evaluate(argTokens, context);
 			}
 
-			if (typeof value === "number") return value;
+			// If not a macro argument, look it up in the symbol table.
+			const value = this.symbolTable.lookupSymbol(token.value);
+			if (value !== undefined) {
+				return value;
+			}
 
-			if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references
+			if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
 
 			throw new Error(`Undefined symbol '${token.value}' on line ${token.line}.`);
 		}

@@ -1,15 +1,15 @@
 import type { Assembler } from "../polyasm";
-import type { IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class NamespaceDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, tokenIndex: number): number {
-		this.setNamespace(assembler, tokenIndex);
-		return assembler.skipToEndOfLine(tokenIndex);
+	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
+		this.setNamespace(assembler, context.tokenIndex);
+		return assembler.skipToEndOfLine(context.tokenIndex);
 	}
 
-	public handlePassTwo(assembler: Assembler, tokenIndex: number): number {
-		this.setNamespace(assembler, tokenIndex);
-		return assembler.skipToEndOfLine(tokenIndex);
+	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
+		this.setNamespace(assembler, context.tokenIndex);
+		return context.tokenIndex;
 	}
 
 	private setNamespace(assembler: Assembler, tokenIndex: number): void {
