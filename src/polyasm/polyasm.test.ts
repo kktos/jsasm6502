@@ -75,6 +75,13 @@ Start
 			.db addr
 		}
 	.end
+
+	.align $10, $FF
+
+	.hex
+		0E 60 0B 00 38 43 23 00 ; with comments !!
+		60 6F 0B 00 40 7F 02 00
+	.end
 `;
 
 // MOCK DATA FOR .INCLUDE (Now a raw string)

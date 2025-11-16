@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
@@ -24,6 +24,6 @@ export class IncludeDirective implements IDirective {
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		// .INCLUDE is fully handled in Pass 1, so this is a no-op in Pass 2.
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 }

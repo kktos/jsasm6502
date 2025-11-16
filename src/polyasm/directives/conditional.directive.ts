@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 /** Represents a conditional block state. */
 interface ConditionalBlock {
@@ -17,7 +17,7 @@ export class ConditionalDirective implements IDirective {
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		this.handleConditional(assembler, context);
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	/**

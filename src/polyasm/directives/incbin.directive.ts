@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
@@ -50,6 +50,6 @@ export class IncbinDirective implements IDirective {
 				throw new Error(`Assembly failed on line ${token.line}: Binary include failed.`);
 			}
 		}
-		return tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 }

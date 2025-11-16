@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
@@ -27,6 +27,6 @@ export class OrgDirective implements IDirective {
 		}
 
 		// The main loop handles index advancement for directives
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 }

@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 import type { Token } from "../lexer/lexer.class";
 
 export class DataDirective implements IDirective {
@@ -24,7 +24,7 @@ export class DataDirective implements IDirective {
 			assembler.currentPC += this.calculateDirectiveSize(assembler, context.tokenIndex);
 		}
 
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	private calculateDirectiveSize(assembler: Assembler, tokenIndex: number): number {

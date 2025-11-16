@@ -2,6 +2,9 @@ import type { Assembler } from "../polyasm";
 import type { Token } from "../lexer/lexer.class";
 import type { EvaluationContext } from "../expression";
 
+/** A special return value for directive handlers to signal default "next line" behavior. */
+export const ADVANCE_TO_NEXT_LINE = -1;
+
 /** Defines the context passed to a directive handler. */
 export interface DirectiveContext {
 	token: Token;

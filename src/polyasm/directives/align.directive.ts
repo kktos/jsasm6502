@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 import type { Token } from "../lexer/lexer.class";
 
 export class AlignDirective implements IDirective {
@@ -33,7 +33,7 @@ export class AlignDirective implements IDirective {
 
 		try {
 			const boundary = assembler.expressionEvaluator.evaluateAsNumber(boundaryTokens, evaluationContext);
-			if (boundary <= 0) return context.tokenIndex;
+			if (boundary <= 0) return ADVANCE_TO_NEXT_LINE;
 
 			const fillerValue =
 				valueTokens.length > 0
@@ -55,7 +55,7 @@ export class AlignDirective implements IDirective {
 			console.error(`ERROR on line ${token.line}: Failed to evaluate .ALIGN expression. ${e}`);
 		}
 
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	/**

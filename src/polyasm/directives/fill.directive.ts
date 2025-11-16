@@ -1,5 +1,5 @@
 import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 import type { Token } from "../lexer/lexer.class";
 
 export class FillDirective implements IDirective {
@@ -43,7 +43,7 @@ export class FillDirective implements IDirective {
 
 		assembler.currentPC += count;
 
-		return context.tokenIndex;
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	/**

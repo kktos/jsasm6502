@@ -5,6 +5,7 @@ import { DirectiveHandler } from "./directives/handler";
 import { type Token, AssemblyLexer } from "./lexer/lexer.class";
 import { EventEmitter } from "events";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
+import { ADVANCE_TO_NEXT_LINE } from "./directives/directive.interface";
 
 /** Defines the state of an active token stream. */
 interface StreamState {
@@ -302,13 +303,17 @@ export class Assembler {
 							macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
 						},
 					};
-					this.directiveHandler.handlePassTwoDirective(directiveContext);
+					const nextTokenIndex = this.directiveHandler.handlePassTwoDirective(directiveContext);
 
 					if (this.tokenStreamStack.length > streamBefore) {
 						// A new stream was pushed. The active context has changed, so we must start at its beginning.
 						this.currentTokenIndex = 0;
-					} else {
+					} else if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
+						// Directive requested default "next line" behavior.
 						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+					} else {
+						// Directive is a block and has returned the exact index to continue from.
+						this.currentTokenIndex = nextTokenIndex;
 					}
 					continue;
 				}

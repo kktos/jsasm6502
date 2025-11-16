@@ -15,6 +15,7 @@ import { MacroDirective } from "./macro/macro.directive";
 import { LoopDirective } from "./loop.directive";
 import { FillDirective } from "./fill.directive";
 import { AlignDirective } from "./align.directive";
+import { HexDirective } from "./hex.directive";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext } from "./directive.interface";
 
@@ -26,17 +27,21 @@ export class DirectiveHandler {
 		this.assembler = assembler;
 		this.directiveMap = new Map();
 
-		// Register all directive handlers
 		this.register(".ORG", new OrgDirective());
 		this.register(".INCLUDE", new IncludeDirective());
 		this.register(".INCBIN", new IncbinDirective());
 		this.register(".NAMESPACE", new NamespaceDirective());
-		this.register(".DB", new DataDirective(1)); // Define Byte (1 byte)
-		this.register(".DW", new DataDirective(2)); // Define Word (2 bytes)
-		this.register(".DL", new DataDirective(4)); // Define Long (4 bytes)
 		this.register(".MACRO", new MacroDirective());
 
-		const conditionalHandler = new ConditionalDirective(); // This instance will now hold the conditional state
+		this.register(".DB", new DataDirective(1)); // Define Byte (1 byte)
+		this.register(".BYTE", new DataDirective(1)); // Define Byte (1 byte)
+		this.register(".DW", new DataDirective(2)); // Define Word (2 bytes)
+		this.register(".WORD", new DataDirective(2)); // Define Word (2 bytes)
+		this.register(".DL", new DataDirective(4)); // Define Long (4 bytes)
+		this.register(".LONG", new DataDirective(4)); // Define Long (4 bytes)
+		this.register(".HEX", new HexDirective());
+
+		const conditionalHandler = new ConditionalDirective();
 		this.register(".IF", conditionalHandler);
 		this.register(".ELSEIF", conditionalHandler);
 		this.register(".ELSE", conditionalHandler);
