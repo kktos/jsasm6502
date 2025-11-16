@@ -20,7 +20,7 @@ export class HexDirective implements IDirective {
 		const { token, tokenIndex } = context;
 		const [hexString, endIndex] = this.extractHexData(assembler, tokenIndex);
 
-		try {
+		// try {
 			const cleanedString = hexString.replace(/\s/g, "");
 			if (cleanedString.length % 2 !== 0) {
 				throw new Error("Hex data must have an even number of digits.");
@@ -40,9 +40,9 @@ export class HexDirective implements IDirective {
 				assembler.outputBuffer.push(...bytes);
 			}
 			assembler.currentPC += bytes.length;
-		} catch (e) {
-			console.error(`ERROR on line ${token.line}: Failed to parse .HEX data. ${e}`);
-		}
+		// } catch (e) {
+		// 	console.error(`ERROR on line ${token.line}: Failed to parse .HEX data. ${e}`);
+		// }
 
 		return endIndex + 1;
 	}
