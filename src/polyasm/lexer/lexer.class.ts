@@ -42,6 +42,7 @@ export class AssemblyLexer {
 	private line = 1;
 	private column = 1;
 	private length = 0;
+	private lastToken: Token | null = null;
 
 	// constructor(source: string) {
 	// 	this.source = source;
@@ -54,10 +55,12 @@ export class AssemblyLexer {
 		this.length = source.length;
 
 		const tokens: Token[] = [];
+		this.lastToken = null;
 
 		while (this.pos < this.length) {
 			const token = this.nextToken();
 			if (token) {
+				this.lastToken = token;
 				tokens.push(token);
 				if (token.type === "EOF") break;
 			}
@@ -169,8 +172,14 @@ export class AssemblyLexer {
 		// Minus or negative number
 		if (ch === "-") {
 			this.advance();
-			// Lookahead: if followed by digit, it's a number
-			if (this.isDigit(this.peek())) {
+			// A minus is a negative number if it's at the start of an expression
+			// (no previous token) or follows an operator, comma, or parenthesis.
+			const isUnary =
+				!this.lastToken ||
+				this.lastToken.type === "OPERATOR" ||
+				this.lastToken.type === "COMMA" ||
+				this.lastToken.value === "(";
+			if (isUnary && this.isDigit(this.peek())) {
 				return this.scanNumber(startLine, startColumn, true);
 			}
 			// return this.makeToken("MINUS", "-", startLine, startColumn);

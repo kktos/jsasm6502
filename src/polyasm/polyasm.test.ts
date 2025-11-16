@@ -68,7 +68,7 @@ Start
 	.db $AA ^ $FF
 	.db $81 & $F0
 	.db $01 | $20
-	.fill 16-3, $FF
+	.align $20, $FF
 	.for addr of [1,2,3,0x45,$E0,$55,$10,0b1010_1010,%1000_0001] as idx
 		.db idx
 		.repeat 3 as idx2 {

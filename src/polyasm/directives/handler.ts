@@ -14,6 +14,7 @@ import { DataDirective } from "./data.directive";
 import { MacroDirective } from "./macro/macro.directive";
 import { LoopDirective } from "./loop.directive";
 import { FillDirective } from "./fill.directive";
+import { AlignDirective } from "./align.directive";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext } from "./directive.interface";
 
@@ -49,6 +50,8 @@ export class DirectiveHandler {
 		this.register(".FILL", fillHandler);
 		this.register(".DS", fillHandler);
 		this.register(".RES", fillHandler);
+
+		this.register(".ALIGN", new AlignDirective());
 	}
 
 	private register(name: string, handler: IDirective): void {

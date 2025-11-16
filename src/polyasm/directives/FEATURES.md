@@ -77,6 +77,12 @@ Directives control the assembly process.
     ScreenBuffer:
       .RES 1024, $20 ; Reserves 1024 bytes, filled with spaces
     ```
+*   **`.ALIGN <boundary> [, <value>]`**: Aligns the program counter to the next address that is a multiple of `<boundary>`. The skipped bytes are filled with `<value>`, which defaults to `0x00`.
+    ```asm
+    .ALIGN 256 ; PC will be advanced to the next $xx00 address
+    .ALIGN 4, $EA ; Align to a 4-byte boundary, filling with NOPs
+    PaletteData: .DB ...
+    ```
 
 ### File Inclusion
 
