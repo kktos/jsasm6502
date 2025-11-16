@@ -70,6 +70,13 @@ Directives control the assembly process.
       .DB "Hello!", 0  ; Define a null-terminated string
       .DW $1000, MyLabel, * + 10
     ```
+*   **`.FILL <count> [, <value>]`**: Fills a block of memory. It reserves `<count>` bytes, with each byte initialized to `<value>`. If `<value>` is omitted, it defaults to `0`. `.DS` and `.RES` are aliases for `.FILL`.
+    ```asm
+    ZeroPageBuffer: .ORG $80
+      .FILL 128  ; Reserves 128 bytes, filled with 0
+    ScreenBuffer:
+      .RES 1024, $20 ; Reserves 1024 bytes, filled with spaces
+    ```
 
 ### File Inclusion
 

@@ -65,9 +65,14 @@ const source6502 = `
 Start
 	.ORG $2000
 
-	.for addr of [1,2,3,$45,$E0,$55,$10,$20,$30] as idx
+	.db $AA ^ $FF
+	.db $81 & $F0
+	.db $01 | $20
+	.fill 16-3, $FF
+	.for addr of [1,2,3,0x45,$E0,$55,$10,0b1010_1010,%1000_0001] as idx
+		.db idx
 		.repeat 3 as idx2 {
-			.dw  idx
+			.db addr
 		}
 	.end
 `;

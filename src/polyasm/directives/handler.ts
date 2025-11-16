@@ -13,6 +13,7 @@ import { ConditionalDirective } from "./conditional.directive";
 import { DataDirective } from "./data.directive";
 import { MacroDirective } from "./macro/macro.directive";
 import { LoopDirective } from "./loop.directive";
+import { FillDirective } from "./fill.directive";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext } from "./directive.interface";
 
@@ -43,6 +44,11 @@ export class DirectiveHandler {
 		const loopHandler = new LoopDirective();
 		this.register(".FOR", loopHandler);
 		this.register(".REPEAT", loopHandler);
+
+		const fillHandler = new FillDirective();
+		this.register(".FILL", fillHandler);
+		this.register(".DS", fillHandler);
+		this.register(".RES", fillHandler);
 	}
 
 	private register(name: string, handler: IDirective): void {

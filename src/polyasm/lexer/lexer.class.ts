@@ -142,6 +142,15 @@ export class AssemblyLexer {
 			case "*":
 				this.advance();
 				return this.makeToken("OPERATOR", "*", startLine, startColumn);
+			case "&":
+				this.advance();
+				return this.makeToken("OPERATOR", "&", startLine, startColumn);
+			case "|":
+				this.advance();
+				return this.makeToken("OPERATOR", "|", startLine, startColumn);
+			case "^":
+				this.advance();
+				return this.makeToken("OPERATOR", "^", startLine, startColumn);
 
 			case "{":
 				this.advance();
@@ -286,23 +295,32 @@ export class AssemblyLexer {
 	private scanNumber(line: number, column: number, negative = false): Token {
 		const start = negative ? this.pos - 1 : this.pos;
 
-		// Hex number: $1234, $ABCD
-		if (this.peek() === "$") {
+		const firstChar = this.peek();
+		const secondChar = this.peekAhead(1).toLowerCase();
+
+		// Handle 0x... and $... for hexadecimal
+		if (firstChar === "$" || (firstChar === "0" && secondChar === "x")) {
+			// Skip prefix ($ or 0x)
 			this.advance();
-			while (this.isHexDigit(this.peek())) {
+			if (firstChar === "0") this.advance();
+
+			while (this.isHexDigit(this.peek()) || this.peek() === "_") {
 				this.advance();
 			}
 		}
-		// Binary number: %10101010
-		else if (this.peek() === "%") {
+		// Handle 0b... and %... for binary
+		else if (firstChar === "%" || (firstChar === "0" && secondChar === "b")) {
+			// Skip prefix (% or 0b)
 			this.advance();
-			while (this.peek() === "0" || this.peek() === "1") {
+			if (firstChar === "0") this.advance();
+
+			while (this.peek() === "0" || this.peek() === "1" || this.peek() === "_") {
 				this.advance();
 			}
 		}
-		// Decimal number: 42, 1234
+		// Handle decimal
 		else {
-			while (this.isDigit(this.peek())) {
+			while (this.isDigit(this.peek()) || this.peek() === "_") {
 				this.advance();
 			}
 		}

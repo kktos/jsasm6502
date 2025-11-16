@@ -87,6 +87,9 @@ export class ExpressionEvaluator {
 		if (op === "UNARY_MINUS") return 4; // Highest precedence
 		if (op === "*" || op === "/") return 3;
 		if (op === "+" || op === "-") return 2;
+		if (op === "&") return 1;
+		if (op === "^") return 1;
+		if (op === "|") return 1;
 		return 0;
 	}
 
@@ -118,7 +121,7 @@ export class ExpressionEvaluator {
 					} else {
 						this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
 					}
-				} else if (op === "*" || op === "/") {
+				} else if (op === "*" || op === "/" || op === "&" || op === "|" || op === "^") {
 					this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
 				} else if (op === "(") {
 					operatorStack.push(token);
@@ -222,6 +225,15 @@ export class ExpressionEvaluator {
 								if (right === 0) throw new Error("Division by zero.");
 								stack.push(Math.floor(left / right)); // Integer division
 								break;
+							case "&":
+								stack.push(left & right);
+								break;
+							case "|":
+								stack.push(left | right);
+								break;
+							case "^":
+								stack.push(left ^ right);
+								break;
 							default:
 								throw new Error(`Unknown operator: ${token.value}`);
 						}
@@ -264,9 +276,17 @@ export class ExpressionEvaluator {
 	}
 
 	private parseNumericArg(token: Token): number {
-		const value = token.value.replace(/\s/g, "");
+		// First, remove all whitespace and underscore separators to get a clean string.
+		const value = token.value.replace(/[\s_]/g, "");
+
+		// Handle hexadecimal with either '$' or '0x' prefix.
 		if (value.startsWith("$")) return Number.parseInt(value.substring(1), 16);
+		if (value.toLowerCase().startsWith("0x")) return Number.parseInt(value.substring(2), 16);
+
+		// Handle binary with either '%' or '0b' prefix.
 		if (value.startsWith("%")) return Number.parseInt(value.substring(1), 2);
+		if (value.toLowerCase().startsWith("0b")) return Number.parseInt(value.substring(2), 2);
+
 		return Number.parseInt(value, 10);
 	}
 }
