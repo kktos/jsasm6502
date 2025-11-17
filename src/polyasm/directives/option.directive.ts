@@ -9,7 +9,8 @@ export class OptionDirective implements IDirective {
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		// this.setOption(assembler, context);
+		// Options are handled in Pass 1 (or a pre-pass for lexer options).
+		// This is a no-op in Pass 2.
 		return ADVANCE_TO_NEXT_LINE;
 	}
 

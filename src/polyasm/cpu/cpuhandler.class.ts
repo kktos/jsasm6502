@@ -6,9 +6,6 @@ import type { Token } from "../lexer/lexer.class";
  */
 export type AddressingMode = string;
 
-/** Maps an addressing mode to its [opcode, byte size] tuple. */
-type InstructionModeMap = Map<AddressingMode, [number, number]>;
-
 export interface CPUHandler {
 	cpuType: "6502" | "65816" | "6809" | "ARM_RISC";
 
@@ -25,7 +22,7 @@ export interface CPUHandler {
 	/** Encodes the instruction into raw bytes, typically relying on modeInfo calculated in Pass 1. */
 	encodeInstruction(
 		tokens: Token[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number },
+		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
 	): number[];
 
 	getPCSize(): number;

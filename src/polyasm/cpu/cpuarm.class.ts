@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/tokenizer";
+import type { Token } from "../lexer/lexer.class";
 import type { CPUHandler, AddressingMode } from "./cpuhandler.class";
 
 export class CpuArmRiscHandler implements CPUHandler {
@@ -120,14 +120,14 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 */
 	encodeInstruction(
 		tokens: Token[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number },
+		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; pc: number },
 	): number[] {
 		// We switch on the ARM specific mode strings
 		const mnemonic = tokens[0].value.toUpperCase();
 
 		if (modeInfo.mode === this.ARM_MODES.BRANCH) {
 			const targetAddress = modeInfo.resolvedAddress;
-			const pc = 0x0000;
+			const pc = modeInfo.pc;
 			const offset = (targetAddress - (pc + 8)) >> 2;
 			const opcode = (this.instructionBases.get("B") as number) | (offset & 0x00ffffff);
 

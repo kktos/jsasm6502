@@ -46,12 +46,20 @@ export class AssemblyLexer {
 	private line = 1;
 	private column = 1;
 	private length = 0;
+	private localLabelChar = ":";
 	private lastToken: Token | null = null;
+
+	constructor(options?: { localLabelStyle?: string }) {
+		if (options?.localLabelStyle) {
+			this.localLabelChar = options.localLabelStyle;
+		}
+	}
 
 	// Main tokenization loop - optimized for V8's speculative optimization
 	public tokenize(source: string): Token[] {
 		this.source = source;
 		this.length = source.length;
+
 		this.pos = 0;
 		this.line = 1;
 		this.column = 1;
@@ -89,8 +97,8 @@ export class AssemblyLexer {
 		}
 
 		// Named or Nameless Local Labels
-		if (ch === ":") {
-			return this.scanLocalLabel(startLine, startColumn);
+		if (ch === this.localLabelChar) {
+			return this.scanLocalLabel(startLine, startColumn, ch);
 		}
 
 		// Check for // or /* comments
@@ -454,8 +462,8 @@ export class AssemblyLexer {
 		return this.makeToken("NUMBER", String(numericValue), line, column, numberString);
 	}
 
-	private scanLocalLabel(line: number, column: number): Token {
-		this.advance(); // consume ':'
+	private scanLocalLabel(line: number, column: number, char: string): Token {
+		this.advance(); // consume local label char
 		const nextChar = this.peek();
 
 		if (this.isAlpha(nextChar)) {
@@ -493,7 +501,7 @@ export class AssemblyLexer {
 		// It's a standalone nameless label definition ':'
 		// The colon has already been consumed.
 		// We need to check if it's followed by a colon, which would make it a '::' operator for namespacing.
-		// For now, we assume it's a definition.
+		// For now, we assume it's a definition and use the standard ":" value for the token.
 		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
 	}
 

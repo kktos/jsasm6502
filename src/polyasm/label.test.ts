@@ -78,4 +78,46 @@ describe("Label References", () => {
 			);
 		});
 	});
+
+	describe("Local Labels with different prefixes", () => {
+		it("should resolve nameless label with a custom prefix from .OPTION", () => {
+			const { assembler } = setup();
+			const source = `
+				.OPTION local_label_style ":"
+				.ORG $1000
+				: ; Anonymous label at $1000
+				LDA :-
+			`;
+			const machineCode = assembler.assemble(source);
+			expect(machineCode).toEqual([0xad, 0x00, 0x10]); // JMP $1000
+		});
+	});
+
+	describe("Named Local Labels", () => {
+		it("should resolve a named local label within its scope", () => {
+			const { assembler } = setup();
+			const source = `
+				.ORG $1000
+				FillMemory:
+					LDX #$00
+				:loop
+					STA $2000,X
+					INX
+					BNE :loop
+					RTS
+			`;
+			const machineCode = assembler.assemble(source);
+			expect(machineCode).toEqual([
+				0xa2,
+				0x00, // LDX #$00
+				0x9d,
+				0x00,
+				0x20, // STA $2000,X
+				0xe8, // INX
+				0xd0,
+				0xfa, // BNE :loop (to $1002)
+				0x60, // RTS
+			]);
+		});
+	});
 });

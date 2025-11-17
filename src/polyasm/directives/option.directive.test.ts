@@ -1,0 +1,78 @@
+import { describe, expect, it, vi } from "vitest";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Assembler, type FileHandler } from "../polyasm";
+
+class MockFileHandler implements FileHandler {
+	readSourceFile(filename: string): string {
+		throw new Error(`Mock file not found: "${filename}"`);
+	}
+
+	readBinaryFile(filename: string): number[] {
+		throw new Error(`Mock bin file not found: ${filename}`);
+	}
+}
+
+describe(".OPTION Directive", () => {
+	const createAssembler = () => {
+		const mockFileHandler = new MockFileHandler();
+		const cpu6502 = new Cpu6502Handler();
+		return new Assembler(cpu6502, mockFileHandler);
+	};
+
+	it("should set a valid option during pass one", () => {
+		const assembler = createAssembler();
+		const source = `
+            .OPTION local_label_style "@"
+        `;
+		assembler.assemble(source);
+		expect(assembler.options.get("local_label_style")).toBe("@");
+	});
+
+	it("should log a warning for an unknown option", () => {
+		const assembler = createAssembler();
+		const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const source = `
+            .OPTION unknown_option 123
+        `;
+		assembler.assemble(source);
+		expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[OPTION] Unknown option 'unknown_option'"));
+		consoleSpy.mockRestore();
+	});
+
+	it("should throw an error for invalid syntax (not enough arguments)", () => {
+		const assembler = createAssembler();
+		const source = `
+            .OPTION local_label_style
+        `;
+		expect(() => assembler.assemble(source)).toThrow(
+			"Invalid .OPTION syntax on line 2. Expected: .OPTION <name> <value>",
+		);
+	});
+
+	it("should throw an error for an invalid value type", () => {
+		const assembler = createAssembler();
+		const source = `
+            .OPTION local_label_style 123
+        `;
+		expect(() => assembler.assemble(source)).toThrow(
+			"Value for 'local_label_style' must be a single character string on line 2.",
+		);
+	});
+
+	it("should throw an error for an invalid value length", () => {
+		const assembler = createAssembler();
+		const source = `
+            .OPTION local_label_style "@@"
+        `;
+		expect(() => assembler.assemble(source)).toThrow(
+			"Value for 'local_label_style' must be a single character string on line 2.",
+		);
+	});
+
+	// it("should not process the option in pass two", () => {
+	// 	const assembler = createAssembler();
+	// 	const setOptionSpy = vi.spyOn(assembler.directiveHandler.directiveMap.get(".OPTION") as any, "setOption");
+	// 	assembler.assemble('.OPTION local_label_style "@"');
+	// 	expect(setOptionSpy).toHaveBeenCalledTimes(1);
+	// });
+});

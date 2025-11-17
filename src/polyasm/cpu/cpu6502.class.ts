@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/tokenizer";
+import type { Token } from "../lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 
 export class Cpu6502Handler implements CPUHandler {
@@ -16,6 +16,7 @@ export class Cpu6502Handler implements CPUHandler {
 		ZEROPAGE_Y: "M6502_ZEROPAGE_Y",
 		INDIRECT_X: "M6502_INDIRECT_X",
 		INDIRECT_Y: "M6502_INDIRECT_Y",
+		RELATIVE: "M6502_RELATIVE",
 	};
 
 	// Simplified Instruction Definitions for LDA/STA: {mode_string: [opcode, bytes]}
@@ -45,7 +46,30 @@ export class Cpu6502Handler implements CPUHandler {
 				[this.M6502_MODES.INDIRECT_Y, [0x91, 2]], // Corrected STA Indirect Y (91)
 			]),
 		],
+		[
+			"LDX",
+			new Map([
+				[this.M6502_MODES.IMMEDIATE, [0xa2, 2]],
+				[this.M6502_MODES.ZEROPAGE, [0xa6, 2]],
+				[this.M6502_MODES.ZEROPAGE_Y, [0xb6, 2]],
+				[this.M6502_MODES.ABSOLUTE, [0xae, 3]],
+				[this.M6502_MODES.ABSOLUTE_Y, [0xbe, 3]],
+			]),
+		],
+		["INX", new Map([[this.M6502_MODES.IMPLIED, [0xe8, 1]]])],
+		["BNE", new Map([[this.M6502_MODES.RELATIVE, [0xd0, 2]]])],
 		["RTS", new Map([[this.M6502_MODES.IMPLIED, [0x60, 1]]])],
+	]);
+
+	private branchMnemonics = new Set([
+		"BPL", // Branch on PLus
+		"BMI", // Branch on MInus
+		"BVC", // Branch on oVerflow Clear
+		"BVS", // Branch on oVerflow Set
+		"BCC", // Branch on Carry Clear
+		"BCS", // Branch on Carry Set
+		"BNE", // Branch on Not Equal
+		"BEQ", // Branch on EQual
 	]);
 
 	getPCSize(): number {
@@ -142,6 +166,13 @@ export class Cpu6502Handler implements CPUHandler {
 			}
 		}
 
+		// 5. Relative Mode (Branches)
+		if (this.branchMnemonics.has(baseMnemonic)) {
+			const resolvedAddress = resolveValue(operandTokens);
+			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.RELATIVE) || [0x00, 2];
+			return { mode: this.M6502_MODES.RELATIVE, opcode, bytes, resolvedAddress };
+		}
+
 		// 5. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
 		const resolvedAddress = resolveValue(operandTokens);
 		const isZP = resolvedAddress >= 0x00 && resolvedAddress <= 0xff;
@@ -161,11 +192,27 @@ export class Cpu6502Handler implements CPUHandler {
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
 	encodeInstruction(
 		tokens: Token[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number },
+		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
 	): number[] {
 		// We now switch on the mode string defined internally by this handler.
 		const mnemonic = tokens[0].value.toUpperCase();
 
+		if (modeInfo.mode === this.M6502_MODES.RELATIVE) {
+			const targetAddress = modeInfo.resolvedAddress;
+			const instructionSize = modeInfo.bytes; // Should be 2 for branch instructions
+			const offset = targetAddress - (modeInfo.pc + instructionSize);
+
+			// Check if the offset is within the valid 8-bit signed range (-128 to 127)
+			if (offset < -128 || offset > 127) {
+				throw new Error(
+					`Branch target out of range. Target: $${targetAddress.toString(16)}, PC: $${modeInfo.pc.toString(16)}, Offset: ${offset}`,
+				);
+			}
+
+			// Convert to 8-bit two's complement if negative
+			const finalOffset = offset < 0 ? offset + 256 : offset;
+			return [modeInfo.opcode, finalOffset];
+		}
 		// Determine bytes based on the mode string (ZP modes are 2 bytes, ABS modes are 3)
 		let bytesNeeded = 0;
 		if (modeInfo.mode.includes("IMPLIED")) {

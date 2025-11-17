@@ -44,7 +44,7 @@ export class Assembler {
 	private streamIdCounter = 0;
 
 	public expressionEvaluator: ExpressionEvaluator;
-	private directiveHandler: DirectiveHandler;
+	public directiveHandler: DirectiveHandler;
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler) {
@@ -63,12 +63,15 @@ export class Assembler {
 	}
 
 	public assemble(source: string): number[] {
-		// this.activeTokens = tokenize(source);
+		this.options.set("local_label_style", ":");
+
+		this.lexer = new AssemblyLexer({ localLabelStyle: ":" });
 		this.activeTokens = this.lexer.tokenize(source);
 
 		console.log(this.activeTokens);
 
 		this.passOne();
+
 		this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		this.outputBuffer = [];
 		this.currentTokenIndex = 0;
@@ -76,7 +79,9 @@ export class Assembler {
 		this.streamIdCounter = 0;
 		this.tokenStreamStack.push({ id: this.streamIdCounter, tokens: this.activeTokens, index: 0 });
 		this.activeTokens = this.tokenStreamStack[this.tokenStreamStack.length - 1].tokens;
+
 		this.passTwo();
+
 		console.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
 		console.log(`Final PC location: $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
 		return this.outputBuffer;
@@ -96,6 +101,7 @@ export class Assembler {
 
 	private passOne(): void {
 		console.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
+
 		this.currentPC = 0x0000;
 		this.currentTokenIndex = 0;
 		this.anonymousLabels = [];
@@ -167,6 +173,7 @@ export class Assembler {
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 							pc: this.currentPC,
 							allowForwardRef: true,
+							currentGlobalLabel: this.lastGlobalLabel,
 							options: this.options,
 						}),
 					);
@@ -188,7 +195,14 @@ export class Assembler {
 			}
 
 			if (token.type === "LOCAL_LABEL") {
-				this.symbolTable.addSymbol(token.value, this.currentPC, false);
+				if (!this.lastGlobalLabel) {
+					console.error(
+						`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`,
+					);
+				} else {
+					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
+					this.symbolTable.addSymbol(qualifiedName, this.currentPC, false);
+				}
 				this.currentTokenIndex++;
 				continue;
 			}
@@ -206,6 +220,7 @@ export class Assembler {
 					evaluationContext: {
 						pc: this.currentPC,
 						allowForwardRef: true,
+						currentGlobalLabel: this.lastGlobalLabel,
 						options: this.options,
 					},
 				};
@@ -276,15 +291,15 @@ export class Assembler {
 									pc: this.currentPC,
 									macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
 									assembler: this,
+									currentGlobalLabel: this.lastGlobalLabel,
 									options: this.options,
 								}),
 							);
 
 							// 2. Encode Bytes using resolved info
 							const encodedBytes = this.cpuHandler.encodeInstruction(instructionTokens, {
-								mode: modeInfo.mode,
-								resolvedAddress: modeInfo.resolvedAddress,
-								opcode: modeInfo.opcode,
+								...modeInfo,
+								pc: this.currentPC,
 							});
 
 							// 3. LOGGING (New location)

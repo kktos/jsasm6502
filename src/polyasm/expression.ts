@@ -63,6 +63,7 @@ export interface EvaluationContext {
 	pc: number;
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
+	currentGlobalLabel?: string | null;
 	options?: Map<string, string>;
 }
 
@@ -146,6 +147,7 @@ export class ExpressionEvaluator {
 				case "STRING":
 				case "IDENTIFIER":
 				case "LABEL":
+				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF":
 					// An operand should not follow another operand without an operator in between.
 					if (
@@ -153,6 +155,7 @@ export class ExpressionEvaluator {
 						(lastToken.type === "NUMBER" ||
 							lastToken.type === "IDENTIFIER" ||
 							lastToken.type === "LABEL" ||
+							lastToken.type === "LOCAL_LABEL" ||
 							lastToken.type === "STRING" ||
 							lastToken.type === "ANONYMOUS_LABEL_REF")
 					) {
@@ -295,6 +298,7 @@ export class ExpressionEvaluator {
 
 				case "IDENTIFIER":
 				case "LABEL":
+				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF": {
 					const value = this.resolveValue(token, context);
 					if (typeof value === "number" || typeof value === "string") {
@@ -442,62 +446,87 @@ export class ExpressionEvaluator {
 	}
 
 	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
-		if (token.type === "NUMBER") {
-			return this.parseNumericArg(token);
-		}
-		if (token.type === "STRING") {
-			return token.value;
-		}
-		if (token.type === "IDENTIFIER" || token.type === "LABEL" || token.type === "LOCAL_LABEL") {
-			if (token.value === "*") return context.pc;
+		switch (token.type) {
+			case "NUMBER":
+				return this.parseNumericArg(token);
 
-			// First, check for macro arguments, as they have the highest precedence.
-			const argTokens = context.macroArgs?.get(token.value.toUpperCase());
-			if (argTokens) {
-				return this.evaluate(argTokens, context);
-			}
+			case "STRING":
+				return token.value;
 
-			// If not a macro argument, look it up in the symbol table.
-			const value = this.symbolTable.lookupSymbol(token.value);
-			if (value !== undefined) {
-				return value;
-			}
+			case "IDENTIFIER":
+			case "LABEL": {
+				if (token.value === "*") return context.pc;
 
-			if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
-
-			// If we are here, the symbol is not defined. Let's find suggestions.
-			const suggestions = this.findSimilarSymbols(token.value);
-			let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
-			if (suggestions.length > 0) {
-				errorMessage += ` Did you mean '${suggestions[0]}'?`;
-			}
-			throw new Error(errorMessage);
-		}
-		if (token.type === "ANONYMOUS_LABEL_REF") {
-			if (!context.assembler) {
-				throw new Error("Internal error: Assembler context not provided for anonymous label resolution.");
-			}
-			const labels = context.assembler.anonymousLabels;
-			const direction = token.value.startsWith("-") ? -1 : 1;
-			const count = Number.parseInt(token.value.substring(1), 10);
-
-			if (direction === -1) {
-				// Backward reference: Find the last label defined *before* the current PC.
-				const relevantLabels = labels.filter((pc) => pc < context.pc);
-				if (relevantLabels.length < count) {
-					throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+				// First, check for macro arguments, as they have the highest precedence.
+				const argTokens = context.macroArgs?.get(token.value.toUpperCase());
+				if (argTokens) {
+					return this.evaluate(argTokens, context);
 				}
-				return relevantLabels[relevantLabels.length - count];
+
+				// If not a macro argument, look it up in the symbol table.
+				const value = this.symbolTable.lookupSymbol(token.value);
+				if (value !== undefined) {
+					return value;
+				}
+
+				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
+
+				// If we are here, the symbol is not defined. Let's find suggestions.
+				const suggestions = this.findSimilarSymbols(token.value);
+				let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
+				if (suggestions.length > 0) {
+					errorMessage += ` Did you mean '${suggestions[0]}'?`;
+				}
+				throw new Error(errorMessage);
 			}
-			// Forward reference: Find the first label defined *at or after* the current PC.
-			const relevantLabels = labels.filter((pc) => pc >= context.pc);
-			if (relevantLabels.length < count) {
-				// During pass 2, this is a fatal error.
-				throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+
+			case "LOCAL_LABEL": {
+				if (!context.currentGlobalLabel) {
+					throw new Error(
+						`Local label reference ':${token.value}' used without a preceding global label on line ${token.line}.`,
+					);
+				}
+				const qualifiedName = `${context.currentGlobalLabel}.${token.value}`;
+				const value = this.symbolTable.lookupSymbol(qualifiedName);
+				if (value !== undefined) {
+					return value;
+				}
+
+				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
+
+				throw new Error(
+					`Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`,
+				);
 			}
-			return relevantLabels[count - 1];
+
+			case "ANONYMOUS_LABEL_REF": {
+				if (!context.assembler) {
+					throw new Error("Internal error: Assembler context not provided for anonymous label resolution.");
+				}
+				const labels = context.assembler.anonymousLabels;
+				const direction = token.value.startsWith("-") ? -1 : 1;
+				const count = Number.parseInt(token.value.substring(1), 10);
+
+				if (direction === -1) {
+					// Backward reference: Find the last label defined *before* the current PC.
+					const relevantLabels = labels.filter((pc) => pc <= context.pc);
+					if (relevantLabels.length < count) {
+						throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+					}
+					return relevantLabels[relevantLabels.length - count];
+				}
+				// Forward reference: Find the first label defined *at or after* the current PC.
+				const relevantLabels = labels.filter((pc) => pc >= context.pc);
+				if (relevantLabels.length < count) {
+					// During pass 2, this is a fatal error.
+					throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+				}
+				return relevantLabels[count - 1];
+			}
+
+			default:
+				return 0;
 		}
-		return 0;
 	}
 
 	/** Finds symbols with a small Levenshtein distance to the given name. */
