@@ -44,18 +44,16 @@ export class AssemblyLexer {
 	private length = 0;
 	private lastToken: Token | null = null;
 
-	// constructor(source: string) {
-	// 	this.source = source;
-	// 	this.length = source.length;
-	// }
-
 	// Main tokenization loop - optimized for V8's speculative optimization
 	public tokenize(source: string): Token[] {
 		this.source = source;
 		this.length = source.length;
+		this.pos = 0;
+		this.line = 1;
+		this.column = 1;
+		this.lastToken = null;
 
 		const tokens: Token[] = [];
-		this.lastToken = null;
 
 		while (this.pos < this.length) {
 			const token = this.nextToken();
