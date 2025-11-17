@@ -1,3 +1,4 @@
+import type { Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
@@ -32,7 +33,7 @@ export class ConditionalDirective implements IDirective {
 		// Only evaluate if we are not inside a non-assembling block
 		const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
 
-		const checkCondition = (expressionTokens: any): boolean => {
+		const checkCondition = (expressionTokens: Token[]): boolean => {
 			try {
 				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, evaluationContext);
 				return result !== 0;

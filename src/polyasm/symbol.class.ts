@@ -34,8 +34,8 @@ export class PASymbolTable {
 	/** Pops the current scope from the stack, returning to the parent scope. */
 	popScope(): void {
 		if (this.scopeStack.length > 1) {
-			const oldScopeName = this.scopeStack.pop()!;
-			this.symbols.delete(oldScopeName); // Clean up symbols from the popped scope
+			const oldScopeName = this.scopeStack.pop();
+			if (oldScopeName) this.symbols.delete(oldScopeName);
 		}
 	}
 
@@ -111,8 +111,8 @@ export class PASymbolTable {
 		for (let i = this.scopeStack.length - 1; i >= 0; i--) {
 			const scopeName = this.scopeStack[i];
 			const scope = this.symbols.get(scopeName);
-			if (scope?.has(name)) {
-				const symbol = scope.get(name)!;
+			const symbol = scope?.get(name);
+			if (symbol) {
 				symbol.value = value;
 				return;
 			}

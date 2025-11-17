@@ -196,7 +196,7 @@ export class ExpressionEvaluator {
 						case ")": {
 							let foundMatch = false;
 							while (operatorStack.length > 0) {
-								const topOp = operatorStack.pop()!;
+								const topOp = operatorStack.pop() as Token;
 								if (topOp.value === "(") {
 									foundMatch = true;
 									break;
@@ -215,7 +215,7 @@ export class ExpressionEvaluator {
 		}
 
 		while (operatorStack.length > 0) {
-			const op = operatorStack.pop()!;
+			const op = operatorStack.pop() as Token;
 			if (op.value === "(" || op.value === ")") {
 				throw new Error(`Mismatched parenthesis: unmatched '(' left in stack.`);
 			}
