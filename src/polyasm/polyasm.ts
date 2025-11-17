@@ -24,21 +24,22 @@ export interface FileHandler {
 }
 
 export class Assembler {
+	public lexer: AssemblyLexer;
 	public activeTokens: Token[];
+	public currentTokenIndex = 0;
 	private cpuHandler: CPUHandler;
 	public symbolTable: PASymbolTable;
 	public fileHandler: FileHandler;
 	public currentPC: number;
 	public outputBuffer: number[] = [];
-	public currentTokenIndex = 0;
 	public isAssembling = true;
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
+	public options: Map<string, string> = new Map();
 	public tokenStreamStack: StreamState[] = [];
+	private streamIdCounter = 0;
 	public expressionEvaluator: ExpressionEvaluator;
 	private directiveHandler: DirectiveHandler;
-	public lexer: AssemblyLexer;
 	public emitter: EventEmitter;
-	private streamIdCounter = 0;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler) {
 		this.activeTokens = [];
@@ -113,6 +114,7 @@ export class Assembler {
 						const value = this.expressionEvaluator.evaluate(expressionTokens, {
 							pc: this.currentPC,
 							allowForwardRef: true,
+							options: this.options,
 						});
 						if (Array.isArray(value)) {
 							console.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
@@ -153,7 +155,7 @@ export class Assembler {
 				try {
 					// Try to resolve as a known instruction. If it fails (throws), it's a label.
 					const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-						this.expressionEvaluator.evaluateAsNumber(exprTokens, { pc: this.currentPC, allowForwardRef: true }),
+						this.expressionEvaluator.evaluateAsNumber(exprTokens, { pc: this.currentPC, allowForwardRef: true,options: this.options, }),
 					);
 
 					// SUCCESS: It's an instruction. Advance PC and skip line.
@@ -178,7 +180,7 @@ export class Assembler {
 					evaluationContext: {
 						pc: this.currentPC,
 						allowForwardRef: true,
-						// macroArgs are not needed in Pass 1
+						options: this.options
 					},
 				};
 
@@ -239,6 +241,7 @@ export class Assembler {
 								this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 									pc: this.currentPC,
 									macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+									options: this.options,
 								}),
 							);
 
@@ -297,6 +300,7 @@ export class Assembler {
 						evaluationContext: {
 							pc: this.currentPC,
 							macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+							options: this.options,
 						},
 					};
 					const nextTokenIndex = this.directiveHandler.handlePassTwoDirective(directiveContext);
@@ -406,6 +410,7 @@ export class Assembler {
 						const paramValue = this.expressionEvaluator.evaluate(argTokens, {
 							pc: this.currentPC,
 							macroArgs: argMap,
+							options: this.options,
 						});
 						return String(paramValue);
 					}
@@ -551,6 +556,7 @@ export class Assembler {
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					pc: this.currentPC,
 					macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+					options: this.options,
 				}),
 			);
 			return sizeInfo.bytes;
@@ -570,6 +576,7 @@ export class Assembler {
 			const value = this.expressionEvaluator.evaluate(expressionTokens, {
 				pc: this.currentPC,
 				allowForwardRef: true,
+				options: this.options,
 			});
 			this.symbolTable.addSymbol(symbolToken.value, value, true);
 		} catch (e) {

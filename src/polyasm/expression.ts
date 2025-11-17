@@ -7,6 +7,51 @@
 import type { Token } from "./lexer/lexer.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 
+const PRECEDENCE: Record<string, number> = {
+	// Unary operators (highest precedence)
+	UNARY_MINUS: 9,
+	"!": 9,
+	UNARY_MSB: 9,
+	UNARY_LSB: 9,
+
+	// Multiplicative
+	"*": 8,
+	"/": 8,
+	"%": 8,
+
+	// Additive
+	"+": 7,
+	"-": 7,
+
+	// Bitwise shifts
+	"<<": 6,
+	">>": 6,
+
+	// Relational
+	"<": 5,
+	">": 5,
+	"<=": 5,
+	">=": 5,
+
+	// Equality
+	"=": 4,
+	"==": 4,
+	"!=": 4,
+
+	// Bitwise AND
+	"&": 3,
+
+	// Logical AND
+	"&&": 2,
+
+	// Bitwise XOR
+	"^": 1,
+
+	// Bitwise OR / Logical OR (lowest precedence)
+	"|": 0,
+	"||": 0,
+};
+
 /**
  * Provides the context needed for the expression evaluator to resolve symbols
  * and the current program counter.
@@ -16,6 +61,7 @@ export interface EvaluationContext {
 	pc: number;
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
+	options?: Map<string, string>;
 }
 
 export class ExpressionEvaluator {
@@ -81,21 +127,6 @@ export class ExpressionEvaluator {
 		}
 		evaluateAndPush(); // Push the last element
 		return elements;
-	}
-
-	private getPrecedence(op: string): number {
-		if (op === "UNARY_MINUS" || op === "!") return 9; // Unary operators
-		if (op === "*" || op === "/" || op === "%") return 8; // Multiplicative
-		if (op === "+" || op === "-") return 7; // Additive
-		if (op === "<<" || op === ">>") return 6; // Bitwise shifts
-		if (op === "<" || op === ">" || op === "<=" || op === ">=") return 5; // Relational
-		if (op === "=" || op === "==" || op === "!=") return 4; // Equality
-		if (op === "&") return 3; // Bitwise AND
-		if (op === "&&") return 2; // Logical AND
-		if (op === "^") return 1; // Bitwise XOR
-		if (op === "|") return 0; // Bitwise OR
-		if (op === "||") return 0; // Logical OR
-		return 0;
 	}
 
 	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
@@ -227,13 +258,13 @@ export class ExpressionEvaluator {
 
 	/** Helper function to handle operator precedence during Shunting-Yard. */
 	private pushOperatorWithPrecedence(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
-		const currentPrecedence = this.getPrecedence(token.value);
+		const currentPrecedence = PRECEDENCE[token.value] ?? 0;
 
 		while (operatorStack.length > 0) {
 			const topOp = operatorStack[operatorStack.length - 1];
 			if (topOp.value === "(") break;
 
-			const topPrecedence = this.getPrecedence(topOp.value);
+			const topPrecedence = PRECEDENCE[topOp.value] ?? 0;
 
 			if (topPrecedence >= currentPrecedence) {
 				outputQueue.push(operatorStack.pop() as Token);

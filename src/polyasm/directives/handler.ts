@@ -19,6 +19,7 @@ import { HexDirective } from "./hex.directive";
 import type { Assembler } from "../polyasm";
 import { StringDirective } from "./string.directive";
 import type { DirectiveContext } from "./directive.interface";
+import { OptionDirective } from "./option.directive";
 
 export class DirectiveHandler {
 	private readonly assembler: Assembler;
@@ -29,10 +30,13 @@ export class DirectiveHandler {
 		this.directiveMap = new Map();
 
 		this.register(".ORG", new OrgDirective());
-		this.register(".INCLUDE", new IncludeDirective());
-		this.register(".INCBIN", new IncbinDirective());
 		this.register(".NAMESPACE", new NamespaceDirective());
 		this.register(".MACRO", new MacroDirective());
+
+		this.register(".OPTION", new OptionDirective());
+
+		this.register(".INCLUDE", new IncludeDirective());
+		this.register(".INCBIN", new IncbinDirective());
 
 		this.register(".DB", new DataDirective(1)); // Define Byte (1 byte)
 		this.register(".BYTE", new DataDirective(1)); // Define Byte (1 byte)
