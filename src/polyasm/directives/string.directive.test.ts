@@ -96,7 +96,7 @@ describe("String Directives", () => {
 		const source = `
             .TEXT 12345
         `;
-		expect(() => assembler.assemble(source)).toThrow("Data directive expression must evaluate to a string on line 3.");
+		expect(() => assembler.assemble(source)).toThrow("Data directive expression must evaluate to a string on line 2.");
 	});
 
 	it("should throw an error for .PSTR string exceeding 255 bytes", () => {
@@ -105,7 +105,7 @@ describe("String Directives", () => {
 		const source = `
             .PSTR "${longString}"
         `;
-		expect(() => assembler.assemble(source)).toThrow(".PSTR string length cannot exceed 255 bytes on line 3.");
+		expect(() => assembler.assemble(source)).toThrow(".PSTR string length cannot exceed 255 bytes on line 2.");
 	});
 
 	it("should correctly calculate size in Pass 1", () => {

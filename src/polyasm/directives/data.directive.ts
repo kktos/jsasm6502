@@ -11,7 +11,7 @@ export class DataDirective implements IDirective {
 
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
 		assembler.currentPC += this.calculateDirectiveSize(assembler, context.tokenIndex);
-		return assembler.skipToEndOfLine(context.tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

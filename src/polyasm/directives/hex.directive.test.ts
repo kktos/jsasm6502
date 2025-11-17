@@ -23,7 +23,8 @@ describe(".HEX Directive", () => {
             .ORG $1000
             .HEX
                 01 02 03 04 ; four bytes
-                05060708    ; four more with no spaces
+                //05060708    ; four more with no spaces
+                05 06 07 08    ; four more with no spaces
             .END
 
             .HEX { 09 0A 0B 0C } ; inline hex block

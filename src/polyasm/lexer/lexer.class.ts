@@ -32,6 +32,7 @@ export type TokenType =
 export interface Token {
 	type: TokenType;
 	value: string;
+	raw?: string;
 	line: number | string;
 	column: number;
 }
@@ -413,11 +414,14 @@ export class AssemblyLexer {
 		if (firstChar === "$" || (firstChar === "0" && secondChar === "x")) {
 			radix = 16;
 			this.advance();
-			if (firstChar === "0") this.advance();
-		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b")) {
+			if (firstChar === "0") this.advance(); // skip 'x'
+		} else if (
+			firstChar === "%" ||
+			(firstChar === "0" && secondChar === "b" && (this.peekAhead(2) === "0" || this.peekAhead(2) === "1"))
+		) {
 			radix = 2;
 			this.advance();
-			if (firstChar === "0") this.advance();
+			if (firstChar === "0") this.advance(); // skip 'b'
 		} else {
 			radix = 10;
 		}
@@ -439,7 +443,7 @@ export class AssemblyLexer {
 		let numericValue = Number.parseInt(numberString, radix);
 		if (negative) numericValue = -numericValue;
 
-		return this.makeToken("NUMBER", String(numericValue), line, column);
+		return this.makeToken("NUMBER", String(numericValue), line, column, numberString);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
@@ -520,46 +524,7 @@ export class AssemblyLexer {
 		this.column++;
 	}
 
-	private makeToken(type: TokenType, value: string, line = this.line, column = this.column): Token {
-		return { type, value, line, column };
+	private makeToken(type: TokenType, value: string, line = this.line, column = this.column, raw?: string): Token {
+		return { type, value, line, column, raw };
 	}
 }
-
-/*
-// Usage example
-const source = `
-  ; define the macro INIT_REGS
-  .MACRO INIT_REGS val, addr {
-    LDA val
-    STA addr
-  }
-
-  ZP_VAR .EQU $12
-  ABS_VAR .EQU $1234
-  SCREEN_WIDTH .EQU 40 * (8 + 2) - 10
-  NEGATIVE_VAL .EQU -50
-
-Start:
-  .ORG $2000 + SCREEN_WIDTH
-  LDA $F800 ; monitor start
-  INIT_REGS #$EA, $300
-  LDA.W ZP_VAR
-  LDA ABS_VAR,X
-  LDA (ZP_VAR),Y
-  .INCLUDE "symbols.asm"
-  RTS
-  .INCBIN "logo.bin"
-`;
-
-const lexer = new AssemblyLexer(source);
-const tokens = lexer.tokenize();
-
-// Display non-whitespace tokens
-const display = tokens
-  .filter(t => t.type !== TokenType.NEWLINE && t.type !== TokenType.COMMENT)
-  .slice(0, 40)
-  .map(t => `${t.type.padEnd(12)} | ${t.value}`);
-
-console.log('Sample tokens:\n' + display.join('\n'));
-
-*/

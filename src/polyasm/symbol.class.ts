@@ -147,4 +147,16 @@ export class PASymbolTable {
 
 		return undefined;
 	}
+
+	/**
+	 * Gathers all unique symbol names from all scopes.
+	 * @returns An array of all defined symbol names.
+	 */
+	public getAllSymbolNames(): string[] {
+		const allNames = new Set<string>();
+		for (const scope of this.symbols.values()) {
+			scope.forEach((_symbol, name) => allNames.add(name));
+		}
+		return Array.from(allNames);
+	}
 }

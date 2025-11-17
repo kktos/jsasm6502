@@ -13,7 +13,7 @@ export class StringDirective implements IDirective {
 
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
 		assembler.currentPC += this.calculateSize(assembler, context);
-		return assembler.skipToEndOfLine(context.tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

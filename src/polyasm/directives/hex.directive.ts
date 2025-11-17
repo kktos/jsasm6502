@@ -75,7 +75,7 @@ export class HexDirective implements IDirective {
 		// while ignoring any comments that might be inside the block.
 		const hexString = hexTokens
 			.filter((t) => t.type !== "COMMENT")
-			.map((t) => t.value)
+			.map((t) => t.raw ?? t.value)
 			.join("");
 
 		return [hexString, bodyEnd];

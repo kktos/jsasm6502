@@ -17,7 +17,7 @@ export class IncbinDirective implements IDirective {
 		} else {
 			console.error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${token.line}.`);
 		}
-		return assembler.skipToEndOfLine(tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

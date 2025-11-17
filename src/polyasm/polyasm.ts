@@ -155,7 +155,11 @@ export class Assembler {
 				try {
 					// Try to resolve as a known instruction. If it fails (throws), it's a label.
 					const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-						this.expressionEvaluator.evaluateAsNumber(exprTokens, { pc: this.currentPC, allowForwardRef: true,options: this.options, }),
+						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+							pc: this.currentPC,
+							allowForwardRef: true,
+							options: this.options,
+						}),
 					);
 
 					// SUCCESS: It's an instruction. Advance PC and skip line.
@@ -180,11 +184,17 @@ export class Assembler {
 					evaluationContext: {
 						pc: this.currentPC,
 						allowForwardRef: true,
-						options: this.options
+						options: this.options,
 					},
 				};
 
-				this.currentTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
+				const nextTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
+
+				if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
+					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+				} else {
+					this.currentTokenIndex = nextTokenIndex;
+				}
 				continue;
 			}
 

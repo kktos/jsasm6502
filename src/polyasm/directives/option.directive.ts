@@ -1,11 +1,11 @@
-import * as console from "console";
-import { IDirective, DirectiveContext, ADVANCE_TO_NEXT_LINE } from "./directive.interface";
-import { Assembler } from "../polyasm";
+import * as console from "node:console";
+import { type IDirective, type DirectiveContext, ADVANCE_TO_NEXT_LINE } from "./directive.interface";
+import type { Assembler } from "../polyasm";
 
 export class OptionDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
 		this.setOption(assembler, context);
-		return assembler.skipToEndOfLine(context.tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

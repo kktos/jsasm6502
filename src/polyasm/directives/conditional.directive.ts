@@ -13,7 +13,7 @@ export class ConditionalDirective implements IDirective {
 
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
 		this.handleConditional(assembler, context);
-		return assembler.skipToEndOfLine(context.tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

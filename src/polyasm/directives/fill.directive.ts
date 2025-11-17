@@ -19,7 +19,7 @@ export class FillDirective implements IDirective {
 			}
 		}
 
-		return assembler.skipToEndOfLine(tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

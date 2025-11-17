@@ -460,12 +460,59 @@ export class ExpressionEvaluator {
 
 			if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
 
-			throw new Error(`Undefined symbol '${token.value}' on line ${token.line}.`);
+			// If we are here, the symbol is not defined. Let's find suggestions.
+			const suggestions = this.findSimilarSymbols(token.value);
+			let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
+			if (suggestions.length > 0) {
+				errorMessage += ` Did you mean '${suggestions[0]}'?`;
+			}
+			throw new Error(errorMessage);
 		}
 		return 0;
+	}
+
+	/** Finds symbols with a small Levenshtein distance to the given name. */
+	private findSimilarSymbols(name: string, maxDistance = 2): string[] {
+		const allSymbols = this.symbolTable.getAllSymbolNames();
+		const suggestions: { name: string; distance: number }[] = [];
+
+		for (const symbolName of allSymbols) {
+			const distance = levenshteinDistance(name, symbolName);
+			if (distance <= maxDistance) {
+				suggestions.push({ name: symbolName, distance });
+			}
+		}
+
+		// Sort by distance to show the closest match first
+		suggestions.sort((a, b) => a.distance - b.distance);
+
+		return suggestions.map((s) => s.name);
 	}
 
 	private parseNumericArg(token: Token): number {
 		return Number.parseInt(token.value, 10);
 	}
+}
+
+/** Calculates the Levenshtein distance between two strings. */
+function levenshteinDistance(a: string, b: string): number {
+	const matrix = Array(b.length + 1)
+		.fill(null)
+		.map(() => Array(a.length + 1).fill(null));
+
+	for (let i = 0; i <= a.length; i += 1) matrix[0][i] = i;
+	for (let j = 0; j <= b.length; j += 1) matrix[j][0] = j;
+
+	for (let j = 1; j <= b.length; j += 1) {
+		for (let i = 1; i <= a.length; i += 1) {
+			const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+			matrix[j][i] = Math.min(
+				matrix[j][i - 1] + 1, // deletion
+				matrix[j - 1][i] + 1, // insertion
+				matrix[j - 1][i - 1] + indicator, // substitution
+			);
+		}
+	}
+
+	return matrix[b.length][a.length];
 }

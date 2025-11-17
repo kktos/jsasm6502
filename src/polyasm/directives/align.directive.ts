@@ -10,7 +10,7 @@ export class AlignDirective implements IDirective {
 
 		try {
 			const boundary = assembler.expressionEvaluator.evaluateAsNumber(boundaryTokens, evaluationContext);
-			if (boundary <= 0) return assembler.skipToEndOfLine(tokenIndex);
+			if (boundary <= 0) return ADVANCE_TO_NEXT_LINE;
 
 			// Check if boundary is a power of two, which is a common requirement.
 			if ((boundary & (boundary - 1)) !== 0) {
@@ -23,7 +23,7 @@ export class AlignDirective implements IDirective {
 			console.warn(`[PASS 1] Warning on line ${token.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
 
-		return assembler.skipToEndOfLine(tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

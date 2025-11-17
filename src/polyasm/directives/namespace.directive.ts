@@ -4,7 +4,7 @@ import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./
 export class NamespaceDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
 		this.setNamespace(assembler, context.tokenIndex);
-		return assembler.skipToEndOfLine(context.tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

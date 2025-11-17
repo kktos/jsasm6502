@@ -15,7 +15,7 @@ export class OrgDirective implements IDirective {
 			assembler.currentPC = 0x0000;
 		}
 
-		return assembler.skipToEndOfLine(tokenIndex);
+		return ADVANCE_TO_NEXT_LINE;
 	}
 
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {

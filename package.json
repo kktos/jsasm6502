@@ -18,6 +18,7 @@
     "build": "rollup -c rollup.config.js libasm6502=src/lib/assembler.ts asm6502=src/cli/main.ts",
     "postbuild": "node tools/postbuild.js",
     "test": "vitest",
+    "test:PolyAsm": "vitest polyasm/",
     "test-one": "node dist/asm6502.js test/asm/one.test.asm --conf test/asm/one.test.yaml",
     "test-main": "node dist/asm6502.js test/asm/main.test.asm --conf test/asm/main.yaml",
     "test-lstoff": "node dist/asm.js --no-listing test/asm/main.test.asm",

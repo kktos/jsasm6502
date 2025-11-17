@@ -202,6 +202,15 @@ describe("ExpressionEvaluator", () => {
 			);
 		});
 
+		it("should suggest a similar symbol for an undefined symbol", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("MyLabel", 0x1000);
+			const tokens = tokenize("MyLable"); // Typo
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
+				"Undefined symbol 'MyLable' on line 1. Did you mean 'MyLabel'?",
+			);
+		});
+
 		it("should throw on mismatched parentheses", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("(10 + 5");
