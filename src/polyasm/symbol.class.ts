@@ -132,7 +132,7 @@ export class PASymbolTable {
 			const scopeName = this.scopeStack[i];
 			const scope = this.symbols.get(scopeName);
 			if (scope?.has(name)) {
-				return scope.get(name)!.value;
+				return scope.get(name)?.value;
 			}
 		}
 
@@ -141,7 +141,7 @@ export class PASymbolTable {
 			const [ns, symName] = name.split("::");
 			const targetScope = this.symbols.get(ns);
 			if (targetScope?.has(symName)) {
-				return targetScope.get(symName)!.value;
+				return targetScope.get(symName)?.value;
 			}
 		}
 

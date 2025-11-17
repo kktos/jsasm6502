@@ -84,15 +84,17 @@ export class ExpressionEvaluator {
 	}
 
 	private getPrecedence(op: string): number {
-		if (op === "UNARY_MINUS") return 8; // Highest precedence (e.g., -5)
-		if (op === "*" || op === "/" || op === "%") return 7; // Multiplication, Division, Modulo
-		if (op === "+" || op === "-") return 6; // Addition, Subtraction
-		if (op === "<<" || op === ">>") return 5; // Bitwise shifts
-		if (op === "<" || op === ">" || op === "<=" || op === ">=") return 4; // Relational
-		if (op === "=" || op === "==" || op === "!=") return 3; // Equality
-		if (op === "&") return 2; // Bitwise AND
+		if (op === "UNARY_MINUS" || op === "!") return 9; // Unary operators
+		if (op === "*" || op === "/" || op === "%") return 8; // Multiplicative
+		if (op === "+" || op === "-") return 7; // Additive
+		if (op === "<<" || op === ">>") return 6; // Bitwise shifts
+		if (op === "<" || op === ">" || op === "<=" || op === ">=") return 5; // Relational
+		if (op === "=" || op === "==" || op === "!=") return 4; // Equality
+		if (op === "&") return 3; // Bitwise AND
+		if (op === "&&") return 2; // Logical AND
 		if (op === "^") return 1; // Bitwise XOR
 		if (op === "|") return 0; // Bitwise OR
+		if (op === "||") return 0; // Logical OR
 		return 0;
 	}
 
@@ -152,6 +154,13 @@ export class ExpressionEvaluator {
 							}
 							break;
 
+						case "!":
+							if (!isUnary) {
+								throw new Error(`Operator '!' must be unary on line ${processedToken.line}.`);
+							}
+							this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
+							break;
+
 						case "*":
 							if (isUnary) {
 								// This is the program counter symbol, not multiplication.
@@ -173,6 +182,8 @@ export class ExpressionEvaluator {
 						case "<=":
 						case ">=":
 						case "%":
+						case "&&":
+						case "||":
 						case "<<":
 						case ">>":
 							this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
@@ -277,6 +288,12 @@ export class ExpressionEvaluator {
 						stack.push(-value);
 						break;
 					}
+					if (token.value === "!") {
+						const value = stack.pop();
+						if (typeof value !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
+						stack.push(value === 0 ? 1 : 0);
+						break;
+					}
 
 					const right = stack.pop();
 					const left = stack.pop();
@@ -360,6 +377,12 @@ export class ExpressionEvaluator {
 							break;
 						case ">>":
 							stack.push(left >> right);
+							break;
+						case "&&":
+							stack.push(left !== 0 && right !== 0 ? 1 : 0);
+							break;
+						case "||":
+							stack.push(left !== 0 || right !== 0 ? 1 : 0);
 							break;
 						default:
 							throw new Error(`Unknown operator: ${token.value}`);

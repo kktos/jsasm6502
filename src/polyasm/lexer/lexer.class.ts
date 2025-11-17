@@ -113,6 +113,16 @@ export class AssemblyLexer {
 			return this.makeToken("OPERATOR", ">>", startLine, startColumn);
 		}
 
+		if (ch === "&" && this.peekAhead(1) === "&") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "&&", startLine, startColumn);
+		}
+		if (ch === "|" && this.peekAhead(1) === "|") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "||", startLine, startColumn);
+		}
 		if (ch === "=" && this.peekAhead(1) === "=") {
 			this.advance();
 			this.advance();
@@ -191,6 +201,10 @@ export class AssemblyLexer {
 				this.advance();
 				return this.makeToken("OPERATOR", "^", startLine, startColumn);
 
+			case "!":
+				this.advance();
+				return this.makeToken("OPERATOR", "!", startLine, startColumn);
+
 			case "{":
 				this.advance();
 				return this.makeToken("LBRACE", "{", startLine, startColumn);
@@ -242,11 +256,10 @@ export class AssemblyLexer {
 			const next = this.peekAhead(1);
 			if (next === "0" || next === "1") {
 				return this.scanNumber(startLine, startColumn);
-			} else {
-				// It's not a binary number prefix, so it must be the modulo operator
-				this.advance();
-				return this.makeToken("OPERATOR", "%", startLine, startColumn);
 			}
+			// It's not a binary number prefix, so it must be the modulo operator
+			this.advance();
+			return this.makeToken("OPERATOR", "%", startLine, startColumn);
 		}
 
 		// Handle single character comparison operators
@@ -369,7 +382,7 @@ export class AssemblyLexer {
 					case "x": {
 						const hexCode = this.source.substring(this.pos, this.pos + 2);
 						if (hexCode.length === 2 && /^[0-9a-fA-F]+$/.test(hexCode)) {
-							value += String.fromCharCode(parseInt(hexCode, 16));
+							value += String.fromCharCode(Number.parseInt(hexCode, 16));
 							this.advance();
 							this.advance();
 						} else {
@@ -425,7 +438,7 @@ export class AssemblyLexer {
 			return this.scanIdentifier(line, column); // Re-evaluate as something else
 		}
 
-		let numericValue = parseInt(numberString, radix);
+		let numericValue = Number.parseInt(numberString, radix);
 		if (negative) numericValue = -numericValue;
 
 		return this.makeToken("NUMBER", String(numericValue), line, column);

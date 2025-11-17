@@ -50,7 +50,7 @@ export class LoopDirective implements IDirective {
 		}
 
 		// Manually find the end of the expression and check for an optional 'AS' clause
-		let expressionStartIndex = startIndex + 3;
+		const expressionStartIndex = startIndex + 3;
 		let expressionEndIndex = expressionStartIndex;
 		while (
 			expressionEndIndex + 1 < tokens.length &&

@@ -29,8 +29,8 @@ export class HexDirective implements IDirective {
 		const bytes: number[] = [];
 		for (let i = 0; i < cleanedString.length; i += 2) {
 			const byteString = cleanedString.substring(i, i + 2);
-			const byte = parseInt(byteString, 16);
-			if (isNaN(byte)) {
+			const byte = Number.parseInt(byteString, 16);
+			if (Number.isNaN(byte)) {
 				throw new Error(`Invalid hexadecimal character sequence: "${byteString}"`);
 			}
 			bytes.push(byte);

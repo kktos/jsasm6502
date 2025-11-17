@@ -144,6 +144,32 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
+	describe("Boolean Logic Operators", () => {
+		it("should handle logical NOT (!)", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize("!10"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("!0"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("!(10 > 5)"), { pc: 0 })).toBe(0); // !(true) -> 0
+			expect(evaluator.evaluateAsNumber(tokenize("!(5 > 10)"), { pc: 0 })).toBe(1); // !(false) -> 1
+		});
+
+		it("should handle logical AND (&&)", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize("1 && 1"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 && 0"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("(5 > 3) && (10 > 5)"), { pc: 0 })).toBe(1);
+		});
+
+		it("should handle logical OR (||)", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize("1 || 0"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("0 || 0"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("10 || -1"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("(5 < 3) || (10 > 5)"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("1 == 1 || 2 == 3 && 4 == 4"), { pc: 0 })).toBe(1); // Precedence check
+		});
+	});
+
 	describe("Data Structures", () => {
 		it("should evaluate array literals", () => {
 			const { evaluator, tokenize, symbolTable } = setup();

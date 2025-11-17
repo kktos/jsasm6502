@@ -3,7 +3,7 @@ import { PASymbolTable } from "./symbol.class";
 import { ExpressionEvaluator } from "./expression";
 import { DirectiveHandler } from "./directives/handler";
 import { type Token, AssemblyLexer } from "./lexer/lexer.class";
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
 import { ADVANCE_TO_NEXT_LINE } from "./directives/directive.interface";
 
