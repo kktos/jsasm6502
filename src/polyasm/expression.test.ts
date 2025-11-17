@@ -1,15 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { ExpressionEvaluator } from "./expression";
-import { PASymbolTable } from "./symbol.class";
-import { AssemblyLexer } from "./lexer/lexer.class";
+
+import { Assembler, type FileHandler } from "./polyasm";
+import { Cpu6502Handler } from "./cpu/cpu6502.class";
 
 describe("ExpressionEvaluator", () => {
 	const setup = () => {
-		const symbolTable = new PASymbolTable();
-		const evaluator = new ExpressionEvaluator(symbolTable);
-		const lexer = new AssemblyLexer();
-		const tokenize = (expr: string) => lexer.tokenize(expr);
-		return { symbolTable, evaluator, lexer, tokenize };
+		class MockFileHandler implements FileHandler {
+			readSourceFile(filename: string): string {
+				throw new Error(`Mock file not found: "${filename}"`);
+			}
+			readBinaryFile(filename: string): number[] {
+				throw new Error(`Mock bin file not found: ${filename}`);
+			}
+		}
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
+		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
+		return { assembler, symbolTable, evaluator, lexer, tokenize };
 	};
 
 	describe("Basic Arithmetic and Precedence", () => {

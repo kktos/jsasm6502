@@ -33,10 +33,16 @@ export class Assembler {
 	public currentPC: number;
 	public outputBuffer: number[] = [];
 	public isAssembling = true;
+
+	private lastGlobalLabel: string | null = null;
+	public anonymousLabels: number[] = [];
+
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	public options: Map<string, string> = new Map();
+
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
+
 	public expressionEvaluator: ExpressionEvaluator;
 	private directiveHandler: DirectiveHandler;
 	public emitter: EventEmitter;
@@ -92,6 +98,8 @@ export class Assembler {
 		console.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
 		this.currentPC = 0x0000;
 		this.currentTokenIndex = 0;
+		this.anonymousLabels = [];
+		this.lastGlobalLabel = null;
 
 		while (this.currentTokenIndex < this.activeTokens.length) {
 			const token = this.activeTokens[this.currentTokenIndex];
@@ -99,7 +107,7 @@ export class Assembler {
 			// Always update PC symbol before any instruction/data
 			this.symbolTable.setSymbol("*", this.currentPC);
 
-			if (token.type === "IDENTIFIER") {
+			if (token.type === "IDENTIFIER" || token.type === "LABEL") {
 				// Instructions and Macro calls
 				const mnemonic = token.value.toUpperCase();
 
@@ -131,6 +139,7 @@ export class Assembler {
 				}
 
 				if (nextToken?.value === ":") {
+					this.lastGlobalLabel = token.value;
 					this.symbolTable.addSymbol(token.value, this.currentPC);
 					console.log(
 						`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`,
@@ -168,6 +177,7 @@ export class Assembler {
 					continue;
 				} catch (e) {
 					// FAILURE (Mnemonic not found): It's a LABEL DEFINITION.
+					this.lastGlobalLabel = mnemonicToken.value;
 					this.symbolTable.addSymbol(mnemonicToken.value, this.currentPC);
 					console.log(`[PASS 1] Defined label ${mnemonicToken.value} @ $${this.currentPC.toString(16).toUpperCase()}`);
 
@@ -175,6 +185,18 @@ export class Assembler {
 					this.currentTokenIndex++;
 					continue;
 				}
+			}
+
+			if (token.type === "LOCAL_LABEL") {
+				this.symbolTable.addSymbol(token.value, this.currentPC, false);
+				this.currentTokenIndex++;
+				continue;
+			}
+
+			if (token.type === "ANONYMOUS_LABEL_DEF") {
+				this.anonymousLabels.push(this.currentPC);
+				this.currentTokenIndex++;
+				continue;
 			}
 
 			if (token.type === "DIRECTIVE") {
@@ -205,6 +227,8 @@ export class Assembler {
 	private passTwo(): void {
 		console.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.symbolTable.setSymbol("*", this.currentPC);
+		this.anonymousLabels = [];
+		this.lastGlobalLabel = null;
 
 		while (this.tokenStreamStack.length > 0) {
 			if (this.currentTokenIndex >= this.activeTokens.length) {
@@ -251,6 +275,7 @@ export class Assembler {
 								this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 									pc: this.currentPC,
 									macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+									assembler: this,
 									options: this.options,
 								}),
 							);
@@ -282,6 +307,7 @@ export class Assembler {
 							if (isLabel) {
 								// Case 1: It's a label definition (e.g., MyLoop:).
 								// Consume only the label token, and let the loop handle the instruction on the next iteration.
+								this.lastGlobalLabel = mnemonicToken.value;
 								// console.log(`Skipping label token: ${mnemonicToken.value}.`);
 								this.currentTokenIndex++;
 								continue;
@@ -302,6 +328,7 @@ export class Assembler {
 
 					continue;
 				}
+
 				case "DIRECTIVE": {
 					const streamBefore = this.tokenStreamStack.length;
 					const directiveContext = {
@@ -310,6 +337,8 @@ export class Assembler {
 						evaluationContext: {
 							pc: this.currentPC,
 							macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+							assembler: this,
+							currentGlobalLabel: this.lastGlobalLabel,
 							options: this.options,
 						},
 					};
@@ -318,19 +347,34 @@ export class Assembler {
 					if (this.tokenStreamStack.length > streamBefore) {
 						// A new stream was pushed. The active context has changed, so we must start at its beginning.
 						this.currentTokenIndex = 0;
-					} else if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
+						break;
+					}
+					if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
 						// Directive requested default "next line" behavior.
 						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
 					} else {
 						// Directive is a block and has returned the exact index to continue from.
 						this.currentTokenIndex = nextTokenIndex;
 					}
-					continue;
+					break;
 				}
-			}
 
-			// For any token that isn't a directive or macro (like labels, colons), just advance to the next token.
-			this.currentTokenIndex++;
+				case "LABEL":
+					this.lastGlobalLabel = token.value;
+					this.currentTokenIndex++;
+					break;
+				// This is a definition, already handled in Pass 1. Just skip it.
+				// case "LOCAL_LABEL":
+				// 	this.currentTokenIndex++;
+				// 	break;
+				case "ANONYMOUS_LABEL_DEF":
+					this.anonymousLabels.push(this.currentPC);
+					this.currentTokenIndex++;
+					break;
+
+				default:
+					this.currentTokenIndex++;
+			}
 		}
 	}
 

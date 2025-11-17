@@ -3,6 +3,9 @@ export type TokenType =
 	| "DIRECTIVE" // .MACRO, .EQU, .ORG, etc.
 	| "IDENTIFIER" // labels, symbols, instructions
 	| "LABEL" // identifier followed by ':'
+	| "LOCAL_LABEL" // :loop
+	| "ANONYMOUS_LABEL_DEF" // :
+	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
 
 	// Literals
 	| "NUMBER" // $1234, %1010, 42, -50
@@ -83,6 +86,11 @@ export class AssemblyLexer {
 		// Comment - fast path for semicolon
 		if (ch === ";") {
 			return this.scanComment(startLine, startColumn);
+		}
+
+		// Named or Nameless Local Labels
+		if (ch === ":") {
+			return this.scanLocalLabel(startLine, startColumn);
 		}
 
 		// Check for // or /* comments
@@ -444,6 +452,49 @@ export class AssemblyLexer {
 		if (negative) numericValue = -numericValue;
 
 		return this.makeToken("NUMBER", String(numericValue), line, column, numberString);
+	}
+
+	private scanLocalLabel(line: number, column: number): Token {
+		this.advance(); // consume ':'
+		const nextChar = this.peek();
+
+		if (this.isAlpha(nextChar)) {
+			// Named local label like ':loop'
+			const start = this.pos;
+			while (this.isIdentifierPart(this.peek())) {
+				this.advance();
+			}
+			const value = this.source.slice(start, this.pos);
+			return this.makeToken("LOCAL_LABEL", value, line, column);
+		}
+		if (nextChar === "+" || nextChar === "-") {
+			// Nameless reference like ':-' or ':++' or ':+3'
+			const start = this.pos;
+			const sign = nextChar;
+			let count = 0;
+			while (this.peek() === sign) {
+				this.advance();
+				count++;
+			}
+
+			// Check for an optional numeric count like ':-3'
+			if (this.isDigit(this.peek())) {
+				const numStart = this.pos;
+				while (this.isDigit(this.peek())) {
+					this.advance();
+				}
+				const numStr = this.source.slice(numStart, this.pos);
+				count = Number.parseInt(numStr, 10);
+			}
+
+			const value = `${sign}${count}`; // e.g., "-1", "+2", "-3"
+			return this.makeToken("ANONYMOUS_LABEL_REF", value, line, column);
+		}
+		// It's a standalone nameless label definition ':'
+		// The colon has already been consumed.
+		// We need to check if it's followed by a colon, which would make it a '::' operator for namespacing.
+		// For now, we assume it's a definition.
+		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {

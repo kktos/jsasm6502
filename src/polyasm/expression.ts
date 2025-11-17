@@ -6,6 +6,7 @@
 
 import type { Token } from "./lexer/lexer.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
+import type { Assembler } from "./polyasm";
 
 const PRECEDENCE: Record<string, number> = {
 	// Unary operators (highest precedence)
@@ -58,6 +59,7 @@ const PRECEDENCE: Record<string, number> = {
  */
 export interface EvaluationContext {
 	symbolTable: PASymbolTable;
+	assembler?: Assembler;
 	pc: number;
 	macroArgs?: Map<string, Token[]>;
 	allowForwardRef?: boolean;
@@ -144,13 +146,15 @@ export class ExpressionEvaluator {
 				case "STRING":
 				case "IDENTIFIER":
 				case "LABEL":
+				case "ANONYMOUS_LABEL_REF":
 					// An operand should not follow another operand without an operator in between.
 					if (
 						lastToken &&
 						(lastToken.type === "NUMBER" ||
 							lastToken.type === "IDENTIFIER" ||
 							lastToken.type === "LABEL" ||
-							lastToken.type === "STRING")
+							lastToken.type === "STRING" ||
+							lastToken.type === "ANONYMOUS_LABEL_REF")
 					) {
 						throw new Error(
 							`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`,
@@ -290,7 +294,8 @@ export class ExpressionEvaluator {
 					break;
 
 				case "IDENTIFIER":
-				case "LABEL": {
+				case "LABEL":
+				case "ANONYMOUS_LABEL_REF": {
 					const value = this.resolveValue(token, context);
 					if (typeof value === "number" || typeof value === "string") {
 						stack.push(value);
@@ -443,7 +448,7 @@ export class ExpressionEvaluator {
 		if (token.type === "STRING") {
 			return token.value;
 		}
-		if (token.type === "IDENTIFIER" || token.type === "LABEL") {
+		if (token.type === "IDENTIFIER" || token.type === "LABEL" || token.type === "LOCAL_LABEL") {
 			if (token.value === "*") return context.pc;
 
 			// First, check for macro arguments, as they have the highest precedence.
@@ -467,6 +472,30 @@ export class ExpressionEvaluator {
 				errorMessage += ` Did you mean '${suggestions[0]}'?`;
 			}
 			throw new Error(errorMessage);
+		}
+		if (token.type === "ANONYMOUS_LABEL_REF") {
+			if (!context.assembler) {
+				throw new Error("Internal error: Assembler context not provided for anonymous label resolution.");
+			}
+			const labels = context.assembler.anonymousLabels;
+			const direction = token.value.startsWith("-") ? -1 : 1;
+			const count = Number.parseInt(token.value.substring(1), 10);
+
+			if (direction === -1) {
+				// Backward reference: Find the last label defined *before* the current PC.
+				const relevantLabels = labels.filter((pc) => pc < context.pc);
+				if (relevantLabels.length < count) {
+					throw new Error(`Not enough preceding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+				}
+				return relevantLabels[relevantLabels.length - count];
+			}
+			// Forward reference: Find the first label defined *at or after* the current PC.
+			const relevantLabels = labels.filter((pc) => pc >= context.pc);
+			if (relevantLabels.length < count) {
+				// During pass 2, this is a fatal error.
+				throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
+			}
+			return relevantLabels[count - 1];
 		}
 		return 0;
 	}

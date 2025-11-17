@@ -45,15 +45,20 @@ The current program counter address can be accessed in any expression using the 
 
 ### Expression Evaluation
 PolyAsm includes a powerful expression evaluator that supports:
-*   **Operators**: `+`, `-`, `*`, `/` (integer division), `&` (bitwise AND), `|` (bitwise OR), `^` (bitwise XOR).
+*   **Arithmetic Operators**: `+`, `-`, `*`, `/` (integer division), `%` (modulo).
+*   **Bitwise Operators**: `&` (AND), `|` (OR), `^` (XOR), `<<` (left shift), `>>` (right shift).
+*   **Logical Operators**: `&&` (AND), `||` (OR), `!` (NOT). The result is `1` for true and `0` for false.
+*   **Comparison Operators**: `==` or `=` (equal), `!=` (not equal), `<`, `>`, `<=`, `>=`.
 *   **Precedence**: Standard mathematical order of operations.
 *   **Parentheses**: `( ... )` for grouping.
-*   **Unary Minus**: `LDA #-10`
+*   **Unary Operators**: `-` (negation), `+` (positive), `!` (logical NOT).
 *   **Number Formats**:
     *   Decimal: `123`
     *   Hexadecimal: `$7B`
     *   Binary: `%01111011`
 *   **Array Literals**: `[1, 2, "hello", MyLabel]` for use with directives like `.FOR`.
+*   **String Literals**: `"Hello"` can be used in expressions and with data directives.
+*   **Local Labels**: Anonymous labels can be referenced with `:-` (previous) and `:+` (next). Repeated characters or numbers can be used to refer to labels further away, e.g., `:--` or `:-2`.
 
 ## Directives
 
@@ -138,6 +143,13 @@ Directives control the assembly process.
 
     .NAMESPACE SOUND
     Waveform: .DB $00,$11,$22
+    ```
+*   **`.OPTION <name> <value>`**:  
+	Sets an assembler option.
+    ```asm
+    ; Change the character used for local label prefixes from '.' to '@'
+    .OPTION local_label_style "@"
+    @loop: JMP @loop
     ```
 
 ### Conditional Assembly
