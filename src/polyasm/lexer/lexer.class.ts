@@ -113,6 +113,27 @@ export class AssemblyLexer {
 			return this.makeToken("OPERATOR", ">>", startLine, startColumn);
 		}
 
+		if (ch === "=" && this.peekAhead(1) === "=") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "==", startLine, startColumn);
+		}
+		if (ch === "!" && this.peekAhead(1) === "=") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "!=", startLine, startColumn);
+		}
+		if (ch === "<" && this.peekAhead(1) === "=") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "<=", startLine, startColumn);
+		}
+		if (ch === ">" && this.peekAhead(1) === "=") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", ">=", startLine, startColumn);
+		}
+
 		// Single-char tokens - monomorphic check pattern for V8
 		switch (ch) {
 			// case ",":
@@ -163,6 +184,9 @@ export class AssemblyLexer {
 			case "|":
 				this.advance();
 				return this.makeToken("OPERATOR", "|", startLine, startColumn);
+			case "=":
+				this.advance();
+				return this.makeToken("OPERATOR", "=", startLine, startColumn);
 			case "^":
 				this.advance();
 				return this.makeToken("OPERATOR", "^", startLine, startColumn);
@@ -223,6 +247,12 @@ export class AssemblyLexer {
 				this.advance();
 				return this.makeToken("OPERATOR", "%", startLine, startColumn);
 			}
+		}
+
+		// Handle single character comparison operators
+		if (ch === "<" || ch === ">") {
+			this.advance();
+			return this.makeToken("OPERATOR", ch, startLine, startColumn);
 		}
 
 		// Identifiers (which could be instructions, labels, or symbols)

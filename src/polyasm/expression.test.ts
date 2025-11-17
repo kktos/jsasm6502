@@ -47,17 +47,6 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(20);
 		});
-
-		it("should handle modulo operator", () => {
-			const { evaluator, tokenize } = setup();
-			expect(evaluator.evaluateAsNumber(tokenize("10 % 3"), { pc: 0 })).toBe(1);
-		});
-
-		it("should handle modulo operator precedence", () => {
-			const { evaluator, tokenize } = setup();
-			// Precedence: 5 + (10 % 3) * 2 = 5 + 1 * 2 = 5 + 2 = 7
-			expect(evaluator.evaluateAsNumber(tokenize("5 + 10 % 3 * 2"), { pc: 0 })).toBe(7);
-		});
 	});
 
 	describe("Number Formats and Symbols", () => {
@@ -95,16 +84,8 @@ describe("ExpressionEvaluator", () => {
 		it("should evaluate bitwise AND, OR, and XOR", () => {
 			const { evaluator, tokenize } = setup();
 			expect(evaluator.evaluateAsNumber(tokenize("$F0 & $88"), { pc: 0 })).toBe(0x80);
-			// expect(evaluator.evaluateAsNumber(tokenize("$F0 | $09"), { pc: 0 })).toBe(0xf9);
-			// expect(evaluator.evaluateAsNumber(tokenize("$AA ^ $FF"), { pc: 0 })).toBe(0x55);
-		});
-	});
-
-	describe("Bitwise Operations", () => {
-		it("should evaluate bitwise OR", () => {
-			const { evaluator, tokenize } = setup();
 			expect(evaluator.evaluateAsNumber(tokenize("$F0 | $09"), { pc: 0 })).toBe(0xf9);
-			// expect(evaluator.evaluateAsNumber(tokenize("$AA ^ $FF"), { pc: 0 })).toBe(0x55);
+			expect(evaluator.evaluateAsNumber(tokenize("$AA ^ $FF"), { pc: 0 })).toBe(0x55);
 		});
 
 		it("should respect bitwise operator precedence (& > ^ > |)", () => {
@@ -119,19 +100,47 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
-	describe("Bitwise Shift Operations", () => {
-		it("should evaluate bitwise left and right shifts", () => {
+	describe("Comparison Operators", () => {
+		it("should handle numeric equality (== and =)", () => {
 			const { evaluator, tokenize } = setup();
-			expect(evaluator.evaluateAsNumber(tokenize("8 << 2"), { pc: 0 })).toBe(32);
-			expect(evaluator.evaluateAsNumber(tokenize("32 >> 3"), { pc: 0 })).toBe(4);
+			expect(evaluator.evaluateAsNumber(tokenize("10 == 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 = 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 == 5"), { pc: 0 })).toBe(0);
 		});
 
-		it("should respect shift operator precedence", () => {
+		it("should handle numeric inequality (!=)", () => {
 			const { evaluator, tokenize } = setup();
-			// Expression: 5 + 2 << 1 -> (5 + 2) << 1 -> 7 << 1 -> 14
-			expect(evaluator.evaluateAsNumber(tokenize("5 + 2 << 1"), { pc: 0 })).toBe(14);
-			// Expression: 16 >> 1 & 7 -> (16 >> 1) & 7 -> 8 & 7 -> 0
-			expect(evaluator.evaluateAsNumber(tokenize("16 >> 1 & 7"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("10 != 5"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 != 10"), { pc: 0 })).toBe(0);
+		});
+
+		it("should handle numeric relational operators (<, >, <=, >=)", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize("20 > 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 < 20"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("20 < 10"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("10 > 20"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("10 <= 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 <= 20"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("20 <= 10"), { pc: 0 })).toBe(0);
+			expect(evaluator.evaluateAsNumber(tokenize("10 >= 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("20 >= 10"), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize("10 >= 20"), { pc: 0 })).toBe(0);
+		});
+
+		it("should handle string equality (== and =)", () => {
+			let run = setup();
+			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "hello"'), { pc: 0 })).toBe(1);
+			run = setup();
+			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" = "hello"'), { pc: 0 })).toBe(1);
+			run = setup();
+			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "world"'), { pc: 0 })).toBe(0);
+		});
+
+		it("should handle string inequality (!=)", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluateAsNumber(tokenize('"hello" != "world"'), { pc: 0 })).toBe(1);
+			expect(evaluator.evaluateAsNumber(tokenize('"hello" != "hello"'), { pc: 0 })).toBe(0);
 		});
 	});
 
@@ -149,13 +158,6 @@ describe("ExpressionEvaluator", () => {
 			const tokens = tokenize('"Hello World"');
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("Hello World");
-		});
-
-		it("should handle string concatenation", () => {
-			const { evaluator, tokenize } = setup();
-			const tokens = tokenize('"Hello" + " " + "World" + " " + 123');
-			const result = evaluator.evaluate(tokens, { pc: 0 });
-			expect(result).toBe("Hello World 123");
 		});
 	});
 

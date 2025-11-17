@@ -84,13 +84,15 @@ export class ExpressionEvaluator {
 	}
 
 	private getPrecedence(op: string): number {
-		if (op === "UNARY_MINUS") return 7; // Highest precedence (e.g., -5)
-		if (op === "*" || op === "/" || op === "%") return 6; // Multiplication, Division, Modulo
-		if (op === "+" || op === "-") return 5;
-		if (op === "<<" || op === ">>") return 4;
-		if (op === "&") return 3;
-		if (op === "^") return 2;
-		if (op === "|") return 1;
+		if (op === "UNARY_MINUS") return 8; // Highest precedence (e.g., -5)
+		if (op === "*" || op === "/" || op === "%") return 7; // Multiplication, Division, Modulo
+		if (op === "+" || op === "-") return 6; // Addition, Subtraction
+		if (op === "<<" || op === ">>") return 5; // Bitwise shifts
+		if (op === "<" || op === ">" || op === "<=" || op === ">=") return 4; // Relational
+		if (op === "=" || op === "==" || op === "!=") return 3; // Equality
+		if (op === "&") return 2; // Bitwise AND
+		if (op === "^") return 1; // Bitwise XOR
+		if (op === "|") return 0; // Bitwise OR
 		return 0;
 	}
 
@@ -163,6 +165,13 @@ export class ExpressionEvaluator {
 						case "&":
 						case "|":
 						case "^":
+						case "=":
+						case "==":
+						case "!=":
+						case "<":
+						case ">":
+						case "<=":
+						case ">=":
 						case "%":
 						case "<<":
 						case ">>":
@@ -274,20 +283,53 @@ export class ExpressionEvaluator {
 					if (left === undefined || right === undefined)
 						throw new Error(`Binary operator '${token.value}' requires two operands.`);
 
-					// Handle string concatenation specifically for the '+' operator
-					if (token.value === "+") {
-						if (typeof left === "string" || typeof right === "string") {
-							stack.push(String(left) + String(right));
-							break; // Skip to next token
+					if (typeof left === "string" && typeof right === "string") {
+						switch (token.value) {
+							case "+":
+								stack.push(left + right);
+								break;
+
+							case "=":
+							case "==":
+								stack.push(left === right ? 1 : 0);
+								break;
+
+							case "!=":
+								stack.push(left !== right ? 1 : 0);
+								break;
+							default:
+								throw new Error(`Unknown operator: ${token.value}`);
 						}
+						break;
 					}
 
-					// For all other operators, or for '+' with non-string operands, require numbers.
 					if (typeof left !== "number" || typeof right !== "number") {
 						throw new Error(`Operands for '${token.value}' must be numeric.`);
 					}
 
 					switch (token.value) {
+						case "=":
+						case "==":
+							stack.push(left === right ? 1 : 0);
+							break;
+
+						case "!=":
+							stack.push(left !== right ? 1 : 0);
+							break;
+
+						case "<":
+							stack.push(left < right ? 1 : 0);
+							break;
+						case ">":
+							stack.push(left > right ? 1 : 0);
+							break;
+						case "<=":
+							stack.push(left <= right ? 1 : 0);
+							break;
+						case ">=":
+							stack.push(left >= right ? 1 : 0);
+							break;
+
 						case "+":
 							stack.push(left + right);
 							break;
