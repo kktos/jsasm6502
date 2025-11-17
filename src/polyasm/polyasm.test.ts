@@ -110,39 +110,39 @@ class MockFileHandler implements FileHandler {
 }
 
 function hexDump(address: number, bytes: number[]): string {
-  const lines: string[] = [];
-  const bytesPerLine = 16;
+	const lines: string[] = [];
+	const bytesPerLine = 16;
 
-  for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
-    const currentAddr = address + offset;
-    const lineBytes = bytes.slice(offset, offset + bytesPerLine);
+	for (let offset = 0; offset < bytes.length; offset += bytesPerLine) {
+		const currentAddr = address + offset;
+		const lineBytes = bytes.slice(offset, offset + bytesPerLine);
 
-    // Address part
-    const addrHex = currentAddr.toString(16).toUpperCase().padStart(4, '0');
+		// Address part
+		const addrHex = currentAddr.toString(16).toUpperCase().padStart(4, "0");
 
-    // Hex bytes part
-    const hexParts: string[] = [];
-    const asciiParts: string[] = [];
+		// Hex bytes part
+		const hexParts: string[] = [];
+		const asciiParts: string[] = [];
 
-    for (let i = 0; i < bytesPerLine; i++) {
-      if (i < lineBytes.length) {
-        const byte = lineBytes[i];
-        hexParts.push(byte.toString(16).toUpperCase().padStart(2, '0'));
-        asciiParts.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.');
-      } else {
-        // Padding for incomplete lines
-        hexParts.push('  ');
-        asciiParts.push(' ');
-      }
-    }
+		for (let i = 0; i < bytesPerLine; i++) {
+			if (i < lineBytes.length) {
+				const byte = lineBytes[i];
+				hexParts.push(byte.toString(16).toUpperCase().padStart(2, "0"));
+				asciiParts.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".");
+			} else {
+				// Padding for incomplete lines
+				hexParts.push("  ");
+				asciiParts.push(" ");
+			}
+		}
 
-    const hexStr = hexParts.join(' ');
-    const asciiStr = asciiParts.join('');
+		const hexStr = hexParts.join(" ");
+		const asciiStr = asciiParts.join("");
 
-    lines.push(`${addrHex}:  ${hexStr}   ${asciiStr}`);
-  }
+		lines.push(`${addrHex}:  ${hexStr}   ${asciiStr}`);
+	}
 
-  return lines.join('\n');
+	return lines.join("\n");
 }
 
 describe("PolyAsm", () => {
@@ -152,9 +152,7 @@ describe("PolyAsm", () => {
 		const assembler6502 = new Assembler(cpu6502, mockFileHandler);
 		const machineCode6502 = assembler6502.assemble(source6502);
 
-		console.log(
-			`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`,
-		);
+		console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);
 
 		expect(machineCode6502).toBeDefined();
 	});

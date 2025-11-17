@@ -36,9 +36,7 @@ export class AlignDirective implements IDirective {
 			if (boundary <= 0) return ADVANCE_TO_NEXT_LINE;
 
 			const fillerValue =
-				valueTokens.length > 0
-					? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, evaluationContext)
-					: 0; // Default to 0 if no value is provided
+				valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, evaluationContext) : 0; // Default to 0 if no value is provided
 
 			const newPC = (assembler.currentPC + boundary - 1) & ~(boundary - 1);
 			const paddingBytes = newPC - assembler.currentPC;

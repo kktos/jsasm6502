@@ -101,6 +101,18 @@ export class AssemblyLexer {
 			return this.makeToken("OPERATOR", "/", startLine, startColumn);
 		}
 
+		// Multi-character operators
+		if (ch === "<" && this.peekAhead(1) === "<") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", "<<", startLine, startColumn);
+		}
+		if (ch === ">" && this.peekAhead(1) === ">") {
+			this.advance();
+			this.advance();
+			return this.makeToken("OPERATOR", ">>", startLine, startColumn);
+		}
+
 		// Single-char tokens - monomorphic check pattern for V8
 		switch (ch) {
 			// case ",":
@@ -197,8 +209,20 @@ export class AssemblyLexer {
 		}
 
 		// Numbers (hex $FF, binary %1010, decimal 42)
-		if (this.isDigit(ch) || ch === "$" || ch === "%") {
+		if (this.isDigit(ch) || ch === "$") {
 			return this.scanNumber(startLine, startColumn);
+		}
+
+		// Handle ambiguity of '%' (binary prefix vs. modulo operator)
+		if (ch === "%") {
+			const next = this.peekAhead(1);
+			if (next === "0" || next === "1") {
+				return this.scanNumber(startLine, startColumn);
+			} else {
+				// It's not a binary number prefix, so it must be the modulo operator
+				this.advance();
+				return this.makeToken("OPERATOR", "%", startLine, startColumn);
+			}
 		}
 
 		// Identifiers (which could be instructions, labels, or symbols)
@@ -279,16 +303,55 @@ export class AssemblyLexer {
 	}
 
 	private scanString(line: number, column: number): Token {
-		const start = this.pos;
+		let value = "";
 		this.advance(); // skip opening "
 
 		while (this.peek() !== '"' && this.peek() !== "\n" && this.pos < this.length) {
 			if (this.peek() === "\\") {
 				this.advance(); // skip escape char
-				if (this.pos < this.length) {
-					this.advance(); // skip escaped char
+				const escaped = this.peek();
+				this.advance(); // consume escaped char
+				switch (escaped) {
+					case "n":
+						value += "\n";
+						break;
+					case "r":
+						value += "\r";
+						break;
+					case "t":
+						value += "\t";
+						break;
+					case "b":
+						value += "\b";
+						break;
+					case "f":
+						value += "\f";
+						break;
+					case "'":
+						value += "'";
+						break;
+					case '"':
+						value += '"';
+						break;
+					case "\\":
+						value += "\\";
+						break;
+					case "x": {
+						const hexCode = this.source.substring(this.pos, this.pos + 2);
+						if (hexCode.length === 2 && /^[0-9a-fA-F]+$/.test(hexCode)) {
+							value += String.fromCharCode(parseInt(hexCode, 16));
+							this.advance();
+							this.advance();
+						} else {
+							value += "x"; // Not a valid hex escape, treat literally
+						}
+						break;
+					}
+					default:
+						value += escaped; // Unknown escape sequence, treat literally
 				}
 			} else {
+				value += this.peek();
 				this.advance();
 			}
 		}
@@ -297,45 +360,45 @@ export class AssemblyLexer {
 			this.advance(); // skip closing "
 		}
 
-		const value = this.source.slice(start, this.pos);
 		return this.makeToken("STRING", value, line, column);
 	}
 
 	private scanNumber(line: number, column: number, negative = false): Token {
-		const start = negative ? this.pos - 1 : this.pos;
-
 		const firstChar = this.peek();
 		const secondChar = this.peekAhead(1).toLowerCase();
+		let radix: number;
 
-		// Handle 0x... and $... for hexadecimal
+		// Determine radix and skip prefix
 		if (firstChar === "$" || (firstChar === "0" && secondChar === "x")) {
-			// Skip prefix ($ or 0x)
+			radix = 16;
 			this.advance();
 			if (firstChar === "0") this.advance();
-
-			while (this.isHexDigit(this.peek()) || this.peek() === "_") {
-				this.advance();
-			}
-		}
-		// Handle 0b... and %... for binary
-		else if (firstChar === "%" || (firstChar === "0" && secondChar === "b")) {
-			// Skip prefix (% or 0b)
+		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b")) {
+			radix = 2;
 			this.advance();
 			if (firstChar === "0") this.advance();
-
-			while (this.peek() === "0" || this.peek() === "1" || this.peek() === "_") {
-				this.advance();
-			}
-		}
-		// Handle decimal
-		else {
-			while (this.isDigit(this.peek()) || this.peek() === "_") {
-				this.advance();
-			}
+		} else {
+			radix = 10;
 		}
 
-		const value = this.source.slice(start, this.pos);
-		return this.makeToken("NUMBER", value, line, column);
+		const start = this.pos;
+		while (this.isValidDigitForRadix(this.peek(), radix) || this.peek() === "_") {
+			this.advance();
+		}
+
+		const numberString = this.source.slice(start, this.pos).replace(/_/g, "");
+		if (numberString === "") {
+			// This can happen if a prefix is not followed by any digits (e.g., just '$')
+			// We can treat it as an operator or throw an error. For now, let's assume it's not a number.
+			// We need to rewind the position to before the prefix was scanned.
+			this.pos = start - (radix === 10 ? 0 : radix === 16 && secondChar === "x" ? 2 : 1);
+			return this.scanIdentifier(line, column); // Re-evaluate as something else
+		}
+
+		let numericValue = parseInt(numberString, radix);
+		if (negative) numericValue = -numericValue;
+
+		return this.makeToken("NUMBER", String(numericValue), line, column);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
@@ -356,6 +419,12 @@ export class AssemblyLexer {
 
 		// Otherwise it's just an identifier (could be instruction, symbol, macro name, etc.)
 		return this.makeToken("IDENTIFIER", value, line, column);
+	}
+
+	private isValidDigitForRadix(ch: string, radix: number): boolean {
+		if (radix === 16) return this.isHexDigit(ch);
+		if (radix === 2) return ch === "0" || ch === "1";
+		return this.isDigit(ch); // radix 10
 	}
 
 	// Character classification - monomorphic for V8 optimization

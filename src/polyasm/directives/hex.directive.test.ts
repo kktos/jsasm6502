@@ -44,7 +44,6 @@ describe(".HEX Directive", () => {
             .HEX { 123 }
         `;
 		expect(() => assembler.assemble(sourceWithOddDigits)).toThrow("Hex data must have an even number of digits.");
-
 	});
 
 	it("should throw errors for invalid .HEX data", () => {

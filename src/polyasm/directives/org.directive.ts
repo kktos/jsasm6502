@@ -21,7 +21,10 @@ export class OrgDirective implements IDirective {
 	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
 		const orgExpressionTokens = assembler.getInstructionTokens(context.tokenIndex + 1);
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context.evaluationContext);
+			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(
+				orgExpressionTokens,
+				context.evaluationContext,
+			);
 		} catch (e) {
 			console.error(`ERROR on line ${context.token.line}: Failed to evaluate .ORG expression. ${e}`);
 		}

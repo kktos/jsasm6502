@@ -30,9 +30,7 @@ export class FillDirective implements IDirective {
 
 		const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, evaluationContext);
 		const fillerValue =
-			valueTokens.length > 0
-				? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, evaluationContext)
-				: 0; // Default to 0 if no value is provided
+			valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, evaluationContext) : 0; // Default to 0 if no value is provided
 
 		if (assembler.isAssembling && count > 0) {
 			// Ensure filler value is a single byte

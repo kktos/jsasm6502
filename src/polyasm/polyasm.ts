@@ -81,12 +81,8 @@ export class Assembler {
 
 		// Expects the structure: Directive Token, String Token
 		if (tokens.length >= 2 && tokens[1].type === "STRING") {
-			// Remove surrounding quotes if present (assuming quotes from tokenizer)
-			let filename = tokens[1].value;
-			if (filename.startsWith('"') && filename.endsWith('"')) {
-				filename = filename.slice(1, -1);
-			}
-			return filename;
+			// The lexer now provides the un-escaped string value directly.
+			return tokens[1].value;
 		}
 		return null;
 	}

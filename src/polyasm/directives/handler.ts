@@ -17,6 +17,7 @@ import { FillDirective } from "./fill.directive";
 import { AlignDirective } from "./align.directive";
 import { HexDirective } from "./hex.directive";
 import type { Assembler } from "../polyasm";
+import { StringDirective } from "./string.directive";
 import type { DirectiveContext } from "./directive.interface";
 
 export class DirectiveHandler {
@@ -40,6 +41,14 @@ export class DirectiveHandler {
 		this.register(".DL", new DataDirective(4)); // Define Long (4 bytes)
 		this.register(".LONG", new DataDirective(4)); // Define Long (4 bytes)
 		this.register(".HEX", new HexDirective());
+
+		this.register(".TEXT", new StringDirective("TEXT"));
+		const cstrHandler = new StringDirective("CSTR");
+		this.register(".CSTR", cstrHandler);
+		this.register(".CSTRING", cstrHandler);
+		this.register(".ASCIIZ", cstrHandler);
+		this.register(".PSTR", new StringDirective("PSTR"));
+		this.register(".PSTRL", new StringDirective("PSTRL"));
 
 		const conditionalHandler = new ConditionalDirective();
 		this.register(".IF", conditionalHandler);

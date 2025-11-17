@@ -41,8 +41,7 @@ export class DataDirective implements IDirective {
 		for (const token of argTokens) {
 			switch (token.type) {
 				case "STRING":
-					// String length is the content length (value minus quotes)
-					totalSize += token.value.length - 2;
+					totalSize += token.value.length;
 					isElement = true;
 					break;
 				case "COMMA":
@@ -83,7 +82,7 @@ export class DataDirective implements IDirective {
 			switch (token.type) {
 				case "STRING": {
 					evaluateAndPush(); // Push any pending expression before the string
-					const strValue = token.value.slice(1, -1); // Remove quotes
+					const strValue = token.value;
 					for (let i = 0; i < strValue.length; i++) {
 						outputBytes.push(strValue.charCodeAt(i));
 					}

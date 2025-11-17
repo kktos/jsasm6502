@@ -21,25 +21,25 @@ export class HexDirective implements IDirective {
 		const [hexString, endIndex] = this.extractHexData(assembler, tokenIndex);
 
 		// try {
-			const cleanedString = hexString.replace(/\s/g, "");
-			if (cleanedString.length % 2 !== 0) {
-				throw new Error("Hex data must have an even number of digits.");
-			}
+		const cleanedString = hexString.replace(/\s/g, "");
+		if (cleanedString.length % 2 !== 0) {
+			throw new Error("Hex data must have an even number of digits.");
+		}
 
-			const bytes: number[] = [];
-			for (let i = 0; i < cleanedString.length; i += 2) {
-				const byteString = cleanedString.substring(i, i + 2);
-				const byte = parseInt(byteString, 16);
-				if (isNaN(byte)) {
-					throw new Error(`Invalid hexadecimal character sequence: "${byteString}"`);
-				}
-				bytes.push(byte);
+		const bytes: number[] = [];
+		for (let i = 0; i < cleanedString.length; i += 2) {
+			const byteString = cleanedString.substring(i, i + 2);
+			const byte = parseInt(byteString, 16);
+			if (isNaN(byte)) {
+				throw new Error(`Invalid hexadecimal character sequence: "${byteString}"`);
 			}
+			bytes.push(byte);
+		}
 
-			if (assembler.isAssembling && bytes.length > 0) {
-				assembler.outputBuffer.push(...bytes);
-			}
-			assembler.currentPC += bytes.length;
+		if (assembler.isAssembling && bytes.length > 0) {
+			assembler.outputBuffer.push(...bytes);
+		}
+		assembler.currentPC += bytes.length;
 		// } catch (e) {
 		// 	console.error(`ERROR on line ${token.line}: Failed to parse .HEX data. ${e}`);
 		// }
