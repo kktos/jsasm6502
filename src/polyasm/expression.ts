@@ -342,6 +342,14 @@ export class ExpressionEvaluator {
 				case "LABEL":
 				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF": {
+					// If the next token is a function, the identifier is an argument to it,
+					// so we should push its name as a string instead of its value.
+					const nextToken = rpnTokens.find((t, idx) => idx > rpnTokens.indexOf(token));
+					if (nextToken?.type === "FUNCTION") {
+						stack.push(token.value);
+						break;
+					}
+
 					const value = this.resolveValue(token, context);
 					if (typeof value === "number" || typeof value === "string") {
 						stack.push(value);
@@ -349,6 +357,7 @@ export class ExpressionEvaluator {
 					}
 
 					// This part handles macro argument substitution where the argument itself is an expression
+					// This needs to be evaluated before being pushed to the stack.
 					const argTokens = context.macroArgs?.get(token.value.toUpperCase());
 					if (argTokens) {
 						const result = this.evaluate(argTokens, context);
@@ -365,7 +374,7 @@ export class ExpressionEvaluator {
 
 				case "FUNCTION": {
 					const funcName = token.value.toUpperCase();
-					functionDispatcher(funcName, stack, token);
+					functionDispatcher(funcName, stack, token, this.symbolTable);
 					break;
 				}
 

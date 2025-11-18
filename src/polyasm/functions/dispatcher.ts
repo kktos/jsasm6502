@@ -1,14 +1,24 @@
 import type { Token } from "../lexer/lexer.class";
+import { def } from "./def";
 import { len } from "./len";
+import { undef } from "./undef";
 import type { EvaluationStack, IFunction } from "./types";
+import type { PASymbolTable } from "../symbol.class";
 
 const functions = new Map<string, IFunction>();
 functions.set(".LEN", len);
+functions.set(".DEF", def);
+functions.set(".UNDEF", undef);
 
-export function functionDispatcher(name: string, stack: EvaluationStack, token: Token): void {
+export function functionDispatcher(
+	name: string,
+	stack: EvaluationStack,
+	token: Token,
+	symbolTable: PASymbolTable,
+): void {
 	const func = functions.get(name.toUpperCase());
 	if (!func) {
 		throw new Error(`Unknown function '${name}' on line ${token.line}.`);
 	}
-	func(stack, token);
+	func(stack, token, symbolTable);
 }

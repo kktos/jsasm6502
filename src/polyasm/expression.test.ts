@@ -194,6 +194,28 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(3);
 		});
+
+		it("should evaluate .DEF() on a defined symbol", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("MySymbol", 123);
+			const tokens = tokenize(".DEF(MySymbol)");
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(1);
+		});
+
+		it("should evaluate .DEF() on an undefined symbol", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.DEF("MySymbol")');
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(0);
+		});
+
+		it("should evaluate .UNDEF() on an undefined symbol", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".UNDEF(Unknown)");
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(1);
+		});
 	});
 
 	describe("Data Structures", () => {
