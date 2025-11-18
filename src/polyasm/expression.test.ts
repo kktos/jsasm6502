@@ -237,6 +237,13 @@ describe("ExpressionEvaluator", () => {
 			expect(evaluator.evaluate(tokenize(".TYPE(123)"), { pc: 0 })).toBe("number");
 			expect(evaluator.evaluate(tokenize(".TYPE([1,2])"), { pc: 0 })).toBe("array");
 		});
+
+		it("should evaluate .JSON() to get a string representation of an array", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.JSON([1, "two", 3])');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe('[1,"two",3]');
+		});
 	});
 
 	describe("Array Functions", () => {

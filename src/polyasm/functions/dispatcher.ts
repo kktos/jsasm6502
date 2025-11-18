@@ -9,6 +9,7 @@ import type { PASymbolTable } from "../symbol.class";
 import { push } from "./push.function";
 import { pop } from "./pop.function";
 import { type } from "./type.function";
+import { json } from "./json.function";
 
 const functions = new Map<string, IFunctionDef>();
 
@@ -26,6 +27,7 @@ functions.set(".PUSH", { handler: push, minArgs: 2, maxArgs: Number.POSITIVE_INF
 functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
 
 functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
+functions.set(".JSON", { handler: json, minArgs: 1, maxArgs: 1 });
 
 export function functionDispatcher(
 	name: string,
