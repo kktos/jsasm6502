@@ -184,6 +184,7 @@ export class ExpressionEvaluator {
 				lastToken = arrayToken;
 				continue;
 			}
+
 			switch (processedToken.type) {
 				case "NUMBER":
 				case "STRING":
@@ -192,174 +193,14 @@ export class ExpressionEvaluator {
 				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF":
 				case "ARRAY":
-					// Check for function call
-					if (processedToken.type === "IDENTIFIER" && tokens[i + 1]?.value === "(") {
-						const funcToken: Token = {
-							...processedToken,
-							type: "FUNCTION",
-							value: `${processedToken.value},1`, // Store arg count, default to 1
-						};
-						operatorStack.push(funcToken);
-						lastToken = funcToken;
-						continue; // Skip to next token
-					}
-
-					// An operand should not follow another operand without an operator in between.
-					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(") {
-						throw new Error(
-							`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`,
-						);
-					}
-					outputQueue.push(processedToken);
+					if (this.handleOperand(processedToken, tokens, i, outputQueue, operatorStack, lastToken)) continue;
 					break;
-
-				case "COMMA": {
-					// A comma acts as a separator between expressions in a function call.
-					// We need to evaluate everything on the operator stack until we find the
-					// opening parenthesis of the function call.
-					while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].value !== "(") {
-						outputQueue.push(operatorStack.pop() as Token);
-					}
-
-					// Commas are only valid inside function calls.
-					let foundParen = false;
-					for (let k = operatorStack.length - 1; k >= 0; k--) {
-						if (operatorStack[k].value === "(") {
-							foundParen = true;
-							// Increment argument count of the function, which is right before the '('
-							if (k > 0 && operatorStack[k - 1].type === "FUNCTION") {
-								const [name, count] = operatorStack[k - 1].value.split(",");
-								operatorStack[k - 1].value = `${name},${Number.parseInt(count) + 1}`;
-							}
-							break;
-						}
-					}
-					if (!foundParen) throw new Error(`Unexpected comma on line ${processedToken.line}.`);
-					// Treat comma like an operator for lastToken tracking
+				case "COMMA":
+					this.handleComma(processedToken, outputQueue, operatorStack);
 					break;
-				} // No fall-through here, as COMMA is now explicitly handled in the operand check.
-
-				case "OPERATOR": {
-					const op = processedToken.value;
-					const isUnary =
-						!lastToken || lastToken.value === "(" || (lastToken.type === "OPERATOR" && lastToken.value !== ")");
-
-					switch (op) {
-						case "[": // This is now specifically for array access, as array literals are handled above
-							// Push ARRAY_ACCESS as an operator, then push '(' to handle the index expression
-							operatorStack.push({ ...processedToken, value: "ARRAY_ACCESS" }); // Push the special operator
-							operatorStack.push({ ...processedToken, value: "(" }); // Push a virtual '(' for the index expression
-							break;
-
-						case "]": {
-							// Closing bracket for array access
-							let foundOpeningParenForIndex = false;
-							while (operatorStack.length > 0) {
-								const topOp = operatorStack.pop() as Token;
-								if (topOp.value === "(") {
-									// Found the virtual '(' for the index
-									foundOpeningParenForIndex = true;
-									break;
-								}
-								outputQueue.push(topOp);
-							}
-							if (!foundOpeningParenForIndex) {
-								throw new Error(`Mismatched brackets: unmatched ']' on line ${processedToken.line}.`);
-							}
-							// Now, the operatorStack should have the ARRAY_ACCESS operator
-							const arrayAccessOp = operatorStack.pop();
-							if (arrayAccessOp?.value !== "ARRAY_ACCESS") {
-								throw new Error(
-									`Mismatched brackets: ']' without preceding array access on line ${processedToken.line}.`,
-								);
-							}
-							outputQueue.push(arrayAccessOp); // Push ARRAY_ACCESS to output queue
-							break;
-						}
-
-						case "-":
-						case "+":
-							if (isUnary) {
-								const unaryToken: Token = {
-									type: "OPERATOR",
-									value: "UNARY_MINUS",
-									line: processedToken.line,
-									column: processedToken.column,
-								};
-								if (op === "-") {
-									this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
-								} // Unary '+' is a no-op, so we do nothing and don't update lastToken.
-							} else {
-								// It's a binary operator
-								this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
-							}
-							break;
-
-						case "!":
-							if (!isUnary) {
-								throw new Error(`Operator '!' must be unary on line ${processedToken.line}.`);
-							}
-							this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
-							break;
-
-						case "*":
-							if (isUnary) {
-								// This is the program counter symbol, not multiplication.
-								// Treat it as an identifier.
-								processedToken = { ...processedToken, type: "IDENTIFIER" };
-								outputQueue.push(processedToken);
-							} else this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
-							break;
-
-						case "/":
-						case "&":
-						case "|":
-						case "^":
-						case "=":
-						case "==":
-						case "!=":
-						case "<":
-						case ">":
-						case "<=":
-						case ">=":
-						case "%":
-						case "&&":
-						case "||":
-						case "<<":
-						case ">>":
-							this.pushOperatorWithPrecedence(processedToken, outputQueue, operatorStack);
-							break;
-
-						case "(":
-							operatorStack.push(processedToken);
-							break;
-
-						case ")": {
-							let foundMatch = false;
-							while (operatorStack.length > 0) {
-								const topOp = operatorStack.pop() as Token;
-								if (topOp.value === "(") {
-									foundMatch = true;
-									break;
-								}
-								outputQueue.push(topOp);
-							}
-							if (!foundMatch) {
-								throw new Error(`Mismatched parenthesis: unmatched ')' on line ${processedToken.line}.`);
-							}
-							// If the token before the '(' was a function, pop it onto the output queue.
-							const topOfStack = operatorStack[operatorStack.length - 1];
-							if (topOfStack?.type === "FUNCTION") {
-								const funcToken = operatorStack.pop() as Token;
-								const [name, count] = funcToken.value.split(",");
-								// If there's only one argument and it's empty (e.g., .FOO()), arg count is 0.
-								if (Number.parseInt(count) === 1 && lastToken?.value === "(") funcToken.value = `${name},0`;
-								outputQueue.push(funcToken);
-							}
-							break;
-						}
-					}
-				}
+				case "OPERATOR":
+					processedToken = this.handleOperator(processedToken, outputQueue, operatorStack, lastToken);
+					break;
 			}
 			lastToken = processedToken; // Always update lastToken
 		}
@@ -373,6 +214,159 @@ export class ExpressionEvaluator {
 		}
 
 		return outputQueue;
+	}
+
+	/** Handles operand tokens (numbers, strings, identifiers). Returns true if the main loop should `continue`. */
+	private handleOperand(
+		token: Token,
+		tokens: Token[],
+		index: number,
+		outputQueue: Token[],
+		operatorStack: Token[],
+		lastToken: Token | undefined,
+	): boolean {
+		// Check for function call, e.g., IDENTIFIER followed by '('.
+		if (token.type === "IDENTIFIER" && tokens[index + 1]?.value === "(") {
+			const funcToken: Token = {
+				...token,
+				type: "FUNCTION",
+				argCount: 1, // Default to 1 for the first argument.
+			};
+			operatorStack.push(funcToken);
+			return true; // Main loop should skip to the next token.
+		}
+
+		// An operand should not follow another operand without an operator in between.
+		if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(") {
+			throw new Error(`Invalid expression format: Unexpected token '${token.value}' on line ${token.line}.`);
+		}
+		outputQueue.push(token);
+		return false;
+	}
+
+	/** Handles comma tokens, used as separators in function arguments. */
+	private handleComma(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
+		// A comma separates arguments, so we evaluate the expression for the current argument.
+		while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].value !== "(") {
+			outputQueue.push(operatorStack.pop() as Token);
+		}
+
+		// Ensure the comma is inside a function call.
+		let foundParen = false;
+		for (let k = operatorStack.length - 1; k >= 0; k--) {
+			if (operatorStack[k].value === "(") {
+				foundParen = true;
+				// Increment argument count of the function, which is right before the '('.
+				if (k > 0 && operatorStack[k - 1].type === "FUNCTION") {
+					const funcToken = operatorStack[k - 1];
+					// Safely increment argCount
+					funcToken.argCount = (funcToken.argCount ?? 0) + 1;
+				}
+				break;
+			}
+		}
+		if (!foundParen) throw new Error(`Unexpected comma on line ${token.line}.`);
+	}
+
+	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
+	private handleOperator(
+		token: Token,
+		outputQueue: Token[],
+		operatorStack: Token[],
+		lastToken: Token | undefined,
+	): Token {
+		const op = token.value;
+		const isUnary = !lastToken || lastToken.value === "(" || (lastToken.type === "OPERATOR" && lastToken.value !== ")");
+
+		switch (op) {
+			case "[": // Array access
+				operatorStack.push({ ...token, value: "ARRAY_ACCESS" });
+				operatorStack.push({ ...token, value: "(" }); // Virtual '(' for index expression.
+				break;
+
+			case "]": {
+				// Closing bracket for array access
+				let foundParen = false;
+				while (operatorStack.length > 0) {
+					const topOp = operatorStack.pop() as Token;
+					if (topOp.value === "(") {
+						foundParen = true;
+						break;
+					}
+					outputQueue.push(topOp);
+				}
+				if (!foundParen) throw new Error(`Mismatched brackets: unmatched ']' on line ${token.line}.`);
+
+				const arrayAccessOp = operatorStack.pop();
+				if (arrayAccessOp?.value !== "ARRAY_ACCESS") {
+					throw new Error(`Mismatched brackets: ']' without preceding array access on line ${token.line}.`);
+				}
+				outputQueue.push(arrayAccessOp);
+				break;
+			}
+
+			case "-":
+			case "+":
+				if (isUnary) {
+					if (op === "-") {
+						const unaryToken: Token = { ...token, value: "UNARY_MINUS" };
+						this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
+					}
+					// Unary '+' is a no-op, so we do nothing.
+				} else {
+					this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				}
+				break;
+
+			case "!":
+				if (!isUnary) throw new Error(`Operator '!' must be unary on line ${token.line}.`);
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+
+			case "*":
+				if (isUnary) {
+					// This is the program counter symbol, not multiplication. Treat as an identifier.
+					const pcToken = { ...token, type: "IDENTIFIER" as const };
+					outputQueue.push(pcToken);
+					return pcToken; // Return the modified token
+				}
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+
+			case "(":
+				operatorStack.push(token);
+				break;
+
+			case ")": {
+				let foundMatch = false;
+				while (operatorStack.length > 0) {
+					const topOp = operatorStack.pop() as Token;
+					if (topOp.value === "(") {
+						foundMatch = true;
+						break;
+					}
+					outputQueue.push(topOp);
+				}
+				if (!foundMatch) throw new Error(`Mismatched parenthesis: unmatched ')' on line ${token.line}.`);
+
+				// If the token before the '(' was a function, pop it to the output.
+				const topOfStack = operatorStack[operatorStack.length - 1];
+				if (topOfStack?.type === "FUNCTION") {
+					const funcToken = operatorStack.pop() as Token;
+					// If there's only one argument and it's empty (e.g., .FOO()), arg count is 0.
+					if (funcToken.argCount === 1 && lastToken?.value === "(") {
+						funcToken.argCount = 0;
+					}
+					outputQueue.push(funcToken);
+				}
+				break;
+			}
+
+			default: // Default case for all other binary operators
+				this.pushOperatorWithPrecedence(token, outputQueue, operatorStack);
+				break;
+		}
+		return token;
 	}
 
 	/** Helper function to handle operator precedence during Shunting-Yard. */
@@ -440,9 +434,8 @@ export class ExpressionEvaluator {
 				}
 
 				case "FUNCTION": {
-					const [funcName, argCountStr] = token.value.split(",");
-					const argCount = Number.parseInt(argCountStr);
-					functionDispatcher(funcName.toUpperCase(), stack, token, this.symbolTable, argCount);
+					const argCount = token.argCount ?? 0;
+					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, argCount);
 					break;
 				}
 

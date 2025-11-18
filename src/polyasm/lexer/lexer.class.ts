@@ -40,6 +40,7 @@ export interface Token {
 	raw?: string;
 	line: number | string;
 	column: number;
+	argCount?: number;
 }
 
 export class AssemblyLexer {
