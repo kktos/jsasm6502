@@ -8,6 +8,7 @@ import type { EvaluationStack, IFunctionDef } from "./types";
 import type { PASymbolTable } from "../symbol.class";
 import { push } from "./push.function";
 import { pop } from "./pop.function";
+import { type } from "./type.function";
 
 const functions = new Map<string, IFunctionDef>();
 
@@ -23,6 +24,8 @@ functions.set(".SPLIT", { handler: split, minArgs: 1, maxArgs: 2 });
 functions.set(".ARRAY", { handler: array, minArgs: 0, maxArgs: Number.POSITIVE_INFINITY });
 functions.set(".PUSH", { handler: push, minArgs: 2, maxArgs: Number.POSITIVE_INFINITY });
 functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
+
+functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
 
 export function functionDispatcher(
 	name: string,

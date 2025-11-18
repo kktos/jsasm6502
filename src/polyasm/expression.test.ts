@@ -230,6 +230,13 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("$002A");
 		});
+
+		it("should evaluate .TYPE() on different data types", () => {
+			const { evaluator, tokenize } = setup();
+			expect(evaluator.evaluate(tokenize('.TYPE("hello")'), { pc: 0 })).toBe("string");
+			expect(evaluator.evaluate(tokenize(".TYPE(123)"), { pc: 0 })).toBe("number");
+			expect(evaluator.evaluate(tokenize(".TYPE([1,2])"), { pc: 0 })).toBe("array");
+		});
 	});
 
 	describe("Array Functions", () => {
