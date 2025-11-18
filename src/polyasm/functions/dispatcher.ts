@@ -4,6 +4,7 @@ import { len } from "./len";
 import { undef } from "./undef";
 import { hex } from "./hex";
 import { split } from "./split";
+import { array } from "./array";
 import type { EvaluationStack, IFunction } from "./types";
 import type { PASymbolTable } from "../symbol.class";
 
@@ -13,6 +14,7 @@ functions.set(".DEF", def);
 functions.set(".UNDEF", undef);
 functions.set(".HEX", hex);
 functions.set(".SPLIT", split);
+functions.set(".ARRAY", array);
 
 export function functionDispatcher(
 	name: string,

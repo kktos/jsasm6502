@@ -244,6 +244,20 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toEqual(["a", "b", "c"]);
 		});
+
+		it("should evaluate .ARRAY() with multiple arguments", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.ARRAY(1, "two", 3)');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual([1, "two", 3]);
+		});
+
+		it("should evaluate .ARRAY() with no arguments to create an empty array", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".ARRAY()");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual([]);
+		});
 	});
 
 	describe("Data Structures", () => {
