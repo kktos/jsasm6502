@@ -1,11 +1,7 @@
-import type { IFunction, EvaluationStack } from "./types";
+import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 
-export const split: IFunction = (stack: EvaluationStack, token: Token, _symbolTable, argCount: number): void => {
-	if (argCount < 1 || argCount > 2) {
-		throw new Error(`.SPLIT() requires 1 or 2 arguments, but got ${argCount} on line ${token.line}.`);
-	}
-
+export const split: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const delimiterArg = argCount === 2 ? stack.pop() : " ";
 	const stringArg = stack.pop();
 

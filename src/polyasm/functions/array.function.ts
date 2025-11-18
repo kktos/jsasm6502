@@ -1,11 +1,11 @@
-import type { IFunction, EvaluationStack } from "./types";
+import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 import type { SymbolValue } from "../symbol.class";
 
-export const array: IFunction = (stack: EvaluationStack, token: Token, _symbolTable, argCount: number): void => {
+export const array: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const newArray: SymbolValue[] = [];
 
-	for (let i = 0; i < argCount; i++) {
+	for (let i = 0; i < (argCount ?? 0); i++) {
 		const arg = stack.pop();
 		if (arg === undefined) {
 			// This should not happen if argCount is correct

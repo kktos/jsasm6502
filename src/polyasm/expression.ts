@@ -369,14 +369,6 @@ export class ExpressionEvaluator {
 				case "LABEL":
 				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF": {
-					// If the next token is a function, the identifier is an argument to it,
-					// so we should push its name as a string instead of its value.
-					// const nextToken = rpnTokens.find((t, idx) => idx > rpnTokens.indexOf(token));
-					// if (nextToken?.type === "FUNCTION") {
-					// 	stack.push(token.value);
-					// 	break;
-					// }
-
 					const value = this.resolveValue(token, context);
 					if (value !== undefined) {
 						stack.push(value);

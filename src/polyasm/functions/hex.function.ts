@@ -1,11 +1,7 @@
-import type { IFunction, EvaluationStack } from "./types";
+import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 
-export const hex: IFunction = (stack: EvaluationStack, token: Token, _symbolTable, argCount: number): void => {
-	if (argCount < 1 || argCount > 2) {
-		throw new Error(`.HEX() requires 1 or 2 arguments, but got ${argCount} on line ${token.line}.`);
-	}
-
+export const hex: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const minDigitsArg = argCount === 2 ? stack.pop() : undefined;
 	const valueArg = stack.pop();
 

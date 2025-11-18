@@ -1,11 +1,7 @@
-import type { IFunction, EvaluationStack } from "./types";
+import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 
-export const pop: IFunction = (stack: EvaluationStack, token: Token, _symbolTable, argCount: number): void => {
-	if (argCount !== 1) {
-		throw new Error(`.POP() requires exactly 1 argument (an array) on line ${token.line}.`);
-	}
-
+export const pop: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const arrayArg = stack.pop();
 
 	if (!Array.isArray(arrayArg) || arrayArg.length === 0) {

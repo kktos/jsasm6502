@@ -1,28 +1,12 @@
 import type { PASymbolTable } from "../symbol.class";
-import type { IFunction, EvaluationStack } from "./types";
+import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 
-export const def: IFunction = (
-	stack: EvaluationStack,
-	token: Token,
-	symbolTable: PASymbolTable,
-	argCount: number,
-): void => {
-	if (argCount !== 1) {
-		throw new Error(`.DEF() requires 1 argument, but got ${argCount} on line ${token.line}.`);
-	}
+export const def: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
 	stack.push(checkIfDefined(stack, symbolTable) ? 1 : 0);
 };
 
-export const undef: IFunction = (
-	stack: EvaluationStack,
-	token: Token,
-	symbolTable: PASymbolTable,
-	argCount: number,
-): void => {
-	if (argCount !== 1) {
-		throw new Error(`.UNDEF() requires 1 argument, but got ${argCount} on line ${token.line}.`);
-	}
+export const undef: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
 	stack.push(checkIfDefined(stack, symbolTable) ? 0 : 1);
 };
 
