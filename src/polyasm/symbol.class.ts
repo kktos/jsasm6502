@@ -1,5 +1,5 @@
-/** The possible types for a symbol's value. */
-export type SymbolValue = number | string | (string | number)[];
+/** The possible types for a symbol's value, allowing nested arrays. */
+export type SymbolValue = number | string | SymbolValue[];
 
 /** Represents a defined symbol (label or constant). */
 interface PASymbol {
