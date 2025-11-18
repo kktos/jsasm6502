@@ -230,6 +230,20 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("$002A");
 		});
+
+		it("should evaluate .SPLIT() with default delimiter", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.SPLIT("one two three")');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual(["one", "two", "three"]);
+		});
+
+		it("should evaluate .SPLIT() with a custom delimiter", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.SPLIT("a,b,c", ",")');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual(["a", "b", "c"]);
+		});
 	});
 
 	describe("Data Structures", () => {

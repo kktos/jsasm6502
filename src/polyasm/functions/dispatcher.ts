@@ -3,6 +3,7 @@ import { def } from "./def";
 import { len } from "./len";
 import { undef } from "./undef";
 import { hex } from "./hex";
+import { split } from "./split";
 import type { EvaluationStack, IFunction } from "./types";
 import type { PASymbolTable } from "../symbol.class";
 
@@ -11,6 +12,7 @@ functions.set(".LEN", len);
 functions.set(".DEF", def);
 functions.set(".UNDEF", undef);
 functions.set(".HEX", hex);
+functions.set(".SPLIT", split);
 
 export function functionDispatcher(
 	name: string,
