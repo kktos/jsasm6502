@@ -8,6 +8,7 @@ import type { Token } from "./lexer/lexer.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 import type { Assembler } from "./polyasm";
 import type { Logger } from "./logger";
+import { functionDispatcher } from "./functions/dispatcher";
 
 const PRECEDENCE: Record<string, number> = {
 	// Unary operators (highest precedence)
@@ -189,16 +190,7 @@ export class ExpressionEvaluator {
 					}
 
 					// An operand should not follow another operand without an operator in between.
-					if (
-						lastToken &&
-						(lastToken.type === "NUMBER" ||
-							lastToken.type === "IDENTIFIER" ||
-							lastToken.type === "LABEL" ||
-							lastToken.type === "LOCAL_LABEL" ||
-							lastToken.type === "STRING" || // Note: ARRAY is a new type
-							lastToken.type === "ARRAY" ||
-							lastToken.type === "ANONYMOUS_LABEL_REF")
-					) {
+					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.value !== "(") {
 						throw new Error(
 							`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`,
 						);
@@ -373,19 +365,7 @@ export class ExpressionEvaluator {
 
 				case "FUNCTION": {
 					const funcName = token.value.toUpperCase();
-					switch (funcName) {
-						case ".LEN": {
-							const arg = stack.pop();
-
-							if (typeof arg !== "string" && !Array.isArray(arg))
-								throw new Error(`.LEN() requires a string or array argument on line ${token.line}.`);
-
-							stack.push(arg.length);
-							break;
-						}
-						default:
-							throw new Error(`Unknown function '${funcName}' on line ${token.line}.`);
-					}
+					functionDispatcher(funcName, stack, token);
 					break;
 				}
 
