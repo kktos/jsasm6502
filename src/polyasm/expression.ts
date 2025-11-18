@@ -590,14 +590,22 @@ export class ExpressionEvaluator {
 			case "LABEL": {
 				if (token.value === "*") return context.pc;
 
-				// First, check for macro arguments, as they have the highest precedence.
-				const argTokens = context.macroArgs?.get(token.value.toUpperCase());
-				if (argTokens) {
-					return this.evaluate(argTokens, context);
+				// PRIORITY 1: Check if it's a macro argument from the current stream context.
+				const macroArgTokens = context.macroArgs?.get(token.value.toUpperCase());
+				if (macroArgTokens) {
+					// Recursively evaluate the tokens passed as the argument.
+					return this.evaluate(macroArgTokens, context);
 				}
 
-				// If not a macro argument, look it up in the symbol table.
+				// Look up the symbol in the current scope stack.
 				const value = this.symbolTable.lookupSymbol(token.value);
+
+				// If the symbol's value is an array of tokens, it's a macro parameter.
+				// We need to evaluate it recursively. This handles .EQU with token arrays.
+				if (Array.isArray(value) && value[0]?.type) {
+					return this.evaluate(value as Token[], context);
+				}
+
 				if (value !== undefined) {
 					return value;
 				}

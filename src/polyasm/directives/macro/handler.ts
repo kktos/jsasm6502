@@ -29,110 +29,98 @@ export class MacroHandler {
 		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
 
 		// 1. Parse arguments passed in the call line
-		const passedArgsArray = this.parseMacroArguments(callIndex + 1);
+		const passedArgsArray = this.parseMacroArguments(this.getArgumentTokens(callIndex));
+
+		// Check for argument count mismatch
+		if (passedArgsArray.length > definition.parameters.length) {
+			throw new Error(
+				`[PASS 2] Too many arguments for macro '${macroName}' on line ${nameToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+			);
+		}
+
 		const argMap = new Map<string, Token[]>();
 
-		// 2. Map parameter names to argument tokens
+		// 2. Push a new scope for the macro and define parameters as symbols.
+		// The scope will be popped automatically when the macro stream ends.
+		const scopeName = `__MACRO_${macroName}_${nameToken.line}__`;
+		this.assembler.symbolTable.pushScope(scopeName);
+
 		definition.parameters.forEach((param, index) => {
-			// Provide a default empty token array if argument is missing
 			const argTokens = passedArgsArray[index] || [];
+			// Define the parameter as a symbol within the new scope. Its value is the token array.
 			argMap.set(param.toUpperCase(), argTokens);
 		});
 
-		// 3. Substitute parameters in the macro body
-		const expandedTokens = definition.body.map((bodyToken) => {
-			const newBodyToken = { ...bodyToken, line: `${nameToken.line}.${bodyToken.line}` };
+		// 3. Create a clean copy of the body tokens with updated line numbers.
+		const expandedTokens = definition.body.map((bodyToken) => ({
+			...bodyToken,
+			line: `${nameToken.line}.${bodyToken.line}`,
+		}));
 
-			// Only perform substitution on tokens that have a string value.
-			if (typeof newBodyToken.value === "string") {
-				// Use a regex to find all instances of {param} and replace them.
-				// The callback function allows us to evaluate each parameter dynamically.
-				newBodyToken.value = newBodyToken.value.replace(/{([a-zA-Z0-9_]+)}/g, (match, paramName) => {
-					const upperParamName = paramName.toUpperCase();
-					const argTokens = argMap.get(upperParamName);
-					if (argTokens) {
-						// Evaluate the argument tokens passed to the macro.
-						// This allows DEFINE_DATA_BLOCK(1, ...) where '1' is the value for 'id'.
-						// If the argument is a string literal, return its content without quotes.
-						if (argTokens.length === 1 && argTokens[0].type === "STRING") {
-							return argTokens[0].value; // The lexer already provides the clean string
-						}
-						// Otherwise, evaluate it as an expression.
-						const paramValue = this.assembler.expressionEvaluator.evaluate(argTokens, {
-							pc: this.assembler.currentPC,
-							macroArgs: argMap,
-							currentGlobalLabel: this.assembler.getLastGlobalLabel(),
-							options: this.assembler.options,
-						});
-						return String(paramValue);
-					}
-					// If the parameter is not found, return the original match (e.g., "{id}")
-					return match;
-				});
-			}
-
-			return newBodyToken;
-		});
-
-		// 4. Push the new stream and execute
+		// 4. Push the new stream and execute.
 		// We must also advance the token pointer on the *current* stream past the macro call line
 		// before pushing the new stream.
 		this.assembler.currentTokenIndex = this.assembler.skipToEndOfLine(callIndex);
 		this.assembler.pushTokenStream(expandedTokens, argMap);
 	}
 
-	/** Parses argument tokens from the call line, starting after the macro name. */
-	private parseMacroArguments(startIndex: number): Token[][] {
-		const callLine = this.assembler.activeTokens[startIndex - 1].line;
-		const argsArray: Token[][] = [];
+	/**
+	 * Extracts the list of tokens that constitute the arguments for a macro call.
+	 * It handles both `MACRO arg1, arg2` and `MACRO(arg1, arg2)` syntax.
+	 * @param callIndex The index of the macro name token.
+	 * @returns A slice of tokens representing the arguments.
+	 */
+	private getArgumentTokens(callIndex: number): Token[] {
+		const callLine = this.assembler.activeTokens[callIndex].line;
+		const lineEndIndex = this.assembler.skipToEndOfLine(callIndex);
+		const startIndex = callIndex + 1;
 
-		let currentArgTokens: Token[] = [];
-
-		// Determine the range of tokens to scan for arguments
-		let scanStartIndex = startIndex;
-		let scanEndIndex = this.assembler.skipToEndOfLine(startIndex - 1); // End of the macro call line
-
-		// Check if the arguments are wrapped in parentheses, e.g., MACRO(arg1, arg2)
+		// Check for arguments wrapped in parentheses, e.g., MACRO(arg1, arg2)
 		const firstToken = this.assembler.activeTokens[startIndex];
 		if (firstToken && firstToken.line === callLine && firstToken.value === "(") {
-			// Find the matching closing parenthesis on the same line
 			let parenDepth = 1;
-			for (let i = startIndex + 1; i < scanEndIndex; i++) {
+			for (let i = startIndex + 1; i < lineEndIndex; i++) {
 				const token = this.assembler.activeTokens[i];
 				if (token.value === "(") parenDepth++;
 				if (token.value === ")") parenDepth--;
 				if (parenDepth === 0) {
-					scanEndIndex = i; // The closing ')' is the end of our argument list
-					break;
+					// Return tokens between the parentheses
+					return this.assembler.activeTokens.slice(startIndex + 1, i);
 				}
 			}
-			scanStartIndex++; // Start scanning after the opening '('
 		}
 
-		// Now, scan only the tokens that constitute the arguments
-		let parenDepth = 0;
-		for (let i = scanStartIndex; i < scanEndIndex; i++) {
-			const token = this.assembler.activeTokens[i];
+		// No parentheses, arguments are the rest of the tokens on the line
+		return this.assembler.activeTokens.slice(startIndex, lineEndIndex);
+	}
 
-			// A comma at the root level (not inside any parentheses) separates arguments.
+	/**
+	 * Parses a list of argument tokens into a list of token arrays, one for each argument.
+	 * This method correctly handles empty arguments (e.g., `arg1,,arg3`).
+	 * @param argTokens The tokens to parse.
+	 */
+	private parseMacroArguments(argTokens: Token[]): Token[][] {
+		const argsArray: Token[][] = [];
+		let currentArgTokens: Token[] = [];
+		let parenDepth = 0;
+
+		for (const token of argTokens) {
 			if (token.type === "COMMA" && parenDepth === 0) {
-				if (currentArgTokens.length > 0) {
-					argsArray.push(currentArgTokens);
-					currentArgTokens = [];
-				}
+				argsArray.push(currentArgTokens);
+				currentArgTokens = [];
 			} else {
-				// This token is part of the current argument. Track nested parentheses.
 				if (token.value === "(") parenDepth++;
 				if (token.value === ")") parenDepth--;
 				currentArgTokens.push(token);
 			}
 		}
+		argsArray.push(currentArgTokens); // Add the last argument
 
-		// Add the last (or only) argument to the map.
-		if (currentArgTokens.length > 0) {
-			argsArray.push(currentArgTokens);
+		// If the original tokens were empty, or if the only argument found is empty,
+		// it means there were no actual arguments.
+		if (argTokens.length === 0 && argsArray.length === 1 && argsArray[0].length === 0) {
+			return [];
 		}
-
 		return argsArray;
 	}
 }

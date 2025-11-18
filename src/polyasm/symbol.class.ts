@@ -1,5 +1,7 @@
+import type { Token } from "./lexer/lexer.class";
+
 /** The possible types for a symbol's value, allowing nested arrays. */
-export type SymbolValue = number | string | SymbolValue[];
+export type SymbolValue = number | string | Token[] | SymbolValue[];
 
 /** Represents a defined symbol (label or constant). */
 interface PASymbol {

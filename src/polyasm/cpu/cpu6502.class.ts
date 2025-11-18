@@ -65,6 +65,7 @@ export class Cpu6502Handler implements CPUHandler {
 			]),
 		],
 		["INX", new Map([[this.M6502_MODES.IMPLIED, [0xe8, 1]]])],
+		["NOP", new Map([[this.M6502_MODES.IMPLIED, [0xea, 1]]])],
 		["BNE", new Map([[this.M6502_MODES.RELATIVE, [0xd0, 2]]])],
 		["RTS", new Map([[this.M6502_MODES.IMPLIED, [0x60, 1]]])],
 	]);

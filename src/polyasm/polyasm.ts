@@ -332,6 +332,7 @@ export class Assembler {
 
 					if (this.macroHandler.isMacro(mnemonic)) {
 						this.macroHandler.expandMacro(this.currentTokenIndex);
+						continue;
 					}
 
 					// Standard Instruction Encoding
@@ -483,6 +484,12 @@ export class Assembler {
 	private popTokenStream(emitEvent = true): StreamState | undefined {
 		const poppedStream = this.tokenStreamStack.pop();
 		if (poppedStream && emitEvent) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+
+		// If the popped stream was a macro, its scope name will start with __MACRO_.
+		// This is our cue to pop the symbol scope as well.
+		if (this.symbolTable.getCurrentNamespace().startsWith("__MACRO_")) {
+			this.symbolTable.popScope();
+		}
 
 		if (this.tokenStreamStack.length > 0) {
 			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1];

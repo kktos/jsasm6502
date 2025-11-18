@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-
-import { Assembler, type FileHandler } from "./polyasm";
-import { Cpu6502Handler } from "./cpu/cpu6502.class";
-import { Logger } from "./logger";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../logger";
+import { type FileHandler, Assembler } from "../polyasm";
 
 describe("Label References", () => {
 	const setup = () => {
