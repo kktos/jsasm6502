@@ -352,6 +352,13 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toEqual([1, "two", 150]);
 		});
 
+		it.skip("should evaluate nested array literals", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('[[1, 2], [3, 4], "five"]');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual([[1, 2], [3, 4], "five"]);
+		});
+
 		it("should evaluate string literals", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('"Hello World"');

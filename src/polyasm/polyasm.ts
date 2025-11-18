@@ -7,6 +7,7 @@ import { type Token, AssemblyLexer, type OperatorStackToken, type ScalarToken } 
 import { EventEmitter } from "node:events";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
 import { ADVANCE_TO_NEXT_LINE } from "./directives/directive.interface";
+import { MacroHandler } from "./directives/macro/handler";
 
 /** Defines the state of an active token stream. */
 interface StreamState {
@@ -49,6 +50,7 @@ export class Assembler {
 
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
+	public macroHandler: MacroHandler;
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, logger?: Logger) {
@@ -63,6 +65,7 @@ export class Assembler {
 
 		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
+		this.macroHandler = new MacroHandler(this, this.logger);
 		this.lexer = new AssemblyLexer();
 		this.cpuHandler = handler;
 		this.emitter = new EventEmitter();
@@ -111,6 +114,10 @@ export class Assembler {
 		return null;
 	}
 
+	public getLastGlobalLabel(): string | null {
+		return this.lastGlobalLabel;
+	}
+
 	private passOne(): void {
 		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
 
@@ -156,7 +163,7 @@ export class Assembler {
 					}
 
 					// PRIORITY 2: MACRO
-					if (this.macroDefinitions.has(token.value.toUpperCase())) {
+					if (this.macroHandler.isMacro(token.value)) {
 						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
 						break;
 					}
@@ -323,10 +330,8 @@ export class Assembler {
 						continue;
 					}
 
-					if (this.macroDefinitions.has(mnemonic)) {
-						// Macro expansion logic remains
-						this.expandMacro(this.currentTokenIndex); // expandMacro now handles stream switching and index advancing.
-						continue;
+					if (this.macroHandler.isMacro(mnemonic)) {
+						this.macroHandler.expandMacro(this.currentTokenIndex);
 					}
 
 					// Standard Instruction Encoding
@@ -485,127 +490,6 @@ export class Assembler {
 			this.currentTokenIndex = previousState.index;
 		}
 		return poppedStream;
-	}
-
-	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
-	private expandMacro(callIndex: number): void {
-		const nameToken = this.activeTokens[callIndex] as OperatorStackToken; // Macro name is the current token
-		const macroName = nameToken.value.toUpperCase();
-		const definition = this.macroDefinitions.get(macroName);
-
-		if (!definition) {
-			console.error(`ERROR: Macro '${macroName}' not defined.`);
-			return;
-		}
-
-		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
-
-		// 1. Parse arguments passed in the call line
-		const passedArgsArray = this.parseMacroArguments(callIndex + 1);
-		const argMap = new Map<string, Token[]>();
-
-		// 2. Map parameter names to argument tokens
-		definition.parameters.forEach((param, index) => {
-			// Provide a default empty token array if argument is missing
-			const argTokens = passedArgsArray[index] || [];
-			argMap.set(param.toUpperCase(), argTokens);
-		});
-
-		// 3. Substitute parameters in the macro body
-		const expandedTokens = definition.body.map((bodyToken) => {
-			const newBodyToken = { ...bodyToken, line: `${nameToken.line}.${bodyToken.line}` };
-
-			// Only perform substitution on tokens that have a string value.
-			if (typeof newBodyToken.value === "string") {
-				// Use a regex to find all instances of {param} and replace them.
-				// The callback function allows us to evaluate each parameter dynamically.
-				newBodyToken.value = newBodyToken.value.replace(/{([a-zA-Z0-9_]+)}/g, (match, paramName) => {
-					const upperParamName = paramName.toUpperCase();
-					const argTokens = argMap.get(upperParamName);
-					if (argTokens) {
-						// Evaluate the argument tokens passed to the macro.
-						// This allows DEFINE_DATA_BLOCK(1, ...) where '1' is the value for 'id'.
-						// If the argument is a string literal, return its content without quotes.
-						if (argTokens.length === 1 && argTokens[0].type === "STRING") {
-							return argTokens[0].value.slice(1, -1); // Remove quotes
-						}
-						// Otherwise, evaluate it as an expression.
-						const paramValue = this.expressionEvaluator.evaluate(argTokens, {
-							pc: this.currentPC,
-							macroArgs: argMap,
-							currentGlobalLabel: this.lastGlobalLabel, // Added for macro arg evaluation
-							options: this.options,
-						});
-						return String(paramValue);
-					}
-					// If the parameter is not found, return the original match (e.g., "{id}")
-					return match;
-				});
-			}
-
-			return newBodyToken;
-		});
-
-		// 4. Push the new stream and execute
-		// We must also advance the token pointer on the *current* stream past the macro call line
-		// before pushing the new stream.
-		this.currentTokenIndex = this.skipToEndOfLine(callIndex);
-		this.pushTokenStream(expandedTokens, argMap);
-	}
-
-	/** Parses argument tokens from the call line, starting after the macro name. */
-	private parseMacroArguments(startIndex: number): Token[][] {
-		const callLine = this.activeTokens[startIndex - 1].line;
-		const argsArray: Token[][] = [];
-
-		let currentArgTokens: Token[] = [];
-
-		// Determine the range of tokens to scan for arguments
-		let scanStartIndex = startIndex;
-		let scanEndIndex = this.skipToEndOfLine(startIndex - 1); // End of the macro call line
-
-		// Check if the arguments are wrapped in parentheses, e.g., MACRO(arg1, arg2)
-		const firstToken = this.activeTokens[startIndex];
-		if (firstToken && firstToken.line === callLine && firstToken.value === "(") {
-			// Find the matching closing parenthesis on the same line
-			let parenDepth = 1;
-			for (let i = startIndex + 1; i < scanEndIndex; i++) {
-				const token = this.activeTokens[i];
-				if (token.value === "(") parenDepth++;
-				if (token.value === ")") parenDepth--;
-				if (parenDepth === 0) {
-					scanEndIndex = i; // The closing ')' is the end of our argument list
-					break;
-				}
-			}
-			scanStartIndex++; // Start scanning after the opening '('
-		}
-
-		// Now, scan only the tokens that constitute the arguments
-		let parenDepth = 0;
-		for (let i = scanStartIndex; i < scanEndIndex; i++) {
-			const token = this.activeTokens[i];
-
-			// A comma at the root level (not inside any parentheses) separates arguments.
-			if (token.type === "COMMA" && parenDepth === 0) {
-				if (currentArgTokens.length > 0) {
-					argsArray.push(currentArgTokens);
-					currentArgTokens = [];
-				}
-			} else {
-				// This token is part of the current argument. Track nested parentheses.
-				if (token.value === "(") parenDepth++;
-				if (token.value === ")") parenDepth--;
-				currentArgTokens.push(token);
-			}
-		}
-
-		// Add the last (or only) argument to the map.
-		if (currentArgTokens.length > 0) {
-			argsArray.push(currentArgTokens);
-		}
-
-		return argsArray;
 	}
 
 	public getInstructionTokens(startIndex: number): Token[] {

@@ -1,3 +1,4 @@
+import type { ScalarToken } from "../../lexer/lexer.class";
 import type { Assembler } from "../../polyasm";
 import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "../directive.interface";
 
@@ -13,7 +14,7 @@ export class MacroDirective implements IDirective {
 
 	/** Pass 1: Parses and stores a macro definition. */
 	private handleMacroDefinition(assembler: Assembler, startIndex: number): number {
-		const nameToken = assembler.activeTokens[startIndex + 1];
+		const nameToken = assembler.activeTokens[startIndex + 1] as ScalarToken;
 		const macroName = nameToken.value.toUpperCase();
 
 		// 1. Find the end of the macro block

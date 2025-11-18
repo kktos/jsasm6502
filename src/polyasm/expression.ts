@@ -109,15 +109,12 @@ export class ExpressionEvaluator {
 	 * e.g., [ "red", "green", 1+2 ]
 	 */
 	private evaluateArray(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue[] {
-		const elements: (string | number)[] = [];
+		const elements: SymbolValue[] = [];
 		let currentExpression: Token[] = [];
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length > 0) {
 				const result = this.evaluate(currentExpression, context);
-				if (Array.isArray(result)) {
-					throw new Error("Nested arrays are not supported.");
-				}
 				elements.push(result);
 				currentExpression = [];
 			}
@@ -167,9 +164,7 @@ export class ExpressionEvaluator {
 					if (balance === 0) break;
 				}
 
-				if (balance !== 0) {
-					throw new Error(`Mismatched brackets in array literal on line ${processedToken.line}.`);
-				}
+				if (balance !== 0) throw new Error(`Mismatched brackets in array literal on line ${processedToken.line}.`);
 
 				const arrayContentTokens = tokens.slice(i + 1, j);
 				const arrayValue = this.evaluateArray(arrayContentTokens, context);
@@ -407,33 +402,16 @@ export class ExpressionEvaluator {
 					break;
 
 				case "ARRAY":
-					// Now, token.value directly holds the SymbolValue[]
-					stack.push(token.value); // TS knows this is SymbolValue[]
+					stack.push(token.value);
 					break;
 
 				case "IDENTIFIER":
 				case "LABEL":
 				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF": {
+					// resolveValue handles all symbol, macro arg, and special value lookups.
 					const value = this.resolveValue(token, context);
-					if (value !== undefined) {
-						stack.push(value);
-						break;
-					}
-
-					// This part handles macro argument substitution where the argument itself is an expression
-					// This needs to be evaluated before being pushed to the stack.
-					const argTokens = context.macroArgs?.get(token.value.toUpperCase());
-					if (argTokens) {
-						const result = this.evaluate(argTokens, context);
-						if (result !== undefined) {
-							stack.push(result);
-						} else {
-							// This case would be for array arguments, which can't be pushed onto the numeric stack.
-							// The logic should handle this based on where the macro is used.
-						}
-					}
-
+					stack.push(value);
 					break;
 				}
 
@@ -445,127 +423,9 @@ export class ExpressionEvaluator {
 
 				case "OPERATOR": {
 					const right = stack.pop();
-
-					if (token.value === "UNARY_MINUS") {
-						if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
-						stack.push(-right);
-						break;
-					}
-					if (token.value === "!") {
-						if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
-						stack.push(right === 0 ? 1 : 0);
-						break;
-					}
-
-					if (token.value === "ARRAY_ACCESS") {
-						if (typeof right !== "number") {
-							throw new Error(`Array index must be a number on line ${token.line}.`);
-						}
-						const array = stack.pop();
-						if (!Array.isArray(array)) {
-							throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
-						}
-						if (right < 0 || right >= array.length) {
-							throw new Error(
-								`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`,
-							);
-						}
-						stack.push(array[right]);
-						break;
-					}
-
-					const left = stack.pop();
-					if (left === undefined || right === undefined)
-						throw new Error(`Binary operator '${token.value}' requires two operands.`);
-
-					if (typeof left === "string" && typeof right === "string") {
-						switch (token.value) {
-							case "+":
-								stack.push(left + right);
-								break;
-
-							case "=":
-							case "==":
-								stack.push(left === right ? 1 : 0);
-								break;
-
-							case "!=":
-								stack.push(left !== right ? 1 : 0);
-								break;
-							default:
-								throw new Error(`Unknown operator: ${token.value}`);
-						}
-						break;
-					}
-
-					if (typeof left !== "number" || typeof right !== "number") {
-						throw new Error(`Operands for '${token.value}' must be numeric.`);
-					}
-
-					switch (token.value) {
-						case "=":
-						case "==":
-							stack.push(left === right ? 1 : 0);
-							break;
-
-						case "!=":
-							stack.push(left !== right ? 1 : 0);
-							break;
-
-						case "<":
-							stack.push(left < right ? 1 : 0);
-							break;
-						case ">":
-							stack.push(left > right ? 1 : 0);
-							break;
-						case "<=":
-							stack.push(left <= right ? 1 : 0);
-							break;
-						case ">=":
-							stack.push(left >= right ? 1 : 0);
-							break;
-
-						case "+":
-							stack.push(left + right);
-							break;
-						case "-":
-							stack.push(left - right);
-							break;
-						case "*":
-							stack.push(left * right);
-							break;
-						case "/":
-							if (right === 0) throw new Error("Division by zero.");
-							stack.push(Math.floor(left / right)); // Integer division
-							break;
-						case "&":
-							stack.push(left & right);
-							break;
-						case "|":
-							stack.push(left | right);
-							break;
-						case "^":
-							stack.push(left ^ right);
-							break;
-						case "%":
-							stack.push(left % right);
-							break;
-						case "<<":
-							stack.push(left << right);
-							break;
-						case ">>":
-							stack.push(left >> right);
-							break;
-						case "&&":
-							stack.push(left !== 0 && right !== 0 ? 1 : 0);
-							break;
-						case "||":
-							stack.push(left !== 0 || right !== 0 ? 1 : 0);
-							break;
-						default:
-							throw new Error(`Unknown operator: ${token.value}`);
-					}
-
+					if (this.handleUnaryOperator(token as OperatorToken, right, stack)) break;
+					if (this.handleArrayAccessOperator(token as OperatorToken, right, stack)) break;
+					this.handleBinaryOperator(token as OperatorToken, right, stack);
 					break;
 				}
 			}
@@ -587,6 +447,135 @@ export class ExpressionEvaluator {
 		}
 
 		return stack[0];
+	}
+
+	private handleUnaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): boolean {
+		if (token.value === "UNARY_MINUS") {
+			if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
+			stack.push(-right);
+			return true;
+		}
+		if (token.value === "!") {
+			if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
+			stack.push(right === 0 ? 1 : 0);
+			return true;
+		}
+		return false;
+	}
+
+	private handleArrayAccessOperator(
+		token: OperatorToken,
+		right: SymbolValue | undefined,
+		stack: SymbolValue[],
+	): boolean {
+		if (token.value === "ARRAY_ACCESS") {
+			if (typeof right !== "number") {
+				throw new Error(`Array index must be a number on line ${token.line}.`);
+			}
+			const array = stack.pop();
+			if (!Array.isArray(array)) {
+				throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
+			}
+			if (right < 0 || right >= array.length) {
+				throw new Error(
+					`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`,
+				);
+			}
+			stack.push(array[right]);
+			return true;
+		}
+		return false;
+	}
+
+	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): void {
+		const left = stack.pop();
+		if (left === undefined || right === undefined)
+			throw new Error(`Binary operator '${token.value}' requires two operands.`);
+
+		// Handle string operations first
+		if (typeof left === "string" || typeof right === "string") {
+			const leftStr = String(left);
+			const rightStr = String(right);
+			switch (token.value) {
+				case "+":
+					stack.push(leftStr + rightStr);
+					return;
+				case "=":
+				case "==":
+					stack.push(leftStr === rightStr ? 1 : 0);
+					return;
+				case "!=":
+					stack.push(leftStr !== rightStr ? 1 : 0);
+					return;
+				default:
+					throw new Error(`Operator '${token.value}' cannot be applied to strings.`);
+			}
+		}
+
+		if (typeof left !== "number" || typeof right !== "number")
+			throw new Error(`Binary operator '${token.value}' requires two numbers.`);
+
+		// Numeric operations
+		switch (token.value) {
+			case "=":
+			case "==":
+				stack.push(left === right ? 1 : 0);
+				break;
+			case "!=":
+				stack.push(left !== right ? 1 : 0);
+				break;
+			case "<":
+				stack.push(left < right ? 1 : 0);
+				break;
+			case ">":
+				stack.push(left > right ? 1 : 0);
+				break;
+			case "<=":
+				stack.push(left <= right ? 1 : 0);
+				break;
+			case ">=":
+				stack.push(left >= right ? 1 : 0);
+				break;
+			case "+":
+				stack.push(left + right);
+				break;
+			case "-":
+				stack.push(left - right);
+				break;
+			case "*":
+				stack.push(left * right);
+				break;
+			case "/":
+				if (right === 0) throw new Error("Division by zero.");
+				stack.push(Math.floor(left / right)); // Integer division
+				break;
+			case "&":
+				stack.push(left & right);
+				break;
+			case "|":
+				stack.push(left | right);
+				break;
+			case "^":
+				stack.push(left ^ right);
+				break;
+			case "%":
+				stack.push(left % right);
+				break;
+			case "<<":
+				stack.push(left << right);
+				break;
+			case ">>":
+				stack.push(left >> right);
+				break;
+			case "&&":
+				stack.push(left !== 0 && right !== 0 ? 1 : 0);
+				break;
+			case "||":
+				stack.push(left !== 0 || right !== 0 ? 1 : 0);
+				break;
+			default:
+				throw new Error(`Unknown operator: ${token.value}`);
+		}
 	}
 
 	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
