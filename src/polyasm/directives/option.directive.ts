@@ -1,4 +1,3 @@
-import * as console from "node:console";
 import { type IDirective, type DirectiveContext, ADVANCE_TO_NEXT_LINE } from "./directive.interface";
 import type { Assembler } from "../polyasm";
 
@@ -31,10 +30,10 @@ export class OptionDirective implements IDirective {
 					throw new Error(`Value for 'local_label_style' must be a single character string on line ${token.line}.`);
 				}
 				assembler.options.set("local_label_style", optionValue);
-				console.log(`[OPTION] Set local label character to: '${optionValue}'`);
+				assembler.logger.log(`[OPTION] Set local label character to: '${optionValue}'`);
 				break;
 			default:
-				console.warn(`[OPTION] Unknown option '${optionName}' on line ${token.line}.`);
+				assembler.logger.warn(`[OPTION] Unknown option '${optionName}' on line ${token.line}.`);
 		}
 	}
 }

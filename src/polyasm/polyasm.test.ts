@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "./cpu/cpu6502.class";
+import { Logger } from "./logger";
 import type { FileHandler } from "./polyasm";
 import { Assembler } from "./polyasm";
 
@@ -148,8 +149,9 @@ function hexDump(address: number, bytes: number[]): string {
 describe("PolyAsm", () => {
 	it("assemble a source", () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
-		const assembler6502 = new Assembler(cpu6502, mockFileHandler);
+		const logger = new Logger();
+		const cpu6502 = new Cpu6502Handler(logger);
+		const assembler6502 = new Assembler(cpu6502, mockFileHandler, logger);
 		const machineCode6502 = assembler6502.assemble(source6502);
 
 		console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);

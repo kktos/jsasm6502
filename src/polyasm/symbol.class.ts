@@ -1,5 +1,3 @@
-import * as console from "node:console";
-
 /** The possible types for a symbol's value. */
 export type SymbolValue = number | string | (string | number)[];
 
@@ -87,7 +85,7 @@ export class PASymbolTable {
 			namespace,
 		});
 
-		console.log(`[PASS 1] Defined symbol: ${namespace}::${name} = ${value}`);
+		// console.log(`[PASS 1] Defined symbol: ${namespace}::${name} = ${value}`);
 	}
 
 	/**

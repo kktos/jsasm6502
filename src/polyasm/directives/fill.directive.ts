@@ -15,7 +15,7 @@ export class FillDirective implements IDirective {
 				assembler.currentPC += count;
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
-				console.warn(`[PASS 1] Warning on line ${context.token.line}: Could not evaluate .FILL count. ${e}`);
+				assembler.logger.warn(`[PASS 1] Warning on line ${context.token.line}: Could not evaluate .FILL count. ${e}`);
 			}
 		}
 

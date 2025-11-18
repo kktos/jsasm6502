@@ -30,13 +30,13 @@ describe(".OPTION Directive", () => {
 
 	it("should log a warning for an unknown option", () => {
 		const assembler = createAssembler();
-		const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const loggerSpy = vi.spyOn(assembler.logger, "warn").mockImplementation(() => {});
 		const source = `
             .OPTION unknown_option 123
         `;
 		assembler.assemble(source);
-		expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[OPTION] Unknown option 'unknown_option'"));
-		consoleSpy.mockRestore();
+		expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining("[OPTION] Unknown option 'unknown_option'"));
+		loggerSpy.mockRestore();
 	});
 
 	it("should throw an error for invalid syntax (not enough arguments)", () => {

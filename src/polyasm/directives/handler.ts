@@ -1,5 +1,6 @@
 /**
  * handler.ts
+ *
  * * Defines the logic for handling assembler directives during different passes.
  * * Acts as a dispatcher to specialized directive handlers.
  */
@@ -20,12 +21,16 @@ import type { Assembler } from "../polyasm";
 import { StringDirective } from "./string.directive";
 import type { DirectiveContext } from "./directive.interface";
 import { OptionDirective } from "./option.directive";
+import type { Logger } from "../logger";
+import { ListDirective } from "./list.directive";
 
 export class DirectiveHandler {
-	private readonly assembler: Assembler;
 	private readonly directiveMap: Map<string, IDirective>;
 
-	constructor(assembler: Assembler) {
+	constructor(
+		private readonly assembler: Assembler,
+		private readonly logger: Logger,
+	) {
 		this.assembler = assembler;
 		this.directiveMap = new Map();
 
@@ -63,6 +68,8 @@ export class DirectiveHandler {
 		const loopHandler = new LoopDirective();
 		this.register(".FOR", loopHandler);
 		this.register(".REPEAT", loopHandler);
+
+		this.register(".LIST", new ListDirective(logger));
 
 		const fillHandler = new FillDirective();
 		this.register(".FILL", fillHandler);

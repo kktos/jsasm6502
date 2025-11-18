@@ -16,9 +16,9 @@ export class NamespaceDirective implements IDirective {
 		const namespaceToken = assembler.activeTokens[tokenIndex + 1];
 		if (namespaceToken) {
 			assembler.symbolTable.setNamespace(namespaceToken.value);
-			console.log(`[PASS 1/2] Switched namespace to: ${namespaceToken.value}`);
+			assembler.logger.log(`[PASS 1/2] Switched namespace to: ${namespaceToken.value}`);
 		} else {
-			console.error(
+			assembler.logger.error(
 				`ERROR on line ${assembler.activeTokens[tokenIndex].line}: .NAMESPACE directive requires an argument.`,
 			);
 		}

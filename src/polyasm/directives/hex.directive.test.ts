@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Assembler } from "../polyasm";
+import { Logger } from "../logger";
 import type { FileHandler } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
@@ -16,8 +17,8 @@ class MockFileHandler implements FileHandler {
 describe(".HEX Directive", () => {
 	it("should handle .HEX directive with valid inputs", () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
-		const assembler = new Assembler(cpu6502, mockFileHandler);
+		const cpu6502 = new Cpu6502Handler(new Logger());
+		const assembler = new Assembler(cpu6502, mockFileHandler, new Logger());
 
 		const source = `
             .ORG $1000
@@ -38,8 +39,8 @@ describe(".HEX Directive", () => {
 
 	it("should throw error for invalid .HEX number", () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
-		const assembler = new Assembler(cpu6502, mockFileHandler);
+		const cpu6502 = new Cpu6502Handler(new Logger());
+		const assembler = new Assembler(cpu6502, mockFileHandler, new Logger());
 
 		const sourceWithOddDigits = `
             .HEX { 123 }
@@ -49,8 +50,8 @@ describe(".HEX Directive", () => {
 
 	it("should throw errors for invalid .HEX data", () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
-		const assembler = new Assembler(cpu6502, mockFileHandler);
+		const cpu6502 = new Cpu6502Handler(new Logger());
+		const assembler = new Assembler(cpu6502, mockFileHandler, new Logger());
 
 		const sourceWithInvalidChars = `
             .HEX { 00 GG 11 }

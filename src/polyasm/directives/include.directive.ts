@@ -12,12 +12,14 @@ export class IncludeDirective implements IDirective {
 				// const newTokens = tokenize(rawContent);
 				const newTokens = assembler.lexer.tokenize(rawContent);
 				assembler.activeTokens.splice(tokenIndex + 1, 0, ...newTokens);
-				console.log(`[PASS 1] Included and tokenized source file: ${filename}. ${newTokens.length} tokens inserted.`);
+				assembler.logger.log(
+					`[PASS 1] Included and tokenized source file: ${filename}. ${newTokens.length} tokens inserted.`,
+				);
 			} catch (e) {
-				console.error(`[PASS 1] ERROR including file ${filename} on line ${token.line}: ${e}`);
+				assembler.logger.error(`[PASS 1] ERROR including file ${filename} on line ${token.line}: ${e}`);
 			}
 		} else {
-			console.error(`[PASS 1] ERROR: .INCLUDE requires a string argument on line ${token.line}.`);
+			assembler.logger.error(`[PASS 1] ERROR: .INCLUDE requires a string argument on line ${token.line}.`);
 		}
 		return tokenIndex + 1;
 	}

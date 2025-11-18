@@ -14,15 +14,16 @@ export class AlignDirective implements IDirective {
 
 			// Check if boundary is a power of two, which is a common requirement.
 			if ((boundary & (boundary - 1)) !== 0) {
-				console.warn(`[PASS 1] Warning on line ${token.line}: .ALIGN boundary ${boundary} is not a power of two.`);
+				assembler.logger.warn(
+					`[PASS 1] Warning on line ${token.line}: .ALIGN boundary ${boundary} is not a power of two.`,
+				);
 			}
 
 			const newPC = (assembler.currentPC + boundary - 1) & ~(boundary - 1);
 			assembler.currentPC = newPC;
 		} catch (e) {
-			console.warn(`[PASS 1] Warning on line ${token.line}: Could not evaluate .ALIGN expression. ${e}`);
+			assembler.logger.warn(`[PASS 1] Warning on line ${token.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
-
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
@@ -50,7 +51,7 @@ export class AlignDirective implements IDirective {
 
 			assembler.currentPC = newPC;
 		} catch (e) {
-			console.error(`ERROR on line ${token.line}: Failed to evaluate .ALIGN expression. ${e}`);
+			assembler.logger.error(`ERROR on line ${token.line}: Failed to evaluate .ALIGN expression. ${e}`);
 		}
 
 		return ADVANCE_TO_NEXT_LINE;

@@ -10,7 +10,7 @@ export class HexDirective implements IDirective {
 			const byteCount = hexString.replace(/\s/g, "").length / 2;
 			assembler.currentPC += byteCount;
 		} catch (e) {
-			console.warn(`[PASS 1] Warning on line ${token.line}: Could not calculate size of .HEX block. ${e}`);
+			assembler.logger.warn(`[PASS 1] Warning on line ${token.line}: Could not calculate size of .HEX block. ${e}`);
 		}
 
 		return endIndex + 1;

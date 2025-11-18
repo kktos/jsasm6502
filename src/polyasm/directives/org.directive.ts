@@ -9,7 +9,7 @@ export class OrgDirective implements IDirective {
 		try {
 			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, evaluationContext);
 		} catch (e) {
-			console.warn(
+			assembler.logger.warn(
 				`[PASS 1] Warning on line ${token.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`,
 			);
 			assembler.currentPC = 0x0000;
@@ -26,7 +26,7 @@ export class OrgDirective implements IDirective {
 				context.evaluationContext,
 			);
 		} catch (e) {
-			console.error(`ERROR on line ${context.token.line}: Failed to evaluate .ORG expression. ${e}`);
+			assembler.logger.error(`ERROR on line ${context.token.line}: Failed to evaluate .ORG expression. ${e}`);
 		}
 
 		// The main loop handles index advancement for directives

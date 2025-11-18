@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Assembler, type FileHandler } from "./polyasm";
 import { Cpu6502Handler } from "./cpu/cpu6502.class";
+import { Logger } from "./logger";
 
 describe("ExpressionEvaluator", () => {
 	const setup = () => {
@@ -13,7 +14,8 @@ describe("ExpressionEvaluator", () => {
 				throw new Error(`Mock bin file not found: ${filename}`);
 			}
 		}
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+		const logger = new Logger();
+		const assembler = new Assembler(new Cpu6502Handler(logger), new MockFileHandler(), logger);
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };
@@ -174,6 +176,23 @@ describe("ExpressionEvaluator", () => {
 			expect(evaluator.evaluateAsNumber(tokenize("10 || -1"), { pc: 0 })).toBe(1);
 			expect(evaluator.evaluateAsNumber(tokenize("(5 < 3) || (10 > 5)"), { pc: 0 })).toBe(1);
 			expect(evaluator.evaluateAsNumber(tokenize("1 == 1 || 2 == 3 && 4 == 4"), { pc: 0 })).toBe(1); // Precedence check
+		});
+	});
+
+	describe("Functions", () => {
+		it("should evaluate .LEN() on a string literal", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.LEN("hello")');
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(5);
+		});
+
+		it("should evaluate .LEN() on an array literal", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("MyArr", [10, 20, 30]);
+			const tokens = tokenize(".LEN([1, 2, 3])");
+			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
+			expect(result).toBe(3);
 		});
 	});
 

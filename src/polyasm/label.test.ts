@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Assembler, type FileHandler } from "./polyasm";
 import { Cpu6502Handler } from "./cpu/cpu6502.class";
+import { Logger } from "./logger";
 
 describe("Label References", () => {
 	const setup = () => {
@@ -13,7 +14,8 @@ describe("Label References", () => {
 				throw new Error(`Mock bin file not found: ${filename}`);
 			}
 		}
-		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler());
+		const logger = new Logger();
+		const assembler = new Assembler(new Cpu6502Handler(logger), new MockFileHandler(), logger);
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };

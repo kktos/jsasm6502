@@ -38,7 +38,7 @@ export class ConditionalDirective implements IDirective {
 				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, evaluationContext);
 				return result !== 0;
 			} catch (e) {
-				console.warn(
+				assembler.logger.warn(
 					`[PASS 1/2] Warning on line ${token.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`,
 				);
 				return false;

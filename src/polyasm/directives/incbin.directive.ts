@@ -10,12 +10,12 @@ export class IncbinDirective implements IDirective {
 			try {
 				const rawBytes = assembler.fileHandler.readBinaryFile(filename);
 				assembler.currentPC += rawBytes.length;
-				console.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
+				assembler.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
 			} catch (e) {
-				console.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
+				assembler.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
 			}
 		} else {
-			console.error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${token.line}.`);
+			assembler.logger.error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${token.line}.`);
 		}
 		return ADVANCE_TO_NEXT_LINE;
 	}
@@ -39,12 +39,12 @@ export class IncbinDirective implements IDirective {
 						.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
 						.join(" ") + (rawBytes.length > 4 ? "..." : "");
 				const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-				console.log(
+				assembler.logger.log(
 					`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${token.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`,
 				);
 			} catch (e) {
 				const errorMessage = e instanceof Error ? e.message : String(e);
-				console.error(
+				assembler.logger.error(
 					`\n[PASS 2] FATAL ERROR on line ${token.line}: Could not include binary file ${filename}. Error: ${errorMessage}`,
 				);
 				throw new Error(`Assembly failed on line ${token.line}: Binary include failed.`);

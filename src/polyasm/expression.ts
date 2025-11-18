@@ -7,6 +7,7 @@
 import type { Token } from "./lexer/lexer.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 import type { Assembler } from "./polyasm";
+import type { Logger } from "./logger";
 
 const PRECEDENCE: Record<string, number> = {
 	// Unary operators (highest precedence)
@@ -69,9 +70,11 @@ export interface EvaluationContext {
 
 export class ExpressionEvaluator {
 	private symbolTable: PASymbolTable;
+	private logger: Logger;
 
-	constructor(symbolTable: PASymbolTable) {
+	constructor(symbolTable: PASymbolTable, logger: Logger) {
 		this.symbolTable = symbolTable;
+		this.logger = logger;
 	}
 
 	/**
@@ -86,7 +89,7 @@ export class ExpressionEvaluator {
 			return this.evaluateArray(tokens.slice(1, -1), context);
 		}
 
-		const rpnTokens = this.infixToRPN(tokens);
+		const rpnTokens = this.infixToRPN(tokens, context);
 		return this.evaluateRPN(rpnTokens, context);
 	}
 
@@ -134,14 +137,36 @@ export class ExpressionEvaluator {
 
 	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
 
-	private infixToRPN(tokens: Token[]) {
+	private infixToRPN(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
 		const outputQueue: Token[] = [];
 		const operatorStack: Token[] = [];
-		let lastToken: Token | null = null;
+		let lastToken: Token | undefined;
 
-		for (const currentToken of tokens) {
-			let processedToken = currentToken; // Use a mutable token for processing
+		for (let i = 0; i < tokens.length; i++) {
+			let processedToken = tokens[i]; // Use a mutable token for processing
 
+			if (processedToken.value === "[") {
+				// Array literal detection
+				let balance = 1;
+				let j = i + 1;
+				for (; j < tokens.length; j++) {
+					if (tokens[j].value === "[") balance++;
+					if (tokens[j].value === "]") balance--;
+					if (balance === 0) break;
+				}
+
+				if (balance !== 0) {
+					throw new Error(`Mismatched brackets in array literal on line ${processedToken.line}.`);
+				}
+
+				const arrayContentTokens = tokens.slice(i + 1, j);
+				const arrayValue = this.evaluateArray(arrayContentTokens, context);
+				const arrayToken: Token = { type: "ARRAY", value: JSON.stringify(arrayValue), line: processedToken.line, column: processedToken.column };
+				outputQueue.push(arrayToken);
+				i = j; // Move index past the array
+				lastToken = arrayToken;
+				continue;
+			}
 			switch (processedToken.type) {
 				case "NUMBER":
 				case "STRING":
@@ -149,6 +174,15 @@ export class ExpressionEvaluator {
 				case "LABEL":
 				case "LOCAL_LABEL":
 				case "ANONYMOUS_LABEL_REF":
+				case "ARRAY":
+					// Check for function call
+					if (processedToken.type === "IDENTIFIER" && tokens[i + 1]?.value === "(") {
+						const funcToken: Token = { ...processedToken, type: "FUNCTION" };
+						operatorStack.push(funcToken);
+						lastToken = funcToken;
+						continue; // Skip to next token
+					}
+
 					// An operand should not follow another operand without an operator in between.
 					if (
 						lastToken &&
@@ -156,7 +190,8 @@ export class ExpressionEvaluator {
 							lastToken.type === "IDENTIFIER" ||
 							lastToken.type === "LABEL" ||
 							lastToken.type === "LOCAL_LABEL" ||
-							lastToken.type === "STRING" ||
+							lastToken.type === "STRING" || // Note: ARRAY is a new type
+							lastToken.type === "ARRAY" ||
 							lastToken.type === "ANONYMOUS_LABEL_REF")
 					) {
 						throw new Error(
@@ -244,12 +279,17 @@ export class ExpressionEvaluator {
 							if (!foundMatch) {
 								throw new Error(`Mismatched parenthesis: unmatched ')' on line ${processedToken.line}.`);
 							}
+							// If the token before the '(' was a function, pop it onto the output queue.
+							const topOfStack = operatorStack[operatorStack.length - 1];
+							if (topOfStack?.type === "FUNCTION") {
+								outputQueue.push(operatorStack.pop() as Token);
+							}
 							break;
 						}
 					}
 				}
 			}
-			lastToken = processedToken;
+			lastToken = processedToken.type === "FUNCTION" ? lastToken : processedToken;
 		}
 
 		while (operatorStack.length > 0) {
@@ -296,6 +336,11 @@ export class ExpressionEvaluator {
 					stack.push(token.value);
 					break;
 
+				case "ARRAY":
+					// The value is a JSON stringified array from infixToRPN
+					stack.push(JSON.parse(token.value));
+					break;
+
 				case "IDENTIFIER":
 				case "LABEL":
 				case "LOCAL_LABEL":
@@ -318,6 +363,24 @@ export class ExpressionEvaluator {
 						}
 					}
 
+					break;
+				}
+
+				case "FUNCTION": {
+					const funcName = token.value.toUpperCase();
+					switch (funcName) {
+						case ".LEN": {
+							const arg = stack.pop();
+
+							if (typeof arg !== "string" && !Array.isArray(arg))
+								throw new Error(`.LEN() requires a string or array argument on line ${token.line}.`);
+
+							stack.push(arg.length);
+							break;
+						}
+						default:
+							throw new Error(`Unknown function '${funcName}' on line ${token.line}.`);
+					}
 					break;
 				}
 
@@ -432,6 +495,12 @@ export class ExpressionEvaluator {
 				}
 			}
 		}
+
+		// After the loop, if the top of the stack is a function, it means it was called with no arguments.
+		// const lastOp = operatorStack[operatorStack.length - 1];
+		// if (lastOp?.type === "FUNCTION") {
+		// 	outputQueue.push(operatorStack.pop() as Token);
+		// }
 
 		if (stack.length !== 1) {
 			// This can happen with expressions like "5 5" which is not a valid single expression.

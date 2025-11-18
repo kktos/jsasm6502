@@ -60,7 +60,7 @@ export class MacroDirective implements IDirective {
 			body: bodyTokens,
 		});
 
-		console.log(`[PASS 1] Defined macro: ${macroName} with ${parameters.length} params.`);
+		assembler.logger.log(`[PASS 1] Defined macro: ${macroName} with ${parameters.length} params.`);
 
 		// 4. Remove the macro definition from the token stream
 		const removeCount = endTokenIndex - startIndex + 1;

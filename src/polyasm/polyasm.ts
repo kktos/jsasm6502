@@ -1,5 +1,6 @@
 import type { CPUHandler } from "./cpu/cpuhandler.class";
 import { PASymbolTable } from "./symbol.class";
+import { Logger } from "./logger";
 import { ExpressionEvaluator } from "./expression";
 import { DirectiveHandler } from "./directives/handler";
 import { type Token, AssemblyLexer } from "./lexer/lexer.class";
@@ -24,6 +25,7 @@ export interface FileHandler {
 }
 
 export class Assembler {
+	// Was public
 	public lexer: AssemblyLexer;
 	public activeTokens: Token[];
 	public currentTokenIndex = 0;
@@ -31,6 +33,7 @@ export class Assembler {
 	public symbolTable: PASymbolTable;
 	public fileHandler: FileHandler;
 	public currentPC: number;
+
 	public outputBuffer: number[] = [];
 	public isAssembling = true;
 
@@ -40,6 +43,7 @@ export class Assembler {
 	public macroDefinitions: Map<string, MacroDefinition> = new Map();
 	public options: Map<string, string> = new Map();
 
+	public logger: Logger;
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
 
@@ -47,31 +51,38 @@ export class Assembler {
 	public directiveHandler: DirectiveHandler;
 	public emitter: EventEmitter;
 
-	constructor(handler: CPUHandler, fileHandler: FileHandler) {
+	constructor(handler: CPUHandler, fileHandler: FileHandler, logger?: Logger) {
 		this.activeTokens = [];
 		this.cpuHandler = handler;
 		this.fileHandler = fileHandler;
+		this.logger = logger ?? new Logger();
 
 		this.currentPC = 0x0000;
 		this.symbolTable = new PASymbolTable();
 		this.symbolTable.addSymbol("*", this.currentPC);
 
-		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable);
-		this.directiveHandler = new DirectiveHandler(this);
+		this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.logger);
+		this.directiveHandler = new DirectiveHandler(this, this.logger);
 		this.lexer = new AssemblyLexer();
+		this.cpuHandler = handler;
 		this.emitter = new EventEmitter();
 	}
 
 	public assemble(source: string): number[] {
-		this.options.set("local_label_style", ":");
+		// Pre-scan for lexer-affecting options
+		const optionMatch = /^\s*\.OPTION\s+local_label_style\s+"(.)"/im.exec(source);
+		const localLabelStyle = optionMatch ? optionMatch[1] : ":";
 
-		this.lexer = new AssemblyLexer({ localLabelStyle: ":" });
+		// Initialize or re-initialize the lexer with the found option.
+		this.lexer = new AssemblyLexer({ localLabelStyle });
 		this.activeTokens = this.lexer.tokenize(source);
 
-		console.log(this.activeTokens);
+		// Set assembler options from the pre-scan so they are available in Pass 1
+		if (localLabelStyle) {
+			this.options.set("local_label_style", localLabelStyle);
+		}
 
 		this.passOne();
-
 		this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		this.outputBuffer = [];
 		this.currentTokenIndex = 0;
@@ -82,8 +93,8 @@ export class Assembler {
 
 		this.passTwo();
 
-		console.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
-		console.log(`Final PC location: $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
+		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
+		this.logger.log(`Final PC location: $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
 		return this.outputBuffer;
 	}
 
@@ -100,8 +111,8 @@ export class Assembler {
 	}
 
 	private passOne(): void {
-		console.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
-
+		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
+		// Do not re-instantiate logger here, it resets the enabled state.
 		this.currentPC = 0x0000;
 		this.currentTokenIndex = 0;
 		this.anonymousLabels = [];
@@ -112,6 +123,28 @@ export class Assembler {
 
 			// Always update PC symbol before any instruction/data
 			this.symbolTable.setSymbol("*", this.currentPC);
+
+			if (token.type === "DIRECTIVE") {
+				const directiveContext = {
+					token: token,
+					tokenIndex: this.currentTokenIndex,
+					evaluationContext: {
+						pc: this.currentPC,
+						allowForwardRef: true,
+						currentGlobalLabel: this.lastGlobalLabel,
+						options: this.options,
+					},
+				};
+
+				const nextTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
+
+				if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
+					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+				} else {
+					this.currentTokenIndex = nextTokenIndex;
+				}
+				continue;
+			}
 
 			if (token.type === "IDENTIFIER" || token.type === "LABEL") {
 				// Instructions and Macro calls
@@ -128,16 +161,17 @@ export class Assembler {
 						const value = this.expressionEvaluator.evaluate(expressionTokens, {
 							pc: this.currentPC,
 							allowForwardRef: true,
+							currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
 							options: this.options,
 						});
 						if (Array.isArray(value)) {
-							console.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
+							this.logger.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
 						} else {
-							console.log(`[PASS 1] Defined symbol ${labelToken.value} = $${value.toString(16).toUpperCase()}`);
+							this.logger.log(`[PASS 1] Defined symbol ${labelToken.value} = $${value.toString(16).toUpperCase()}`);
 						}
 						this.symbolTable.addSymbol(labelToken.value, value);
 					} catch (e) {
-						console.error(`[PASS 1] ERROR defining .EQU for ${labelToken.value}: ${e}`);
+						this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken.value}: ${e}`);
 					}
 
 					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
@@ -147,7 +181,7 @@ export class Assembler {
 				if (nextToken?.value === ":") {
 					this.lastGlobalLabel = token.value;
 					this.symbolTable.addSymbol(token.value, this.currentPC);
-					console.log(
+					this.logger.log(
 						`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`,
 					);
 
@@ -186,7 +220,9 @@ export class Assembler {
 					// FAILURE (Mnemonic not found): It's a LABEL DEFINITION.
 					this.lastGlobalLabel = mnemonicToken.value;
 					this.symbolTable.addSymbol(mnemonicToken.value, this.currentPC);
-					console.log(`[PASS 1] Defined label ${mnemonicToken.value} @ $${this.currentPC.toString(16).toUpperCase()}`);
+					this.logger.log(
+						`[PASS 1] Defined label ${mnemonicToken.value} @ $${this.currentPC.toString(16).toUpperCase()}`,
+					);
 
 					// Consume only the label token, and let the loop re-evaluate the next token (the instruction/directive)
 					this.currentTokenIndex++;
@@ -196,7 +232,7 @@ export class Assembler {
 
 			if (token.type === "LOCAL_LABEL") {
 				if (!this.lastGlobalLabel) {
-					console.error(
+					this.logger.error(
 						`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`,
 					);
 				} else {
@@ -213,34 +249,12 @@ export class Assembler {
 				continue;
 			}
 
-			if (token.type === "DIRECTIVE") {
-				const directiveContext = {
-					token: token,
-					tokenIndex: this.currentTokenIndex,
-					evaluationContext: {
-						pc: this.currentPC,
-						allowForwardRef: true,
-						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
-					},
-				};
-
-				const nextTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
-
-				if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
-					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
-				} else {
-					this.currentTokenIndex = nextTokenIndex;
-				}
-				continue;
-			}
-
 			this.currentTokenIndex++;
 		}
 	}
 
 	private passTwo(): void {
-		console.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
+		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
@@ -309,7 +323,7 @@ export class Assembler {
 							const operandString = operandTokens.map((t) => t.value).join("");
 
 							// This log output would typically be controlled by a directive like .LIST ON/OFF
-							console.log(
+							this.logger.log(
 								`${addressHex}: ${hexBytes.padEnd(8)} | Line ${token.line}: ${mnemonicToken.value} ${operandString}`,
 							);
 
@@ -329,7 +343,7 @@ export class Assembler {
 							}
 							// Case 2: It is a genuine syntax/mnemonic error.
 							const errorMessage = e instanceof Error ? e.message : String(e);
-							console.error(
+							this.logger.error(
 								`\nFATAL ERROR on line ${token.line}: Invalid instruction mnemonic or unresolved symbol/syntax error. Error: ${errorMessage}`,
 							);
 							throw new Error(`Assembly failed on line ${token.line}: ${errorMessage}`); // Stop execution
@@ -444,7 +458,7 @@ export class Assembler {
 			return;
 		}
 
-		console.log(`[PASS 2] Expanding macro: ${macroName}`);
+		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
 
 		// 1. Parse arguments passed in the call line
 		const passedArgsArray = this.parseMacroArguments(callIndex + 1);
@@ -479,6 +493,7 @@ export class Assembler {
 						const paramValue = this.expressionEvaluator.evaluate(argTokens, {
 							pc: this.currentPC,
 							macroArgs: argMap,
+							currentGlobalLabel: this.lastGlobalLabel, // Added for macro arg evaluation
 							options: this.options,
 						});
 						return String(paramValue);
@@ -625,6 +640,7 @@ export class Assembler {
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					pc: this.currentPC,
 					macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+					currentGlobalLabel: this.lastGlobalLabel, // Added for instruction size evaluation
 					options: this.options,
 				}),
 			);
@@ -646,10 +662,11 @@ export class Assembler {
 				pc: this.currentPC,
 				allowForwardRef: true,
 				options: this.options,
+				currentGlobalLabel: this.lastGlobalLabel, // Added for symbol definition
 			});
 			this.symbolTable.addSymbol(symbolToken.value, value, true);
 		} catch (e) {
-			console.error(
+			this.logger.error(
 				`[PASS 1] ERROR on line ${symbolToken.line}: Failed to evaluate expression for symbol ${symbolToken.value}. ${e}`,
 			);
 			// Fallback to 0 if expression evaluation fails in Pass 1

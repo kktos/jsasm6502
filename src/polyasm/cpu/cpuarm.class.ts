@@ -1,6 +1,7 @@
 import type { Token } from "../lexer/lexer.class";
 import type { CPUHandler, AddressingMode } from "./cpuhandler.class";
 
+import type { Logger } from "../logger";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 
@@ -45,6 +46,12 @@ export class CpuArmRiscHandler implements CPUHandler {
 
 	getPCSize(): number {
 		return 32;
+	}
+
+	private logger: Logger;
+
+	constructor(logger: Logger) {
+		this.logger = logger;
 	}
 	handleCPUSpecificDirective(directive: string, args: Token[]): void {}
 
@@ -131,7 +138,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 			const offset = (targetAddress - (pc + 8)) >> 2;
 			const opcode = (this.instructionBases.get("B") as number) | (offset & 0x00ffffff);
 
-			// console.log(`[PASS 2 - ARM] Encoded ${mnemonic} (Offset: ${offset})`);
+			this.logger.log(`[PASS 2 - ARM] Encoded ${mnemonic} (Offset: ${offset})`);
 			return this.u32ToBytes(opcode);
 		}
 		if (modeInfo.mode === this.ARM_MODES.DATA_PROC) {

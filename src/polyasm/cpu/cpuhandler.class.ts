@@ -26,5 +26,5 @@ export interface CPUHandler {
 	): number[];
 
 	getPCSize(): number;
-	handleCPUSpecificDirective(directive: string, args: Token[]): void;
+	//constructor(logger: Logger); // Constructor signature for CPU handlers
 }

@@ -5,11 +5,13 @@ export type TokenType =
 	| "LABEL" // identifier followed by ':'
 	| "LOCAL_LABEL" // :loop
 	| "ANONYMOUS_LABEL_DEF" // :
+	| "FUNCTION"
 	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
 
 	// Literals
 	| "NUMBER" // $1234, %1010, 42, -50
-	| "STRING" // "file.asm"
+	| "STRING"
+	| "ARRAY"
 	| "OPERATOR"
 
 	// Operators
@@ -343,21 +345,26 @@ export class AssemblyLexer {
 	private scanDotOrDirective(line: number, column: number): Token {
 		this.advance(); // skip '.'
 
-		// If not followed by letter, it's just a dot
-		if (!this.isAlpha(this.peek())) {
-			return this.makeToken("DOT", ".", line, column);
+		if (this.isAlpha(this.peek())) {
+			const start = this.pos - 1; // Include the dot
+			while (this.isIdentifierPart(this.peek())) {
+				this.advance();
+			}
+			const value = this.source.slice(start, this.pos);
+
+			// If it's followed by '(', it's a function call like .LEN(..), treat as IDENTIFIER
+			// Otherwise, it's a directive like .ORG
+			this.skipWhitespace();
+			if (this.peek() === "(") {
+				return this.makeToken("IDENTIFIER", value.toUpperCase(), line, column);
+			}
+
+			// It's a directive
+			return this.makeToken("DIRECTIVE", value.toUpperCase(), line, column);
 		}
 
-		// Scan the identifier after the dot
-		const start = this.pos;
-		while (this.isAlphaNumeric(this.peek()) || this.peek() === "_") {
-			this.advance();
-		}
-
-		const identifier = this.source.slice(start, this.pos);
-		const value = `.${identifier}`;
-
-		return this.makeToken("DIRECTIVE", value.toUpperCase(), line, column);
+		// If not followed by a letter, it's just a dot operator for size overrides (e.g. LDA.W)
+		return this.makeToken("DOT", ".", line, column);
 	}
 
 	private scanString(line: number, column: number): Token {

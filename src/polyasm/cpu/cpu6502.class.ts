@@ -1,8 +1,16 @@
 import type { Token } from "../lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 
+// No changes needed here, as the constructor already takes Logger and no console.log calls are present.
+import type { Logger } from "../logger";
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
+
+	private logger: Logger;
+
+	constructor(logger: Logger) {
+		this.logger = logger;
+	}
 
 	// Define M6502 specific modes internally
 	private M6502_MODES = {
