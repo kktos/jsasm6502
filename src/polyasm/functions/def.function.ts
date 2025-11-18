@@ -11,13 +11,39 @@ export const def: IFunction = (
 	if (argCount !== 1) {
 		throw new Error(`.DEF() requires 1 argument, but got ${argCount} on line ${token.line}.`);
 	}
+	stack.push(checkIfDefined(stack, symbolTable) ? 1 : 0);
+};
 
+export const undef: IFunction = (
+	stack: EvaluationStack,
+	token: Token,
+	symbolTable: PASymbolTable,
+	argCount: number,
+): void => {
+	if (argCount !== 1) {
+		throw new Error(`.UNDEF() requires 1 argument, but got ${argCount} on line ${token.line}.`);
+	}
+	stack.push(checkIfDefined(stack, symbolTable) ? 0 : 1);
+};
+
+function checkIfDefined(stack: EvaluationStack, symbolTable: PASymbolTable) {
 	const arg = stack.pop();
+	let isDefined = false;
 
-	if (typeof arg !== "string") {
-		throw new Error(`.DEF() requires a string or identifier argument on line ${token.line}.`);
+	switch (typeof arg) {
+		case "undefined":
+			isDefined = false;
+			break;
+		case "object":
+			isDefined = arg !== null;
+			break;
+		case "number":
+			isDefined = arg !== 0;
+			break;
+		case "string":
+			isDefined = symbolTable.lookupSymbol(arg) !== undefined;
+			break;
 	}
 
-	const isDefined = symbolTable.lookupSymbol(arg) !== undefined;
-	stack.push(isDefined ? 1 : 0);
-};
+	return isDefined;
+}

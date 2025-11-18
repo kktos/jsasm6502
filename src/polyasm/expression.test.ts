@@ -203,7 +203,7 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toBe(1);
 		});
 
-		it("should evaluate .DEF() on an undefined symbol", () => {
+		it("should evaluate .DEF() on an undefined symbol name", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('.DEF("MySymbol")');
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
@@ -212,7 +212,7 @@ describe("ExpressionEvaluator", () => {
 
 		it("should evaluate .UNDEF() on an undefined symbol", () => {
 			const { evaluator, tokenize } = setup();
-			const tokens = tokenize(".UNDEF(Unknown)");
+			const tokens = tokenize('.UNDEF("Unknown")');
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(1);
 		});
@@ -230,7 +230,9 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("$002A");
 		});
+	});
 
+	describe("Array Functions", () => {
 		it("should evaluate .SPLIT() with default delimiter", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('.SPLIT("one two three")');
@@ -257,6 +259,33 @@ describe("ExpressionEvaluator", () => {
 			const tokens = tokenize(".ARRAY()");
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toEqual([]);
+		});
+
+		it("should evaluate .PUSH() to add items to an array", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".PUSH(.ARRAY(0, 1), 2, 3)");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual([0, 1, 2, 3]);
+		});
+
+		it("should evaluate .PUSH() to add items to symbol:array", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			const originalArray = [0, 1];
+			symbolTable.define("nums", originalArray);
+			const tokens = tokenize(".PUSH(nums, 2, 3)");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual([0, 1, 2, 3]);
+		});
+
+		it("should evaluate .POP() to get the last item from an array", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			const originalArray = [1, 2, 3];
+			symbolTable.define("nums", originalArray);
+			const tokens = tokenize(".POP(nums)");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe(3);
+			// Ensure the original array held by the symbol is not modified
+			expect(symbolTable.lookupSymbol("nums")).toEqual([1, 2, 3]);
 		});
 	});
 

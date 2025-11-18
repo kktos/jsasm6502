@@ -348,7 +348,7 @@ export class ExpressionEvaluator {
 
 	/** Evaluates a Reverse Polish Notation (RPN) token stream. */
 	private evaluateRPN(rpnTokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
-		const stack: (number | string)[] = [];
+		const stack: SymbolValue[] = [];
 
 		for (const token of rpnTokens) {
 			switch (token.type) {
@@ -371,14 +371,14 @@ export class ExpressionEvaluator {
 				case "ANONYMOUS_LABEL_REF": {
 					// If the next token is a function, the identifier is an argument to it,
 					// so we should push its name as a string instead of its value.
-					const nextToken = rpnTokens.find((t, idx) => idx > rpnTokens.indexOf(token));
-					if (nextToken?.type === "FUNCTION") {
-						stack.push(token.value);
-						break;
-					}
+					// const nextToken = rpnTokens.find((t, idx) => idx > rpnTokens.indexOf(token));
+					// if (nextToken?.type === "FUNCTION") {
+					// 	stack.push(token.value);
+					// 	break;
+					// }
 
 					const value = this.resolveValue(token, context);
-					if (typeof value === "number" || typeof value === "string") {
+					if (value !== undefined) {
 						stack.push(value);
 						break;
 					}
@@ -388,7 +388,7 @@ export class ExpressionEvaluator {
 					const argTokens = context.macroArgs?.get(token.value.toUpperCase());
 					if (argTokens) {
 						const result = this.evaluate(argTokens, context);
-						if (typeof result === "number" || typeof result === "string") {
+						if (result !== undefined) {
 							stack.push(result);
 						} else {
 							// This case would be for array arguments, which can't be pushed onto the numeric stack.
