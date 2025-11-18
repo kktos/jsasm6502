@@ -334,6 +334,13 @@ describe("ExpressionEvaluator", () => {
 			// Ensure the original array held by the symbol is not modified
 			expect(symbolTable.lookupSymbol("nums")).toEqual([1, 2, 3]);
 		});
+
+		it("should evaluate .JOIN() to concatenate array elements", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('.JOIN([1, "two", 3], ",")');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("1,two,3");
+		});
 	});
 
 	describe("Data Structures", () => {

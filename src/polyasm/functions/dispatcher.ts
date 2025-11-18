@@ -11,6 +11,7 @@ import { pop } from "./pop.function";
 import { type } from "./type.function";
 import { json } from "./json.function";
 import { iif } from "./iif.function";
+import { join } from "./join.function";
 
 const functions = new Map<string, IFunctionDef>();
 
@@ -30,6 +31,7 @@ functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
 functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
 functions.set(".JSON", { handler: json, minArgs: 1, maxArgs: 1 });
 functions.set(".IIF", { handler: iif, minArgs: 3, maxArgs: 3 });
+functions.set(".JOIN", { handler: join, minArgs: 2, maxArgs: 2 });
 
 export function functionDispatcher(
 	name: string,
