@@ -161,7 +161,12 @@ export class ExpressionEvaluator {
 
 				const arrayContentTokens = tokens.slice(i + 1, j);
 				const arrayValue = this.evaluateArray(arrayContentTokens, context);
-				const arrayToken: Token = { type: "ARRAY", value: JSON.stringify(arrayValue), line: processedToken.line, column: processedToken.column };
+				const arrayToken: Token = {
+					type: "ARRAY",
+					value: JSON.stringify(arrayValue),
+					line: processedToken.line,
+					column: processedToken.column,
+				};
 				outputQueue.push(arrayToken);
 				i = j; // Move index past the array
 				lastToken = arrayToken;
