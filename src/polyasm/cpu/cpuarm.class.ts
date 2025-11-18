@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/lexer.class";
+import type { OperatorStackToken, Token } from "../lexer/lexer.class";
 import type { CPUHandler, AddressingMode } from "./cpuhandler.class";
 
 import type { Logger } from "../logger";
@@ -55,8 +55,17 @@ export class CpuArmRiscHandler implements CPUHandler {
 	}
 	handleCPUSpecificDirective(directive: string, args: Token[]): void {}
 
+	isInstruction(mnemonic: string): boolean {
+		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
+		if (!baseMnemonic) {
+			return false;
+		}
+		// Check if the mnemonic is a known instruction.
+		return this.instructionBases.has(baseMnemonic);
+	}
+
 	/** Helper to parse a register identifier R0-R15 */
-	private getRegisterIndex(token: Token): number {
+	private getRegisterIndex(token: OperatorStackToken): number {
 		const index = this.registerMap.get(token.value.toUpperCase());
 		if (index === undefined) {
 			throw new Error(`Invalid register: ${token.value}`);
@@ -70,8 +79,8 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 */
 	resolveAddressingMode(
 		mnemonic: string,
-		operandTokens: Token[],
-		resolveValue: (tokens: Token[]) => number,
+		operandTokens: OperatorStackToken[],
+		resolveValue: (tokens: OperatorStackToken[]) => number,
 	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number } {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
 		if (!baseMnemonic) {
@@ -126,7 +135,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 * @param modeInfo Contains the pre-calculated 32-bit opcode or target address.
 	 */
 	encodeInstruction(
-		tokens: Token[],
+		tokens: OperatorStackToken[],
 		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; pc: number },
 	): number[] {
 		// We switch on the ARM specific mode strings

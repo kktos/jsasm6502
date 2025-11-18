@@ -3,7 +3,7 @@ import { PASymbolTable } from "./symbol.class";
 import { Logger } from "./logger";
 import { ExpressionEvaluator } from "./expression";
 import { DirectiveHandler } from "./directives/handler";
-import { type Token, AssemblyLexer } from "./lexer/lexer.class";
+import { type Token, AssemblyLexer, type OperatorStackToken, type ScalarToken } from "./lexer/lexer.class";
 import { EventEmitter } from "node:events";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
 import { ADVANCE_TO_NEXT_LINE } from "./directives/directive.interface";
@@ -83,6 +83,7 @@ export class Assembler {
 		}
 
 		this.passOne();
+
 		this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		this.outputBuffer = [];
 		this.currentTokenIndex = 0;
@@ -124,133 +125,157 @@ export class Assembler {
 			// Always update PC symbol before any instruction/data
 			this.symbolTable.setSymbol("*", this.currentPC);
 
-			if (token.type === "DIRECTIVE") {
-				const directiveContext = {
-					token: token,
-					tokenIndex: this.currentTokenIndex,
-					evaluationContext: {
-						pc: this.currentPC,
-						allowForwardRef: true,
-						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
-					},
-				};
-
-				const nextTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
-
-				if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
-					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
-				} else {
-					this.currentTokenIndex = nextTokenIndex;
-				}
-				continue;
-			}
-
-			if (token.type === "IDENTIFIER" || token.type === "LABEL") {
-				// Instructions and Macro calls
-				const mnemonic = token.value.toUpperCase();
-
-				// PRIORITY 1: SYMBOL ASSIGNMENT (IDENTIFIER .EQU VALUE)
-				const nextToken = this.activeTokens[this.currentTokenIndex + 1];
-				if (nextToken?.value === ".EQU" || nextToken?.value === "=") {
-					const labelToken = token;
-					// Start expression after .EQU or =
-					const expressionTokens = this.getInstructionTokens(this.currentTokenIndex + 2);
-
-					try {
-						const value = this.expressionEvaluator.evaluate(expressionTokens, {
+			switch (token.type) {
+				case "DIRECTIVE": {
+					const directiveContext = {
+						token: token,
+						tokenIndex: this.currentTokenIndex,
+						evaluationContext: {
 							pc: this.currentPC,
 							allowForwardRef: true,
-							currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
+							currentGlobalLabel: this.lastGlobalLabel,
 							options: this.options,
-						});
-						if (Array.isArray(value)) {
-							this.logger.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
-						} else {
-							this.logger.log(`[PASS 1] Defined symbol ${labelToken.value} = $${value.toString(16).toUpperCase()}`);
-						}
-						this.symbolTable.addSymbol(labelToken.value, value);
-					} catch (e) {
-						this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken.value}: ${e}`);
+						},
+					};
+
+					const nextTokenIndex = this.directiveHandler.handlePassOneDirective(directiveContext);
+
+					if (nextTokenIndex === ADVANCE_TO_NEXT_LINE)
+						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+					else this.currentTokenIndex = nextTokenIndex;
+					break;
+				}
+
+				case "IDENTIFIER":
+				case "LABEL": {
+					// PRIORITY 1: SYMBOL ASSIGNMENT (IDENTIFIER .EQU VALUE)
+					const nextToken = this.activeTokens[this.currentTokenIndex + 1];
+					if (nextToken && (nextToken.value === ".EQU" || nextToken.value === "=" || nextToken.value === ":")) {
+						this.handleLabelInPassOne(nextToken, token as ScalarToken);
+						break;
 					}
 
-					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
-					continue;
+					// PRIORITY 2: MACRO
+					if (this.macroDefinitions.has(token.value.toUpperCase())) {
+						this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+						break;
+					}
+
+					this.handleInstructionPassOne(token as ScalarToken);
+					break;
 				}
 
-				if (nextToken?.value === ":") {
-					this.lastGlobalLabel = token.value;
-					this.symbolTable.addSymbol(token.value, this.currentPC);
-					this.logger.log(
-						`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`,
-					);
-
-					// Consume the label (IDENTIFIER) AND the colon (OPERATOR)
-					this.currentTokenIndex += 2;
-					// Then continue loop to process the instruction/directive that follows immediately
-					continue;
+				case "LOCAL_LABEL": {
+					if (!this.lastGlobalLabel) {
+						this.logger.error(
+							`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`,
+						);
+					} else {
+						const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
+						this.symbolTable.addSymbol(qualifiedName, this.currentPC, false);
+					}
+					this.currentTokenIndex++;
+					break;
 				}
 
-				if (this.macroDefinitions.has(mnemonic)) {
-					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
-					continue;
+				case "ANONYMOUS_LABEL_DEF": {
+					this.anonymousLabels.push(this.currentPC);
+					this.currentTokenIndex++;
+					break;
 				}
 
-				// Standard Instruction: Use the new mode resolver to calculate size
-				const instructionTokens = this.getInstructionTokens(this.currentTokenIndex);
-				const mnemonicToken = instructionTokens[0];
-				const operandTokens = instructionTokens.slice(1);
+				default:
+					this.currentTokenIndex++;
+			}
+		}
+	}
 
-				try {
-					// Try to resolve as a known instruction. If it fails (throws), it's a label.
-					const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
+	private handleLabelInPassOne(nextToken: Token, token: ScalarToken): void {
+		if (nextToken.value === ".EQU" || nextToken.value === "=") {
+			const labelToken = token;
+			// Start expression after .EQU or =
+			const expressionTokens = this.getInstructionTokens(this.currentTokenIndex + 2);
+
+			try {
+				const value = this.expressionEvaluator.evaluate(expressionTokens, {
+					pc: this.currentPC,
+					allowForwardRef: true,
+					currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
+					options: this.options,
+				});
+
+				if (Array.isArray(value))
+					this.logger.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
+				else this.logger.log(`[PASS 1] Defined symbol ${labelToken.value} = $${value.toString(16).toUpperCase()}`);
+
+				this.symbolTable.addSymbol(labelToken.value, value);
+			} catch (e) {
+				this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken.value}: ${e}`);
+			}
+
+			this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+			return;
+		}
+
+		if (nextToken.value === ":") {
+			this.lastGlobalLabel = token.value;
+			this.symbolTable.addSymbol(token.value, this.currentPC);
+			this.logger.log(
+				`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`,
+			);
+
+			// Consume the label (IDENTIFIER) AND the colon (OPERATOR)
+			this.currentTokenIndex += 2;
+			// Then continue loop to process the instruction/directive that follows immediately
+			return;
+		}
+	}
+
+	private handleInstructionPassOne(token: ScalarToken): void {
+		// Standard Instruction: Use the new mode resolver to calculate size
+		const instructionTokens = this.getInstructionTokens(this.currentTokenIndex);
+		const mnemonicToken = instructionTokens[0];
+		const operandTokens = instructionTokens.slice(1);
+
+		// A mnemonic must be a string. If it's an array, it's an error.
+		if (typeof mnemonicToken.value !== "string") throw new Error("Invalid instruction: Mnemonic cannot be an array.");
+
+		// Check if the mnemonic is a known instruction for the current CPU.
+		if (this.cpuHandler.isInstruction(mnemonicToken.value)) {
+			// It's an instruction. Resolve its size and advance the PC.
+			try {
+				const sizeInfo = this.cpuHandler.resolveAddressingMode(
+					mnemonicToken.value,
+					operandTokens as OperatorStackToken[],
+					(exprTokens) =>
 						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 							pc: this.currentPC,
 							allowForwardRef: true,
 							currentGlobalLabel: this.lastGlobalLabel,
 							options: this.options,
 						}),
-					);
-
-					// SUCCESS: It's an instruction. Advance PC and skip line.
-					this.currentPC += sizeInfo.bytes;
-					this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
-					continue;
-				} catch (e) {
-					// FAILURE (Mnemonic not found): It's a LABEL DEFINITION.
-					this.lastGlobalLabel = mnemonicToken.value;
-					this.symbolTable.addSymbol(mnemonicToken.value, this.currentPC);
-					this.logger.log(
-						`[PASS 1] Defined label ${mnemonicToken.value} @ $${this.currentPC.toString(16).toUpperCase()}`,
-					);
-
-					// Consume only the label token, and let the loop re-evaluate the next token (the instruction/directive)
-					this.currentTokenIndex++;
-					continue;
-				}
+				);
+				this.currentPC += sizeInfo.bytes;
+			} catch (e) {
+				const errorMessage = e instanceof Error ? e.message : String(e);
+				this.logger.error(
+					`[PASS 1] ERROR on line ${token.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`,
+				);
+				// In case of error, assume a default size to prevent cascading PC errors.
+				// A better approach might be to halt or use a more intelligent guess.
+				this.currentPC += 1;
 			}
-
-			if (token.type === "LOCAL_LABEL") {
-				if (!this.lastGlobalLabel) {
-					this.logger.error(
-						`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`,
-					);
-				} else {
-					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-					this.symbolTable.addSymbol(qualifiedName, this.currentPC, false);
-				}
-				this.currentTokenIndex++;
-				continue;
-			}
-
-			if (token.type === "ANONYMOUS_LABEL_DEF") {
-				this.anonymousLabels.push(this.currentPC);
-				this.currentTokenIndex++;
-				continue;
-			}
-
-			this.currentTokenIndex++;
+			this.currentTokenIndex = this.skipToEndOfLine(this.currentTokenIndex);
+			return;
 		}
+
+		// It's not a known instruction, so treat it as a label definition.
+		this.lastGlobalLabel = mnemonicToken.value;
+		this.symbolTable.addSymbol(mnemonicToken.value, this.currentPC);
+		this.logger.log(`[PASS 1] Defined label ${mnemonicToken.value} @ $${this.currentPC.toString(16).toUpperCase()}`);
+
+		// Consume only the label token, and let the loop re-evaluate the next token (the instruction/directive)
+		this.currentTokenIndex++;
 	}
 
 	private passTwo(): void {
@@ -293,13 +318,16 @@ export class Assembler {
 					}
 
 					// Standard Instruction Encoding
-					const instructionTokens = this.getInstructionTokens(this.currentTokenIndex);
+					const instructionTokens = this.getInstructionTokens(this.currentTokenIndex) as OperatorStackToken[];
 					const mnemonicToken = instructionTokens[0];
-					const operandTokens = instructionTokens.slice(1);
+					const operandTokens = instructionTokens.slice(1) as OperatorStackToken[];
 
 					if (this.isAssembling) {
 						try {
 							// 1. Resolve Mode & Address
+							if (typeof mnemonicToken.value !== "string") {
+								throw new Error("Invalid instruction: Mnemonic cannot be an array.");
+							}
 							const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 								this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 									pc: this.currentPC,
@@ -449,7 +477,7 @@ export class Assembler {
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
 	private expandMacro(callIndex: number): void {
-		const nameToken = this.activeTokens[callIndex]; // Macro name is the current token
+		const nameToken = this.activeTokens[callIndex] as OperatorStackToken; // Macro name is the current token
 		const macroName = nameToken.value.toUpperCase();
 		const definition = this.macroDefinitions.get(macroName);
 
@@ -571,11 +599,6 @@ export class Assembler {
 	public getInstructionTokens(startIndex: number): Token[] {
 		const tokens: Token[] = [];
 		let i = startIndex;
-		const currentContext = this.tokenStreamStack[this.tokenStreamStack.length - 1] || {
-			id: 0,
-			tokens: this.activeTokens,
-			index: 0,
-		};
 		const startLine = startIndex < this.activeTokens.length ? this.activeTokens[startIndex].line : -1;
 
 		while (i < this.activeTokens.length && this.activeTokens[i].line === startLine) {
@@ -605,11 +628,11 @@ export class Assembler {
 	 */
 	public findMatchingDirective(startIndex: number): number {
 		let depth = 1; // Start at depth 1 for the initial block.
-		const startToken = this.activeTokens[startIndex];
+		const startToken = this.activeTokens[startIndex] as ScalarToken;
 		const startDirective = startToken.value.toUpperCase();
 
 		for (let i = startIndex + 1; i < this.activeTokens.length; i++) {
-			const token = this.activeTokens[i];
+			const token = this.activeTokens[i] as ScalarToken;
 			const tokenValue = token.value?.toUpperCase() ?? "";
 
 			// Increase depth for nested same directives (.MACRO/.FOR/.REPEAT etc)
@@ -633,8 +656,8 @@ export class Assembler {
 	public getInstructionSize(startIndex: number): number {
 		try {
 			const instructionTokens = this.getInstructionTokens(startIndex);
-			const mnemonicToken = instructionTokens[0];
-			const operandTokens = instructionTokens.slice(1);
+			const mnemonicToken = instructionTokens[0] as ScalarToken;
+			const operandTokens = instructionTokens.slice(1) as OperatorStackToken[];
 
 			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
@@ -651,7 +674,7 @@ export class Assembler {
 	}
 
 	public handlePASymbolDefinition(startIndex: number): void {
-		const symbolToken = this.activeTokens[startIndex];
+		const symbolToken = this.activeTokens[startIndex] as ScalarToken;
 
 		// Start after symbol and '=' (or simply start after the symbol token)
 		const expressionStart = startIndex + 2;

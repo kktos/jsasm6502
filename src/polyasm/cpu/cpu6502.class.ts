@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/lexer.class";
+import type { OperatorStackToken, Token } from "../lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 
 // No changes needed here, as the constructor already takes Logger and no console.log calls are present.
@@ -85,8 +85,13 @@ export class Cpu6502Handler implements CPUHandler {
 	}
 	handleCPUSpecificDirective(directive: string, args: Token[]): void {}
 
+	isInstruction(mnemonic: string): boolean {
+		const baseMnemonic = mnemonic.toUpperCase().split(".")[0];
+		return this.instructionMap.has(baseMnemonic);
+	}
+
 	/** Extracts tokens between two delimiters (e.g., inside parentheses). */
-	private extractTokensBetween(tokens: Token[], startVal: string, endVal: string): Token[] {
+	private extractTokensBetween(tokens: OperatorStackToken[], startVal: string, endVal: string) {
 		const start = tokens.findIndex((t) => t.value === startVal);
 		const end = tokens.findIndex((t) => t.value === endVal);
 		if (start === -1 || end === -1 || start >= end) return [];
@@ -95,8 +100,8 @@ export class Cpu6502Handler implements CPUHandler {
 
 	resolveAddressingMode(
 		mnemonic: string,
-		operandTokens: Token[],
-		resolveValue: (tokens: Token[]) => number,
+		operandTokens: OperatorStackToken[],
+		resolveValue: (tokens: OperatorStackToken[]) => number,
 	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number } {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.toUpperCase().split(".");
@@ -199,7 +204,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
 	encodeInstruction(
-		tokens: Token[],
+		tokens: OperatorStackToken[],
 		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
 	): number[] {
 		// We now switch on the mode string defined internally by this handler.

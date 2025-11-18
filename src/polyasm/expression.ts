@@ -4,7 +4,7 @@
  * * Uses the Shunting-Yard algorithm for precedence and parentheses.
  */
 
-import type { Token } from "./lexer/lexer.class";
+import type { OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 import type { Assembler } from "./polyasm";
 import type { Logger } from "./logger";
@@ -108,7 +108,7 @@ export class ExpressionEvaluator {
 	 * Evaluates the contents of an array literal.
 	 * e.g., [ "red", "green", 1+2 ]
 	 */
-	private evaluateArray(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
+	private evaluateArray(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue[] {
 		const elements: (string | number)[] = [];
 		let currentExpression: Token[] = [];
 
@@ -138,7 +138,7 @@ export class ExpressionEvaluator {
 
 	private infixToRPN(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
 		const outputQueue: Token[] = [];
-		const operatorStack: Token[] = [];
+		const operatorStack: OperatorToken[] = [];
 		let lastToken: Token | undefined;
 
 		for (let i = 0; i < tokens.length; i++) {
@@ -175,9 +175,9 @@ export class ExpressionEvaluator {
 				const arrayValue = this.evaluateArray(arrayContentTokens, context);
 				const arrayToken: Token = {
 					type: "ARRAY",
-					value: JSON.stringify(arrayValue),
 					line: processedToken.line,
 					column: processedToken.column,
+					value: arrayValue, // Assign the evaluated array directly to the 'value' field
 				};
 				outputQueue.push(arrayToken);
 				i = j; // Move index past the array
@@ -199,7 +199,7 @@ export class ExpressionEvaluator {
 					this.handleComma(processedToken, outputQueue, operatorStack);
 					break;
 				case "OPERATOR":
-					processedToken = this.handleOperator(processedToken, outputQueue, operatorStack, lastToken);
+					processedToken = this.handleOperator(processedToken as OperatorToken, outputQueue, operatorStack, lastToken);
 					break;
 			}
 			lastToken = processedToken; // Always update lastToken
@@ -270,9 +270,9 @@ export class ExpressionEvaluator {
 
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
 	private handleOperator(
-		token: Token,
+		token: OperatorToken,
 		outputQueue: Token[],
-		operatorStack: Token[],
+		operatorStack: OperatorStackToken[],
 		lastToken: Token | undefined,
 	): Token {
 		const op = token.value;
@@ -309,7 +309,7 @@ export class ExpressionEvaluator {
 			case "+":
 				if (isUnary) {
 					if (op === "-") {
-						const unaryToken: Token = { ...token, value: "UNARY_MINUS" };
+						const unaryToken: OperatorToken = { ...token, value: "UNARY_MINUS" };
 						this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
 					}
 					// Unary '+' is a no-op, so we do nothing.
@@ -370,7 +370,11 @@ export class ExpressionEvaluator {
 	}
 
 	/** Helper function to handle operator precedence during Shunting-Yard. */
-	private pushOperatorWithPrecedence(token: Token, outputQueue: Token[], operatorStack: Token[]): void {
+	private pushOperatorWithPrecedence(
+		token: OperatorStackToken,
+		outputQueue: Token[],
+		operatorStack: OperatorStackToken[],
+	): void {
 		const currentPrecedence = PRECEDENCE[token.value] ?? 0;
 
 		while (operatorStack.length > 0) {
@@ -395,7 +399,7 @@ export class ExpressionEvaluator {
 		for (const token of rpnTokens) {
 			switch (token.type) {
 				case "NUMBER":
-					stack.push(this.parseNumericArg(token));
+					stack.push(Number.parseInt(token.value, 10));
 					break;
 
 				case "STRING":
@@ -403,8 +407,8 @@ export class ExpressionEvaluator {
 					break;
 
 				case "ARRAY":
-					// The value is a JSON stringified array from infixToRPN
-					stack.push(JSON.parse(token.value));
+					// Now, token.value directly holds the SymbolValue[]
+					stack.push(token.value); // TS knows this is SymbolValue[]
 					break;
 
 				case "IDENTIFIER":
@@ -588,7 +592,7 @@ export class ExpressionEvaluator {
 	private resolveValue(token: Token, context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
 		switch (token.type) {
 			case "NUMBER":
-				return this.parseNumericArg(token);
+				return Number.parseInt(token.value, 10);
 
 			case "STRING":
 				return token.value;
@@ -685,10 +689,6 @@ export class ExpressionEvaluator {
 		suggestions.sort((a, b) => a.distance - b.distance);
 
 		return suggestions.map((s) => s.name);
-	}
-
-	private parseNumericArg(token: Token): number {
-		return Number.parseInt(token.value, 10);
 	}
 }
 

@@ -1,3 +1,5 @@
+import type { SymbolValue } from "../symbol.class";
+
 export type TokenType =
 	// Structural
 	| "DIRECTIVE" // .MACRO, .EQU, .ORG, etc.
@@ -34,14 +36,30 @@ export type TokenType =
 	| "NEWLINE"
 	| "EOF";
 
-export interface Token {
-	type: TokenType;
-	value: string;
-	raw?: string;
+type BaseToken = {
 	line: number | string;
 	column: number;
+	raw?: string;
 	argCount?: number;
-}
+};
+
+export type StringValueToken<T extends TokenType> = BaseToken & {
+	type: T;
+	value: string;
+};
+
+export type OperatorToken = StringValueToken<"OPERATOR">;
+export type FunctionToken = StringValueToken<"FUNCTION">;
+export type OperatorStackToken = OperatorToken | FunctionToken;
+
+export type ScalarToken = StringValueToken<Exclude<TokenType, "ARRAY">>;
+
+export type ArrayValueToken = BaseToken & {
+	type: "ARRAY";
+	value: SymbolValue[];
+};
+
+export type Token = ScalarToken | ArrayValueToken;
 
 export class AssemblyLexer {
 	private source = "";
@@ -592,7 +610,13 @@ export class AssemblyLexer {
 		this.column++;
 	}
 
-	private makeToken(type: TokenType, value: string, line = this.line, column = this.column, raw?: string): Token {
-		return { type, value, line, column, raw };
+	private makeToken(
+		type: Exclude<TokenType, "ARRAY">,
+		value: string,
+		line = this.line,
+		column = this.column,
+		raw?: string,
+	): Token {
+		return { type, value, line, column, raw } as Token;
 	}
 }

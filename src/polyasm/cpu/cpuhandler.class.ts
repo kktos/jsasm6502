@@ -1,4 +1,4 @@
-import type { Token } from "../lexer/lexer.class";
+import type { OperatorStackToken } from "../lexer/lexer.class";
 
 /** * Defines the standard addressing modes recognizable by the assembler.
  * Changed to 'string' to allow CPU Handlers to define their own specific modes
@@ -15,13 +15,16 @@ export interface CPUHandler {
 	 */
 	resolveAddressingMode(
 		mnemonic: string,
-		operandTokens: Token[],
-		resolveValue: (tokens: Token[]) => number,
+		operandTokens: OperatorStackToken[],
+		resolveValue: (tokens: OperatorStackToken[]) => number,
 	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number };
+
+	/** Checks if a given mnemonic corresponds to a known instruction for this CPU. */
+	isInstruction(mnemonic: string): boolean;
 
 	/** Encodes the instruction into raw bytes, typically relying on modeInfo calculated in Pass 1. */
 	encodeInstruction(
-		tokens: Token[],
+		tokens: OperatorStackToken[],
 		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
 	): number[];
 
