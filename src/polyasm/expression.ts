@@ -699,25 +699,51 @@ export class ExpressionEvaluator {
 	}
 }
 
-/** Calculates the Levenshtein distance between two strings. */
-function levenshteinDistance(a: string, b: string): number {
-	const matrix = Array(b.length + 1)
-		.fill(null)
-		.map(() => Array(a.length + 1).fill(null));
+/** Calculates the Levenshtein distance between two strings (optimized). */
+function levenshteinDistance(name: string, symbolName: string): number {
+	// Early exits for common cases
+	if (name === symbolName) return 0;
+	if (name.length === 0) return symbolName.length;
+	if (symbolName.length === 0) return name.length;
 
-	for (let i = 0; i <= a.length; i += 1) matrix[0][i] = i;
-	for (let j = 0; j <= b.length; j += 1) matrix[j][0] = j;
+	let a: string;
+	let b: string;
 
-	for (let j = 1; j <= b.length; j += 1) {
-		for (let i = 1; i <= a.length; i += 1) {
-			const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
-			matrix[j][i] = Math.min(
-				matrix[j][i - 1] + 1, // deletion
-				matrix[j - 1][i] + 1, // insertion
-				matrix[j - 1][i - 1] + indicator, // substitution
-			);
-		}
+	// Ensure 'name' is the shorter string (optimize space)
+	if (name.length > symbolName.length) {
+		[a, b] = [symbolName, name];
+	} else {
+		[a, b] = [name, symbolName];
 	}
 
-	return matrix[b.length][a.length];
+	const aLen = a.length;
+	const bLen = b.length;
+
+	// Use two rows instead of full matrix
+	let prevRow = new Array(aLen + 1);
+	let currRow = new Array(aLen + 1);
+
+	// Initialize first row
+	for (let i = 0; i <= aLen; i++) {
+		prevRow[i] = i;
+	}
+
+	// Calculate distances
+	for (let j = 1; j <= bLen; j++) {
+		currRow[0] = j;
+
+		for (let i = 1; i <= aLen; i++) {
+			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+			currRow[i] = Math.min(
+				currRow[i - 1] + 1, // deletion
+				prevRow[i] + 1, // insertion
+				prevRow[i - 1] + cost, // substitution
+			);
+		}
+
+		// Swap rows (reuse arrays)
+		[prevRow, currRow] = [currRow, prevRow];
+	}
+
+	return prevRow[aLen];
 }
