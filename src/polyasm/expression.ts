@@ -183,20 +183,43 @@ export class ExpressionEvaluator {
 				case "ARRAY":
 					// Check for function call
 					if (processedToken.type === "IDENTIFIER" && tokens[i + 1]?.value === "(") {
-						const funcToken: Token = { ...processedToken, type: "FUNCTION" };
+						const funcToken: Token = {
+							...processedToken,
+							type: "FUNCTION",
+							value: `${processedToken.value},1`, // Store arg count, default to 1
+						};
 						operatorStack.push(funcToken);
 						lastToken = funcToken;
 						continue; // Skip to next token
 					}
 
 					// An operand should not follow another operand without an operator in between.
-					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.value !== "(") {
+					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(") {
 						throw new Error(
 							`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`,
 						);
 					}
 					outputQueue.push(processedToken);
 					break;
+
+				case "COMMA": {
+					// Commas are only valid inside function calls.
+					let foundParen = false;
+					for (let k = operatorStack.length - 1; k >= 0; k--) {
+						if (operatorStack[k].value === "(") {
+							foundParen = true;
+							// Increment argument count of the function, which is right before the '('
+							if (k > 0 && operatorStack[k - 1].type === "FUNCTION") {
+								const [name, count] = operatorStack[k - 1].value.split(",");
+								operatorStack[k - 1].value = `${name},${Number.parseInt(count) + 1}`;
+							}
+							break;
+						}
+					}
+					if (!foundParen) throw new Error(`Unexpected comma on line ${processedToken.line}.`);
+					// Treat comma like an operator for lastToken tracking
+					break;
+				} // No fall-through here, as COMMA is now explicitly handled in the operand check.
 
 				case "OPERATOR": {
 					const op = processedToken.value;
@@ -279,14 +302,18 @@ export class ExpressionEvaluator {
 							// If the token before the '(' was a function, pop it onto the output queue.
 							const topOfStack = operatorStack[operatorStack.length - 1];
 							if (topOfStack?.type === "FUNCTION") {
-								outputQueue.push(operatorStack.pop() as Token);
+								const funcToken = operatorStack.pop() as Token;
+								const [name, count] = funcToken.value.split(",");
+								// If there's only one argument and it's empty (e.g., .FOO()), arg count is 0.
+								if (Number.parseInt(count) === 1 && lastToken?.value === "(") funcToken.value = `${name},0`;
+								outputQueue.push(funcToken);
 							}
 							break;
 						}
 					}
 				}
 			}
-			lastToken = processedToken.type === "FUNCTION" ? lastToken : processedToken;
+			lastToken = processedToken; // Always update lastToken
 		}
 
 		while (operatorStack.length > 0) {
@@ -373,8 +400,9 @@ export class ExpressionEvaluator {
 				}
 
 				case "FUNCTION": {
-					const funcName = token.value.toUpperCase();
-					functionDispatcher(funcName, stack, token, this.symbolTable);
+					const [funcName, argCountStr] = token.value.split(",");
+					const argCount = Number.parseInt(argCountStr);
+					functionDispatcher(funcName.toUpperCase(), stack, token, this.symbolTable, argCount);
 					break;
 				}
 

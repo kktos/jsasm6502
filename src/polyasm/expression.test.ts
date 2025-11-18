@@ -216,6 +216,20 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluateAsNumber(tokens, { pc: 0 });
 			expect(result).toBe(1);
 		});
+
+		it("should evaluate .HEX() with one argument", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".HEX(255)");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("$FF");
+		});
+
+		it("should evaluate .HEX() with padding", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".HEX(42, 4)");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("$002A");
+		});
 	});
 
 	describe("Data Structures", () => {
