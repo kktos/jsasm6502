@@ -244,6 +244,16 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe('[1,"two",3]');
 		});
+
+		it("should evaluate .IIF() to return the true or false value based on the condition", () => {
+			const { evaluator, tokenize } = setup();
+
+			const tokens = tokenize('.IIF(1!=0, "true", "false")');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("true");
+
+			expect(evaluator.evaluate(tokenize('.IIF(50-50, "true", "false")'), { pc: 0 })).toBe("false");
+		});
 	});
 
 	describe("Array Functions", () => {

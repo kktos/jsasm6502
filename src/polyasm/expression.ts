@@ -203,6 +203,13 @@ export class ExpressionEvaluator {
 					break;
 
 				case "COMMA": {
+					// A comma acts as a separator between expressions in a function call.
+					// We need to evaluate everything on the operator stack until we find the
+					// opening parenthesis of the function call.
+					while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].value !== "(") {
+						outputQueue.push(operatorStack.pop() as Token);
+					}
+
 					// Commas are only valid inside function calls.
 					let foundParen = false;
 					for (let k = operatorStack.length - 1; k >= 0; k--) {
@@ -399,20 +406,19 @@ export class ExpressionEvaluator {
 				}
 
 				case "OPERATOR": {
+					const right = stack.pop();
+
 					if (token.value === "UNARY_MINUS") {
-						const value = stack.pop();
-						if (typeof value !== "number") throw new Error("Unary operator requires a numeric operand.");
-						stack.push(-value);
+						if (typeof right !== "number") throw new Error("Unary operator requires a numeric operand.");
+						stack.push(-right);
 						break;
 					}
 					if (token.value === "!") {
-						const value = stack.pop();
-						if (typeof value !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
-						stack.push(value === 0 ? 1 : 0);
+						if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
+						stack.push(right === 0 ? 1 : 0);
 						break;
 					}
 
-					const right = stack.pop();
 					const left = stack.pop();
 					if (left === undefined || right === undefined)
 						throw new Error(`Binary operator '${token.value}' requires two operands.`);

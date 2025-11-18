@@ -10,6 +10,7 @@ import { push } from "./push.function";
 import { pop } from "./pop.function";
 import { type } from "./type.function";
 import { json } from "./json.function";
+import { iif } from "./iif.function";
 
 const functions = new Map<string, IFunctionDef>();
 
@@ -28,6 +29,7 @@ functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
 
 functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
 functions.set(".JSON", { handler: json, minArgs: 1, maxArgs: 1 });
+functions.set(".IIF", { handler: iif, minArgs: 3, maxArgs: 3 });
 
 export function functionDispatcher(
 	name: string,
