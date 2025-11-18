@@ -17,6 +17,9 @@ const PRECEDENCE: Record<string, number> = {
 	UNARY_MSB: 9,
 	UNARY_LSB: 9,
 
+	// High precedence for array indexing
+	ARRAY_ACCESS: 9,
+
 	// Multiplicative
 	"*": 8,
 	"/": 8,
@@ -85,11 +88,6 @@ export class ExpressionEvaluator {
 	public evaluate(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): SymbolValue {
 		if (tokens.length === 0) return 0;
 
-		// Handle array literal parsing
-		if (tokens[0]?.value === "[" && tokens[tokens.length - 1]?.value === "]") {
-			return this.evaluateArray(tokens.slice(1, -1), context);
-		}
-
 		const rpnTokens = this.infixToRPN(tokens, context);
 		return this.evaluateRPN(rpnTokens, context);
 	}
@@ -146,7 +144,20 @@ export class ExpressionEvaluator {
 		for (let i = 0; i < tokens.length; i++) {
 			let processedToken = tokens[i]; // Use a mutable token for processing
 
-			if (processedToken.value === "[") {
+			// --- Array Literal Parsing (only if not preceded by an operand) ---
+			// This block handles `[1,2,3]`
+			const isPrecededByOperand =
+				lastToken &&
+				(lastToken.type === "NUMBER" ||
+					lastToken.type === "STRING" ||
+					lastToken.type === "IDENTIFIER" ||
+					lastToken.type === "LABEL" ||
+					lastToken.type === "LOCAL_LABEL" ||
+					lastToken.type === "ANONYMOUS_LABEL_REF" ||
+					lastToken.type === "ARRAY" ||
+					lastToken.value === ")"); // closing parenthesis of a sub-expression or array access
+
+			if (processedToken.value === "[" && !isPrecededByOperand) {
 				// Array literal detection
 				let balance = 1;
 				let j = i + 1;
@@ -233,9 +244,39 @@ export class ExpressionEvaluator {
 					const isUnary =
 						!lastToken || lastToken.value === "(" || (lastToken.type === "OPERATOR" && lastToken.value !== ")");
 
-					switch (
-						op // Use op from the original token
-					) {
+					switch (op) {
+						case "[": // This is now specifically for array access, as array literals are handled above
+							// Push ARRAY_ACCESS as an operator, then push '(' to handle the index expression
+							operatorStack.push({ ...processedToken, value: "ARRAY_ACCESS" }); // Push the special operator
+							operatorStack.push({ ...processedToken, value: "(" }); // Push a virtual '(' for the index expression
+							break;
+
+						case "]": {
+							// Closing bracket for array access
+							let foundOpeningParenForIndex = false;
+							while (operatorStack.length > 0) {
+								const topOp = operatorStack.pop() as Token;
+								if (topOp.value === "(") {
+									// Found the virtual '(' for the index
+									foundOpeningParenForIndex = true;
+									break;
+								}
+								outputQueue.push(topOp);
+							}
+							if (!foundOpeningParenForIndex) {
+								throw new Error(`Mismatched brackets: unmatched ']' on line ${processedToken.line}.`);
+							}
+							// Now, the operatorStack should have the ARRAY_ACCESS operator
+							const arrayAccessOp = operatorStack.pop();
+							if (arrayAccessOp?.value !== "ARRAY_ACCESS") {
+								throw new Error(
+									`Mismatched brackets: ']' without preceding array access on line ${processedToken.line}.`,
+								);
+							}
+							outputQueue.push(arrayAccessOp); // Push ARRAY_ACCESS to output queue
+							break;
+						}
+
 						case "-":
 						case "+":
 							if (isUnary) {
@@ -416,6 +457,23 @@ export class ExpressionEvaluator {
 					if (token.value === "!") {
 						if (typeof right !== "number") throw new Error("Unary operator '!' requires a numeric operand.");
 						stack.push(right === 0 ? 1 : 0);
+						break;
+					}
+
+					if (token.value === "ARRAY_ACCESS") {
+						if (typeof right !== "number") {
+							throw new Error(`Array index must be a number on line ${token.line}.`);
+						}
+						const array = stack.pop();
+						if (!Array.isArray(array)) {
+							throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
+						}
+						if (right < 0 || right >= array.length) {
+							throw new Error(
+								`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`,
+							);
+						}
+						stack.push(array[right]);
 						break;
 					}
 

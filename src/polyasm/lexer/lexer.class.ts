@@ -242,10 +242,11 @@ export class AssemblyLexer {
 			// A minus is a negative number if it's at the start of an expression
 			// (no previous token) or follows an operator, comma, or parenthesis.
 			const isUnary =
-				!this.lastToken ||
-				this.lastToken.type === "OPERATOR" ||
-				this.lastToken.type === "COMMA" ||
-				this.lastToken.value === "(";
+				!this.lastToken || // Start of expression
+				this.lastToken.type === "COMMA" || // After a comma
+				(this.lastToken.type === "OPERATOR" &&
+					this.lastToken.value !== ")" && // Not after a closing parenthesis
+					this.lastToken.value !== "]"); // Not after a closing bracket
 			if (isUnary && this.isDigit(this.peek())) {
 				return this.scanNumber(startLine, startColumn, true);
 			}
