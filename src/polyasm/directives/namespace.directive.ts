@@ -1,26 +1,33 @@
+import { IdentifierToken, ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class NamespaceDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		this.setNamespace(assembler, context.tokenIndex);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
+		this.setNamespace(directive, assembler, context);
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		this.setNamespace(assembler, context.tokenIndex);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
+		this.setNamespace(directive, assembler, context);
 	}
 
-	private setNamespace(assembler: Assembler, tokenIndex: number): void {
-		const namespaceToken = assembler.activeTokens[tokenIndex + 1];
-		if (namespaceToken) {
-			assembler.symbolTable.setNamespace(namespaceToken.value);
-			assembler.logger.log(`[PASS 1/2] Switched namespace to: ${namespaceToken.value}`);
-		} else {
-			assembler.logger.error(
-				`ERROR on line ${assembler.activeTokens[tokenIndex].line}: .NAMESPACE directive requires an argument.`,
-			);
+	private setNamespace(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
+		const tokens = assembler.getInstructionTokens(directive);
+		// If no argument provided, reset to GLOBAL namespace (behave like `.NAMESPACE GLOBAL`)
+		if (tokens.length === 0) {
+			assembler.symbolTable.setNamespace("global");
+			assembler.logger.log(`[PASS] Switched namespace to: ${assembler.symbolTable.getCurrentNamespace()}`);
+			return;
 		}
+
+		const token = tokens[0] as IdentifierToken;
+		if (token.type !== "IDENTIFIER") {
+			assembler.logger.error(`ERROR on line ${directive.line}: .NAMESPACE directive requires an identifier.`);
+			return;
+		}
+
+		const ns = token.value;
+		assembler.symbolTable.pushNamespace(ns);
+		assembler.logger.log(`[PASS] Entered namespace: ${ns}`);
 	}
 }

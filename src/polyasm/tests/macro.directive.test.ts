@@ -95,9 +95,7 @@ describe("Macro Handling", () => {
 				start:
 					nopnopnop 98
 			`;
-			expect(() => assembler.assemble(src)).toThrow(
-				"[PASS 2] Too many arguments for macro 'NOPNOPNOP' on line 9. Expected 0, but got 1.",
-			);
+			expect(() => assembler.assemble(src)).toThrow("[PASS 2] Too many arguments for macro 'NOPNOPNOP' on line 9. Expected 0, but got 1.");
 		});
 
 		it("tests macro with strings", () => {

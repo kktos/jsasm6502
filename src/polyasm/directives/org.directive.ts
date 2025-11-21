@@ -1,35 +1,25 @@
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import { type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		const { token, tokenIndex, evaluationContext } = context;
-		const orgExpressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		const orgExpressionTokens = assembler.getInstructionTokens();
 
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, evaluationContext);
+			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
-			assembler.logger.warn(
-				`[PASS 1] Warning on line ${token.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`,
-			);
+			assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Failed to evaluate .ORG expression. Assuming 0x0000. Error: ${e}`);
 			assembler.currentPC = 0x0000;
 		}
-
-		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		const orgExpressionTokens = assembler.getInstructionTokens(context.tokenIndex + 1);
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		const orgExpressionTokens = assembler.getInstructionTokens();
 		try {
-			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(
-				orgExpressionTokens,
-				context.evaluationContext,
-			);
+			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {
-			assembler.logger.error(`ERROR on line ${context.token.line}: Failed to evaluate .ORG expression. ${e}`);
+			assembler.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ORG expression. ${e}`);
 		}
-
-		// The main loop handles index advancement for directives
-		return ADVANCE_TO_NEXT_LINE;
 	}
 }

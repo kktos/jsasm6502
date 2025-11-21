@@ -17,7 +17,12 @@ export interface CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number };
+	): {
+		mode: AddressingMode;
+		opcode: number;
+		bytes: number;
+		resolvedAddress: number;
+	};
 
 	/** Checks if a given mnemonic corresponds to a known instruction for this CPU. */
 	isInstruction(mnemonic: string): boolean;
@@ -25,7 +30,13 @@ export interface CPUHandler {
 	/** Encodes the instruction into raw bytes, typically relying on modeInfo calculated in Pass 1. */
 	encodeInstruction(
 		tokens: OperatorStackToken[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
+		modeInfo: {
+			mode: AddressingMode;
+			resolvedAddress: number;
+			opcode: number;
+			bytes: number;
+			pc: number;
+		},
 	): number[];
 
 	getPCSize(): number;

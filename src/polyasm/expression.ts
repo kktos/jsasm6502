@@ -4,11 +4,12 @@
  * * Uses the Shunting-Yard algorithm for precedence and parentheses.
  */
 
-import type { OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
-import type { PASymbolTable, SymbolValue } from "./symbol.class";
-import type { Assembler } from "./polyasm";
-import type { Logger } from "./logger";
 import { functionDispatcher } from "./functions/dispatcher";
+import type { OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
+import type { Logger } from "./logger";
+import type { Assembler } from "./polyasm";
+import type { PASymbolTable, SymbolValue } from "./symbol.class";
+import { resolveSysVar } from "./sysvar";
 
 const PRECEDENCE: Record<string, number> = {
 	// Unary operators (highest precedence)
@@ -73,13 +74,10 @@ export interface EvaluationContext {
 }
 
 export class ExpressionEvaluator {
-	private symbolTable: PASymbolTable;
-	private logger: Logger;
-
-	constructor(symbolTable: PASymbolTable, logger: Logger) {
-		this.symbolTable = symbolTable;
-		this.logger = logger;
-	}
+	constructor(
+		private assembler: Assembler,
+		private logger: Logger,
+	) {}
 
 	/**
 	 * Resolves an array of tokens into a single numeric value using the
@@ -98,9 +96,8 @@ export class ExpressionEvaluator {
 	 */
 	public evaluateAsNumber(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">): number {
 		const result = this.evaluate(tokens, context);
-		if (typeof result !== "number") {
-			throw new Error("Expression did not evaluate to a number as expected.");
-		}
+		if (typeof result !== "number") throw new Error("Expression did not evaluate to a number as expected.");
+
 		return result;
 	}
 
@@ -181,6 +178,14 @@ export class ExpressionEvaluator {
 			}
 
 			switch (processedToken.type) {
+				case "DIRECTIVE": {
+					const funcToken: Token = {
+						...processedToken,
+						type: "SYSVAR",
+					};
+					outputQueue.push(funcToken);
+					break;
+				}
 				case "NUMBER":
 				case "STRING":
 				case "IDENTIFIER":
@@ -212,14 +217,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Handles operand tokens (numbers, strings, identifiers). Returns true if the main loop should `continue`. */
-	private handleOperand(
-		token: Token,
-		tokens: Token[],
-		index: number,
-		outputQueue: Token[],
-		operatorStack: Token[],
-		lastToken: Token | undefined,
-	): boolean {
+	private handleOperand(token: Token, tokens: Token[], index: number, outputQueue: Token[], operatorStack: Token[], lastToken: Token | undefined): boolean {
 		// Check for function call, e.g., IDENTIFIER followed by '('.
 		if (token.type === "IDENTIFIER" && tokens[index + 1]?.value === "(") {
 			const funcToken: Token = {
@@ -264,12 +262,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Handles all operator tokens, including parentheses and unary operators. Returns a potentially modified token. */
-	private handleOperator(
-		token: OperatorToken,
-		outputQueue: Token[],
-		operatorStack: OperatorStackToken[],
-		lastToken: Token | undefined,
-	): Token {
+	private handleOperator(token: OperatorToken, outputQueue: Token[], operatorStack: OperatorStackToken[], lastToken: Token | undefined): Token {
 		const op = token.value;
 		const isUnary = !lastToken || lastToken.value === "(" || (lastToken.type === "OPERATOR" && lastToken.value !== ")");
 
@@ -304,7 +297,10 @@ export class ExpressionEvaluator {
 			case "+":
 				if (isUnary) {
 					if (op === "-") {
-						const unaryToken: OperatorToken = { ...token, value: "UNARY_MINUS" };
+						const unaryToken: OperatorToken = {
+							...token,
+							value: "UNARY_MINUS",
+						};
 						this.pushOperatorWithPrecedence(unaryToken, outputQueue, operatorStack);
 					}
 					// Unary '+' is a no-op, so we do nothing.
@@ -365,11 +361,7 @@ export class ExpressionEvaluator {
 	}
 
 	/** Helper function to handle operator precedence during Shunting-Yard. */
-	private pushOperatorWithPrecedence(
-		token: OperatorStackToken,
-		outputQueue: Token[],
-		operatorStack: OperatorStackToken[],
-	): void {
+	private pushOperatorWithPrecedence(token: OperatorStackToken, outputQueue: Token[], operatorStack: OperatorStackToken[]): void {
 		const currentPrecedence = PRECEDENCE[token.value] ?? 0;
 
 		while (operatorStack.length > 0) {
@@ -415,9 +407,20 @@ export class ExpressionEvaluator {
 					break;
 				}
 
+				case "SYSVAR": {
+					// Resolve system variables like .NAMESPACE / .NS and .PC
+					const val = resolveSysVar(token, {
+						pc: context.pc,
+						symbolTable: this.assembler.symbolTable,
+						pass: this.assembler.pass,
+					});
+					stack.push(val);
+					break;
+				}
+
 				case "FUNCTION": {
 					const argCount = token.argCount ?? 0;
-					functionDispatcher(token.value.toUpperCase(), stack, token, this.symbolTable, argCount);
+					functionDispatcher(token.value.toUpperCase(), stack, token, this.assembler.symbolTable, argCount);
 					break;
 				}
 
@@ -463,24 +466,15 @@ export class ExpressionEvaluator {
 		return false;
 	}
 
-	private handleArrayAccessOperator(
-		token: OperatorToken,
-		right: SymbolValue | undefined,
-		stack: SymbolValue[],
-	): boolean {
+	private handleArrayAccessOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): boolean {
 		if (token.value === "ARRAY_ACCESS") {
-			if (typeof right !== "number") {
-				throw new Error(`Array index must be a number on line ${token.line}.`);
-			}
-			const array = stack.pop();
-			if (!Array.isArray(array)) {
-				throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
-			}
-			if (right < 0 || right >= array.length) {
-				throw new Error(
-					`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`,
-				);
-			}
+			if (typeof right !== "number") throw new Error(`Array index must be a number on line ${token.line}.`);
+
+			const array = stack.pop() as SymbolValue[];
+			if (!Array.isArray(array)) throw new Error(`Attempted to index a non-array value on line ${token.line}.`);
+
+			if (right < 0 || right >= array.length) throw new Error(`Array index ${right} out of bounds for array of length ${array.length} on line ${token.line}.`);
+
 			stack.push(array[right]);
 			return true;
 		}
@@ -489,8 +483,7 @@ export class ExpressionEvaluator {
 
 	private handleBinaryOperator(token: OperatorToken, right: SymbolValue | undefined, stack: SymbolValue[]): void {
 		const left = stack.pop();
-		if (left === undefined || right === undefined)
-			throw new Error(`Binary operator '${token.value}' requires two operands.`);
+		if (left === undefined || right === undefined) throw new Error(`Binary operator '${token.value}' requires two operands.`);
 
 		// Handle string operations first
 		if (typeof left === "string" || typeof right === "string") {
@@ -512,8 +505,7 @@ export class ExpressionEvaluator {
 			}
 		}
 
-		if (typeof left !== "number" || typeof right !== "number")
-			throw new Error(`Binary operator '${token.value}' requires two numbers.`);
+		if (typeof left !== "number" || typeof right !== "number") throw new Error(`Binary operator '${token.value}' requires two numbers.`);
 
 		// Numeric operations
 		switch (token.value) {
@@ -591,60 +583,45 @@ export class ExpressionEvaluator {
 				if (token.value === "*") return context.pc;
 
 				// PRIORITY 1: Check if it's a macro argument from the current stream context.
-				const macroArgTokens = context.macroArgs?.get(token.value.toUpperCase());
-				if (macroArgTokens) {
+				const macroArgTokens = context.macroArgs?.get(token.value);
+				if (macroArgTokens)
 					// Recursively evaluate the tokens passed as the argument.
 					return this.evaluate(macroArgTokens, context);
-				}
 
 				// Look up the symbol in the current scope stack.
-				const value = this.symbolTable.lookupSymbol(token.value);
+				const value = this.assembler.symbolTable.lookupSymbol(token.value);
 
 				// If the symbol's value is an array of tokens, it's a macro parameter.
 				// We need to evaluate it recursively. This handles .EQU with token arrays.
-				if (Array.isArray(value) && value[0]?.type) {
-					return this.evaluate(value as Token[], context);
-				}
+				if (Array.isArray(value) && value[0]?.type) return this.evaluate(value as Token[], context);
 
-				if (value !== undefined) {
-					return value;
-				}
+				if (value !== undefined) return value;
 
 				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
 
 				// If we are here, the symbol is not defined. Let's find suggestions.
-				const suggestions = this.findSimilarSymbols(token.value);
+				const suggestions = this.assembler.symbolTable.findSimilarSymbols(token.value);
 				let errorMessage = `Undefined symbol '${token.value}' on line ${token.line}.`;
-				if (suggestions.length > 0) {
-					errorMessage += ` Did you mean '${suggestions[0]}'?`;
-				}
+				if (suggestions.length > 0) errorMessage += ` Did you mean '${suggestions[0]}'?`;
+
 				throw new Error(errorMessage);
 			}
 
 			case "LOCAL_LABEL": {
 				if (!context.currentGlobalLabel) {
-					throw new Error(
-						`Local label reference ':${token.value}' used without a preceding global label on line ${token.line}.`,
-					);
+					throw new Error(`Local label reference ':${token.value}' used without a preceding global label on line ${token.line}.`);
 				}
 				const qualifiedName = `${context.currentGlobalLabel}.${token.value}`;
-				const value = this.symbolTable.lookupSymbol(qualifiedName);
-				if (value !== undefined) {
-					return value;
-				}
+				const value = this.assembler.symbolTable.lookupSymbol(qualifiedName);
+				if (value !== undefined) return value;
 
 				if (context.allowForwardRef) return 0; // Pass 1: Assume 0 for forward references.
 
-				throw new Error(
-					`Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`,
-				);
+				throw new Error(`Undefined local label ':${token.value}' in scope '${context.currentGlobalLabel}' on line ${token.line}.`);
 			}
 
 			case "ANONYMOUS_LABEL_REF": {
-				if (!context.assembler) {
-					throw new Error("Internal error: Assembler context not provided for anonymous label resolution.");
-				}
-				const labels = context.assembler.anonymousLabels;
+				const labels = this.assembler.anonymousLabels;
 				const direction = token.value.startsWith("-") ? -1 : 1;
 				const count = Number.parseInt(token.value.substring(1), 10);
 
@@ -658,10 +635,10 @@ export class ExpressionEvaluator {
 				}
 				// Forward reference: Find the first label defined *at or after* the current PC.
 				const relevantLabels = labels.filter((pc) => pc >= context.pc);
-				if (relevantLabels.length < count) {
+				if (relevantLabels.length < count)
 					// During pass 2, this is a fatal error.
 					throw new Error(`Not enough succeeding anonymous labels to satisfy '${token.value}' on line ${token.line}.`);
-				}
+
 				return relevantLabels[count - 1];
 			}
 
@@ -669,71 +646,4 @@ export class ExpressionEvaluator {
 				return 0;
 		}
 	}
-
-	/** Finds symbols with a small Levenshtein distance to the given name. */
-	private findSimilarSymbols(name: string, maxDistance = 2): string[] {
-		const allSymbols = this.symbolTable.getAllSymbolNames();
-		const suggestions: { name: string; distance: number }[] = [];
-
-		for (const symbolName of allSymbols) {
-			const distance = levenshteinDistance(name, symbolName);
-			if (distance <= maxDistance) {
-				suggestions.push({ name: symbolName, distance });
-			}
-		}
-
-		// Sort by distance to show the closest match first
-		suggestions.sort((a, b) => a.distance - b.distance);
-
-		return suggestions.map((s) => s.name);
-	}
-}
-
-/** Calculates the Levenshtein distance between two strings (optimized). */
-function levenshteinDistance(name: string, symbolName: string): number {
-	// Early exits for common cases
-	if (name === symbolName) return 0;
-	if (name.length === 0) return symbolName.length;
-	if (symbolName.length === 0) return name.length;
-
-	let a: string;
-	let b: string;
-
-	// Ensure 'name' is the shorter string (optimize space)
-	if (name.length > symbolName.length) {
-		[a, b] = [symbolName, name];
-	} else {
-		[a, b] = [name, symbolName];
-	}
-
-	const aLen = a.length;
-	const bLen = b.length;
-
-	// Use two rows instead of full matrix
-	let prevRow = new Array(aLen + 1);
-	let currRow = new Array(aLen + 1);
-
-	// Initialize first row
-	for (let i = 0; i <= aLen; i++) {
-		prevRow[i] = i;
-	}
-
-	// Calculate distances
-	for (let j = 1; j <= bLen; j++) {
-		currRow[0] = j;
-
-		for (let i = 1; i <= aLen; i++) {
-			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-			currRow[i] = Math.min(
-				currRow[i - 1] + 1, // deletion
-				prevRow[i] + 1, // insertion
-				prevRow[i - 1] + cost, // substitution
-			);
-		}
-
-		// Swap rows (reuse arrays)
-		[prevRow, currRow] = [currRow, prevRow];
-	}
-
-	return prevRow[aLen];
 }

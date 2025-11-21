@@ -83,7 +83,10 @@ describe("ExpressionEvaluator", () => {
 		it("should handle forward references when allowed", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("FutureLabel + 1");
-			const result = evaluator.evaluateAsNumber(tokens, { pc: 0, allowForwardRef: true });
+			const result = evaluator.evaluateAsNumber(tokens, {
+				pc: 0,
+				allowForwardRef: true,
+			});
 			expect(result).toBe(1); // FutureLabel resolves to 0
 		});
 	});
@@ -138,11 +141,23 @@ describe("ExpressionEvaluator", () => {
 
 		it("should handle string equality (== and =)", () => {
 			let run = setup();
-			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "hello"'), { pc: 0 })).toBe(1);
+			expect(
+				run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "hello"'), {
+					pc: 0,
+				}),
+			).toBe(1);
 			run = setup();
-			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" = "hello"'), { pc: 0 })).toBe(1);
+			expect(
+				run.evaluator.evaluateAsNumber(run.tokenize('"hello" = "hello"'), {
+					pc: 0,
+				}),
+			).toBe(1);
 			run = setup();
-			expect(run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "world"'), { pc: 0 })).toBe(0);
+			expect(
+				run.evaluator.evaluateAsNumber(run.tokenize('"hello" == "world"'), {
+					pc: 0,
+				}),
+			).toBe(0);
 		});
 
 		it("should handle string inequality (!=)", () => {
@@ -174,7 +189,11 @@ describe("ExpressionEvaluator", () => {
 			expect(evaluator.evaluateAsNumber(tokenize("0 || 0"), { pc: 0 })).toBe(0);
 			expect(evaluator.evaluateAsNumber(tokenize("10 || -1"), { pc: 0 })).toBe(1);
 			expect(evaluator.evaluateAsNumber(tokenize("(5 < 3) || (10 > 5)"), { pc: 0 })).toBe(1);
-			expect(evaluator.evaluateAsNumber(tokenize("1 == 1 || 2 == 3 && 4 == 4"), { pc: 0 })).toBe(1); // Precedence check
+			expect(
+				evaluator.evaluateAsNumber(tokenize("1 == 1 || 2 == 3 && 4 == 4"), {
+					pc: 0,
+				}),
+			).toBe(1); // Precedence check
 		});
 	});
 
@@ -267,17 +286,13 @@ describe("ExpressionEvaluator", () => {
 		it("should throw error when indexing a non-array", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("123[0]");
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Attempted to index a non-array value on line 1.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Attempted to index a non-array value on line 1.");
 		});
 
 		it("should throw error for out-of-bounds index", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("[1,2,3][3]");
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Array index 3 out of bounds for array of length 3 on line 1.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Array index 3 out of bounds for array of length 3 on line 1.");
 		});
 
 		it("should throw error for non-numeric index", () => {
@@ -376,42 +391,48 @@ describe("ExpressionEvaluator", () => {
 		it("should throw on undefined symbol when forward refs are not allowed", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("UndefinedSymbol");
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Undefined symbol 'UndefinedSymbol' on line 1.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Undefined symbol 'UNDEFINEDSYMBOL' on line 1.");
 		});
 
 		it("should suggest a similar symbol for an undefined symbol", () => {
 			const { evaluator, tokenize, symbolTable } = setup();
 			symbolTable.addSymbol("MyLabel", 0x1000);
 			const tokens = tokenize("MyLable"); // Typo
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Undefined symbol 'MyLable' on line 1. Did you mean 'MyLabel'?",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Undefined symbol 'MYLABLE' on line 1. Did you mean 'MYLABEL'?");
 		});
 
 		it("should throw on mismatched parentheses", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("(10 + 5");
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Mismatched parenthesis: unmatched '(' left in stack.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Mismatched parenthesis: unmatched '(' left in stack.");
 		});
 
 		it("should throw when a number is expected but a string is found", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize('"this is not a number"');
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Expression did not evaluate to a number as expected.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Expression did not evaluate to a number as expected.");
 		});
 
 		it("should throw on invalid expression format", () => {
 			const { evaluator, tokenize } = setup();
 			const tokens = tokenize("5 5 +");
-			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow(
-				"Invalid expression format: Unexpected token '5' on line 1.",
-			);
+			expect(() => evaluator.evaluateAsNumber(tokens, { pc: 0 })).toThrow("Invalid expression format: Unexpected token '5' on line 1.");
+		});
+	});
+
+	describe("System Variables", () => {
+		it("should evaluate .NAMESPACE to the current namespace", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".NAMESPACE");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("global");
+		});
+
+		it("should evaluate .NAMESPACE to the current namespace", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize(".PC");
+			const result = evaluator.evaluate(tokens, { pc: 1000 });
+			expect(result).toBe(1000);
 		});
 	});
 });

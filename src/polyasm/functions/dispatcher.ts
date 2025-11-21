@@ -24,8 +24,16 @@ functions.set(".UNDEF", { handler: undef, minArgs: 1, maxArgs: 1 });
 functions.set(".HEX", { handler: hex, minArgs: 1, maxArgs: 2 });
 functions.set(".SPLIT", { handler: split, minArgs: 1, maxArgs: 2 });
 
-functions.set(".ARRAY", { handler: array, minArgs: 0, maxArgs: Number.POSITIVE_INFINITY });
-functions.set(".PUSH", { handler: push, minArgs: 2, maxArgs: Number.POSITIVE_INFINITY });
+functions.set(".ARRAY", {
+	handler: array,
+	minArgs: 0,
+	maxArgs: Number.POSITIVE_INFINITY,
+});
+functions.set(".PUSH", {
+	handler: push,
+	minArgs: 2,
+	maxArgs: Number.POSITIVE_INFINITY,
+});
 functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
 
 functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
@@ -33,13 +41,7 @@ functions.set(".JSON", { handler: json, minArgs: 1, maxArgs: 1 });
 functions.set(".IIF", { handler: iif, minArgs: 3, maxArgs: 3 });
 functions.set(".JOIN", { handler: join, minArgs: 2, maxArgs: 2 });
 
-export function functionDispatcher(
-	name: string,
-	stack: EvaluationStack,
-	token: Token,
-	symbolTable: PASymbolTable,
-	argCount: number,
-): void {
+export function functionDispatcher(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount: number): void {
 	const funcDef = functions.get(name.toUpperCase());
 	if (!funcDef) {
 		throw new Error(`Unknown function '${name}' on line ${token.line}.`);
@@ -47,9 +49,7 @@ export function functionDispatcher(
 
 	// Centralized argument count validation
 	if (argCount < funcDef.minArgs || argCount > funcDef.maxArgs) {
-		throw new Error(
-			`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount} on line ${token.line}.`,
-		);
+		throw new Error(`Function '${name}' expects between ${funcDef.minArgs} and ${funcDef.maxArgs} arguments, but got ${argCount} on line ${token.line}.`);
 	}
 
 	funcDef.handler(stack, token, symbolTable, argCount);

@@ -1,55 +1,71 @@
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		const { token, tokenIndex } = context;
-		const filename = assembler.getFilenameArg(tokenIndex);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		const expressionTokens = assembler.getInstructionTokens();
+		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
-		if (filename) {
-			try {
-				const rawBytes = assembler.fileHandler.readBinaryFile(filename);
-				assembler.currentPC += rawBytes.length;
-				assembler.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
-			} catch (e) {
-				assembler.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
-			}
-		} else {
-			assembler.logger.error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${token.line}.`);
+		// 2. Resolve the array from the symbol table
+		const evaluationContext = {
+			pc: assembler.currentPC,
+			macroArgs: assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1]?.macroArgs,
+			assembler,
+			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			options: assembler.options,
+		};
+
+		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		if (typeof filename !== "string") throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
+
+		try {
+			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
+			assembler.currentPC += rawBytes.length;
+			assembler.logger.log(`[PASS 1] Reserved ${rawBytes.length} bytes for binary file: ${filename}`);
+		} catch (e) {
+			assembler.logger.error(`[PASS 1] ERROR reading binary file ${filename} for size calculation: ${e}`);
 		}
-		return ADVANCE_TO_NEXT_LINE;
+
+		return undefined;
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		const { token, tokenIndex } = context;
-		const instructionPC = assembler.currentPC;
-		const filename = assembler.getFilenameArg(tokenIndex); // This helper still uses index
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		const expressionTokens = assembler.getInstructionTokens();
+		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
-		if (filename) {
-			try {
-				const rawBytes = assembler.fileHandler.readBinaryFile(filename);
+		// 2. Resolve the array from the symbol table
+		const evaluationContext = {
+			pc: assembler.currentPC,
+			macroArgs: assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1]?.macroArgs,
+			assembler,
+			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			options: assembler.options,
+		};
 
-				assembler.outputBuffer.push(...rawBytes);
-				assembler.currentPC += rawBytes.length;
-				assembler.symbolTable.setSymbol("*", assembler.currentPC);
+		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		if (typeof filename !== "string") throw new Error(`[PASS 2] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
-				const bytesStr =
-					rawBytes
-						.slice(0, 4)
-						.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-						.join(" ") + (rawBytes.length > 4 ? "..." : "");
-				const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-				assembler.logger.log(
-					`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${token.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`,
-				);
-			} catch (e) {
-				const errorMessage = e instanceof Error ? e.message : String(e);
-				assembler.logger.error(
-					`\n[PASS 2] FATAL ERROR on line ${token.line}: Could not include binary file ${filename}. Error: ${errorMessage}`,
-				);
-				throw new Error(`Assembly failed on line ${token.line}: Binary include failed.`);
-			}
+		try {
+			const rawBytes = assembler.fileHandler.readBinaryFile(filename);
+
+			assembler.outputBuffer.push(...rawBytes);
+			assembler.currentPC += rawBytes.length;
+			assembler.symbolTable.setSymbol("*", assembler.currentPC);
+
+			const bytesStr =
+				rawBytes
+					.slice(0, 4)
+					.map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+					.join(" ") + (rawBytes.length > 4 ? "..." : "");
+			const addressHex = assembler.currentPC.toString(16).padStart(4, "0").toUpperCase();
+			assembler.logger.log(`[PASS 2] $${addressHex}: ${bytesStr.padEnd(8)} | Line ${directive.line}: .INCBIN "${filename}" (${rawBytes.length} bytes)`);
+		} catch (e) {
+			const errorMessage = e instanceof Error ? e.message : String(e);
+			assembler.logger.error(`\n[PASS 2] FATAL ERROR on line ${directive.line}: Could not include binary file ${filename}. Error: ${errorMessage}`);
+			throw new Error(`Assembly failed on line ${directive.line}: Binary include failed.`);
 		}
-		return ADVANCE_TO_NEXT_LINE;
+
+		return undefined;
 	}
 }

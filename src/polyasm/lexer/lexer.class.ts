@@ -8,6 +8,7 @@ export type TokenType =
 	| "LOCAL_LABEL" // :loop
 	| "ANONYMOUS_LABEL_DEF" // :
 	| "FUNCTION"
+	| "SYSVAR"
 	| "ANONYMOUS_LABEL_REF" // :- or :+ or :-- or :+3
 
 	// Literals
@@ -51,6 +52,8 @@ export type StringValueToken<T extends TokenType> = BaseToken & {
 export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
 export type OperatorStackToken = OperatorToken | FunctionToken;
+export type DirectiveToken = StringValueToken<"DIRECTIVE">;
+export type IdentifierToken = StringValueToken<"IDENTIFIER">;
 
 export type ScalarToken = StringValueToken<Exclude<TokenType, "ARRAY">>;
 
@@ -69,6 +72,9 @@ export class AssemblyLexer {
 	private length = 0;
 	private localLabelChar = ":";
 	private lastToken: Token | null = null;
+	// Buffer for incremental/token-stream usage
+	private tokenBuffer: Token[] = [];
+	private streaming = false;
 
 	constructor(options?: { localLabelStyle?: string }) {
 		if (options?.localLabelStyle) {
@@ -78,6 +84,9 @@ export class AssemblyLexer {
 
 	// Main tokenization loop - optimized for V8's speculative optimization
 	public tokenize(source: string): Token[] {
+		// Backwards-compatible full tokenization. Also populates internal buffer
+		// so callers can switch to streaming mode later if desired.
+		this.resetStream();
 		this.source = source;
 		this.length = source.length;
 
@@ -86,18 +95,88 @@ export class AssemblyLexer {
 		this.column = 1;
 		this.lastToken = null;
 
-		const tokens: Token[] = [];
+		this.streaming = false;
+		this.tokenBuffer = [];
 
 		while (this.pos < this.length) {
 			const token = this.nextToken();
 			if (token) {
 				this.lastToken = token;
-				tokens.push(token);
+				this.tokenBuffer.push(token);
 				if (token.type === "EOF") break;
 			}
 		}
 
-		return tokens;
+		return this.tokenBuffer.slice();
+	}
+
+	/** Initializes the lexer for incremental/token-stream consumption. */
+	public startStream(source: string): void {
+		this.resetStream();
+		this.source = source;
+		this.length = source.length;
+
+		this.pos = 0;
+		this.line = 1;
+		this.column = 1;
+		this.lastToken = null;
+
+		this.streaming = true;
+		this.tokenBuffer = [];
+	}
+
+	private resetStream(): void {
+		this.tokenBuffer = [];
+		this.streaming = false;
+	}
+
+	/**
+	 * Ensures the internal buffer contains a token at `index`. Returns the token
+	 * if available, otherwise `null` (end of input).
+	 */
+	public ensureBuffered(index: number): Token | null {
+		// Generate tokens until we have the requested index or reach EOF
+		while (this.tokenBuffer.length <= index) {
+			// If we've already consumed the whole source, stop
+			if (this.pos >= this.length) {
+				// If EOF not yet buffered, push it
+				if (this.tokenBuffer.length === 0 || this.tokenBuffer[this.tokenBuffer.length - 1].type !== "EOF") {
+					const eof = this.makeToken("EOF", "", this.line, this.column);
+					this.tokenBuffer.push(eof);
+				}
+				break;
+			}
+
+			const t = this.nextToken();
+			if (!t) continue; // skip null tokens (e.g., newlines)
+			this.lastToken = t;
+			this.tokenBuffer.push(t);
+			if (t.type === "EOF") break;
+		}
+
+		return this.tokenBuffer[index] ?? null;
+	}
+
+	/** Returns the buffered tokens (may grow as ensureBuffered is called). */
+	public getBufferedTokens(): Token[] {
+		return this.tokenBuffer;
+	}
+
+	/** Consume and return the next token from the stream (or null at EOF). */
+	public nextFromStream(): Token | null {
+		// Ensure at least one token is buffered
+		const token = this.ensureBuffered(this.tokenBuffer.length);
+		if (!token) return null;
+		// Pop the next token off the buffer front
+		const next = this.tokenBuffer.shift() as Token;
+		// Keep lastToken updated
+		this.lastToken = next;
+		return next;
+	}
+
+	/** Peek ahead `offset` tokens without consuming them. */
+	public peekBuffered(offset = 0): Token | null {
+		return this.ensureBuffered(offset) ?? null;
 	}
 
 	// Single-pass token extraction with minimal backtracking
@@ -315,7 +394,7 @@ export class AssemblyLexer {
 		return null;
 	}
 
-	private scanComment(line: number, column: number): Token {
+	private scanComment(line: number, column: number) {
 		const start = this.pos;
 
 		// Skip comment starter (either ';' or '//')
@@ -328,15 +407,15 @@ export class AssemblyLexer {
 		let end = this.source.indexOf("\n", this.pos);
 		if (end === -1) end = this.length;
 
-		const value = this.source.slice(start, end);
+		// const value = this.source.slice(start, end);
 		this.pos = end;
 		this.column += end - start;
 
-		return this.makeToken("COMMENT", value, line, column);
+		return null; // this.makeToken("COMMENT", value, line, column);
 	}
 
-	private scanMultiLineComment(line: number, column: number): Token {
-		const start = this.pos;
+	private scanMultiLineComment(line: number, column: number) {
+		// const start = this.pos;
 
 		this.advance(); // skip '/'
 		this.advance(); // skip '*'
@@ -358,8 +437,8 @@ export class AssemblyLexer {
 			this.advance();
 		}
 
-		const value = this.source.slice(start, this.pos);
-		return this.makeToken("COMMENT", value, line, column);
+		// const value = this.source.slice(start, this.pos);
+		return null; // this.makeToken("COMMENT", value, line, column);
 	}
 
 	private scanDotOrDirective(line: number, column: number): Token {
@@ -375,9 +454,7 @@ export class AssemblyLexer {
 			// If it's followed by '(', it's a function call like .LEN(..), treat as IDENTIFIER
 			// Otherwise, it's a directive like .ORG
 			this.skipWhitespace();
-			if (this.peek() === "(") {
-				return this.makeToken("IDENTIFIER", value.toUpperCase(), line, column);
-			}
+			if (this.peek() === "(") return this.makeToken("IDENTIFIER", value.toUpperCase(), line, column, value);
 
 			// It's a directive
 			return this.makeToken("DIRECTIVE", value.toUpperCase(), line, column);
@@ -458,10 +535,7 @@ export class AssemblyLexer {
 			radix = 16;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'x'
-		} else if (
-			firstChar === "%" ||
-			(firstChar === "0" && secondChar === "b" && (this.peekAhead(2) === "0" || this.peekAhead(2) === "1"))
-		) {
+		} else if (firstChar === "%" || (firstChar === "0" && secondChar === "b" && (this.peekAhead(2) === "0" || this.peekAhead(2) === "1"))) {
 			radix = 2;
 			this.advance();
 			if (firstChar === "0") this.advance(); // skip 'b'
@@ -500,7 +574,7 @@ export class AssemblyLexer {
 				this.advance();
 			}
 			const value = this.source.slice(start, this.pos);
-			return this.makeToken("LOCAL_LABEL", value, line, column);
+			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column);
 		}
 		if (nextChar === "+" || nextChar === "-") {
 			// Nameless reference like ':-' or ':++' or ':+3'
@@ -533,23 +607,34 @@ export class AssemblyLexer {
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
-		const start = this.pos;
+		let start = this.pos;
 
 		// Scan identifier: letters, digits, underscore, and dot (for addressing modes like LDA.W)
-		while (this.isIdentifierPart(this.peek())) {
-			this.advance();
-		}
+		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		const value = this.source.slice(start, this.pos);
+		const value = this.source.slice(start, this.pos).toUpperCase();
 
-		// Check if followed by colon - that makes it a label
+		// Check if followed by : - that makes it a label
 		if (this.peek() === ":") {
 			this.advance(); // consume ':'
+
+			// Check if followed by :: - that makes it a namespace::symbol
+			if (this.peek() === ":") {
+				this.advance(); // consume ':'
+
+				start = this.pos;
+				const ch = this.source[this.pos];
+				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
+				const symbolName = this.source.slice(start, this.pos).toUpperCase();
+
+				return this.makeToken("IDENTIFIER", `${value}::${symbolName}`, line, column, symbolName);
+			}
+
 			return this.makeToken("LABEL", value, line, column);
 		}
 
 		// Otherwise it's just an identifier (could be instruction, symbol, macro name, etc.)
-		return this.makeToken("IDENTIFIER", value, line, column);
+		return this.makeToken("IDENTIFIER", value, line, column, value);
 	}
 
 	private isValidDigitForRadix(ch: string, radix: number): boolean {
@@ -610,13 +695,7 @@ export class AssemblyLexer {
 		this.column++;
 	}
 
-	private makeToken(
-		type: Exclude<TokenType, "ARRAY">,
-		value: string,
-		line = this.line,
-		column = this.column,
-		raw?: string,
-	): Token {
+	private makeToken(type: Exclude<TokenType, "ARRAY">, value: string, line = this.line, column = this.column, raw?: string): Token {
 		return { type, value, line, column, raw } as Token;
 	}
 }

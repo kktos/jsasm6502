@@ -81,7 +81,12 @@ export class CpuArmRiscHandler implements CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number } {
+	): {
+		mode: AddressingMode;
+		opcode: number;
+		bytes: number;
+		resolvedAddress: number;
+	} {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];
 		if (!baseMnemonic) {
 			// THROW here to signal a potential label to the Assembler engine
@@ -136,7 +141,12 @@ export class CpuArmRiscHandler implements CPUHandler {
 	 */
 	encodeInstruction(
 		tokens: OperatorStackToken[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; pc: number },
+		modeInfo: {
+			mode: AddressingMode;
+			resolvedAddress: number;
+			opcode: number;
+			pc: number;
+		},
 	): number[] {
 		// We switch on the ARM specific mode strings
 		const mnemonic = tokens[0].value.toUpperCase();

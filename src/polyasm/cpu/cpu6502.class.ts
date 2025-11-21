@@ -1,16 +1,11 @@
 import type { OperatorStackToken, Token } from "../lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
-
-// No changes needed here, as the constructor already takes Logger and no console.log calls are present.
 import type { Logger } from "../logger";
+
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
 
-	private logger: Logger;
-
-	constructor(logger: Logger) {
-		this.logger = logger;
-	}
+	constructor(private logger: Logger) {}
 
 	// Define M6502 specific modes internally
 	private M6502_MODES = {
@@ -103,7 +98,12 @@ export class Cpu6502Handler implements CPUHandler {
 		mnemonic: string,
 		operandTokens: OperatorStackToken[],
 		resolveValue: (tokens: OperatorStackToken[]) => number,
-	): { mode: AddressingMode; opcode: number; bytes: number; resolvedAddress: number } {
+	): {
+		mode: AddressingMode;
+		opcode: number;
+		bytes: number;
+		resolvedAddress: number;
+	} {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
 		const parts = mnemonic.toUpperCase().split(".");
 		const baseMnemonic = parts[0];
@@ -124,7 +124,12 @@ export class Cpu6502Handler implements CPUHandler {
 		// 1. Implied Mode (e.g., RTS) - no operands
 		if (numTokens === 0) {
 			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.IMPLIED) || [0x00, 1];
-			return { mode: this.M6502_MODES.IMPLIED, opcode, bytes, resolvedAddress: 0 };
+			return {
+				mode: this.M6502_MODES.IMPLIED,
+				opcode,
+				bytes,
+				resolvedAddress: 0,
+			};
 		}
 
 		// 2. Immediate Mode (e.g., LDA #$42)
@@ -132,7 +137,12 @@ export class Cpu6502Handler implements CPUHandler {
 			const expressionTokens = operandTokens.slice(1);
 			const resolvedAddress = resolveValue(expressionTokens);
 			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.IMMEDIATE) || [0x00, 2];
-			return { mode: this.M6502_MODES.IMMEDIATE, opcode, bytes, resolvedAddress };
+			return {
+				mode: this.M6502_MODES.IMMEDIATE,
+				opcode,
+				bytes,
+				resolvedAddress,
+			};
 		}
 
 		// 3. Indirect Indexed Modes (e.g., LDA ($40),Y or LDA ($40,X))
@@ -143,7 +153,12 @@ export class Cpu6502Handler implements CPUHandler {
 				const expressionTokens = this.extractTokensBetween(operandTokens, "(", ")");
 				const resolvedAddress = resolveValue(expressionTokens);
 				const [opcode, bytes] = instructionModes.get(this.M6502_MODES.INDIRECT_Y) || [0x00, 2];
-				return { mode: this.M6502_MODES.INDIRECT_Y, opcode, bytes, resolvedAddress };
+				return {
+					mode: this.M6502_MODES.INDIRECT_Y,
+					opcode,
+					bytes,
+					resolvedAddress,
+				};
 			}
 			if (lastToken.value.toUpperCase() === ")") {
 				const secondToLast = operandTokens[numTokens - 2];
@@ -151,7 +166,12 @@ export class Cpu6502Handler implements CPUHandler {
 					const expressionTokens = this.extractTokensBetween(operandTokens, "(", ",");
 					const resolvedAddress = resolveValue(expressionTokens);
 					const [opcode, bytes] = instructionModes.get(this.M6502_MODES.INDIRECT_X) || [0x00, 2];
-					return { mode: this.M6502_MODES.INDIRECT_X, opcode, bytes, resolvedAddress };
+					return {
+						mode: this.M6502_MODES.INDIRECT_X,
+						opcode,
+						bytes,
+						resolvedAddress,
+					};
 				}
 			}
 		}
@@ -184,7 +204,12 @@ export class Cpu6502Handler implements CPUHandler {
 		if (this.branchMnemonics.has(baseMnemonic)) {
 			const resolvedAddress = resolveValue(operandTokens);
 			const [opcode, bytes] = instructionModes.get(this.M6502_MODES.RELATIVE) || [0x00, 2];
-			return { mode: this.M6502_MODES.RELATIVE, opcode, bytes, resolvedAddress };
+			return {
+				mode: this.M6502_MODES.RELATIVE,
+				opcode,
+				bytes,
+				resolvedAddress,
+			};
 		}
 
 		// 5. Absolute/Zero Page Direct (e.g., LDA $1234 or LDA MyLabel)
@@ -206,7 +231,13 @@ export class Cpu6502Handler implements CPUHandler {
 	/** Pass 2: Encodes the instruction using the resolved mode and address. */
 	encodeInstruction(
 		tokens: OperatorStackToken[],
-		modeInfo: { mode: AddressingMode; resolvedAddress: number; opcode: number; bytes: number; pc: number },
+		modeInfo: {
+			mode: AddressingMode;
+			resolvedAddress: number;
+			opcode: number;
+			bytes: number;
+			pc: number;
+		},
 	): number[] {
 		// We now switch on the mode string defined internally by this handler.
 		const mnemonic = tokens[0].value.toUpperCase();
@@ -218,9 +249,7 @@ export class Cpu6502Handler implements CPUHandler {
 
 			// Check if the offset is within the valid 8-bit signed range (-128 to 127)
 			if (offset < -128 || offset > 127) {
-				throw new Error(
-					`Branch target out of range. Target: $${targetAddress.toString(16)}, PC: $${modeInfo.pc.toString(16)}, Offset: ${offset}`,
-				);
+				throw new Error(`Branch target out of range. Target: $${targetAddress.toString(16)}, PC: $${modeInfo.pc.toString(16)}, Offset: ${offset}`);
 			}
 
 			// Convert to 8-bit two's complement if negative
@@ -231,11 +260,7 @@ export class Cpu6502Handler implements CPUHandler {
 		let bytesNeeded = 0;
 		if (modeInfo.mode.includes("IMPLIED")) {
 			bytesNeeded = 1;
-		} else if (
-			modeInfo.mode.includes("ZEROPAGE") ||
-			modeInfo.mode.includes("IMMEDIATE") ||
-			modeInfo.mode.includes("INDIRECT")
-		) {
+		} else if (modeInfo.mode.includes("ZEROPAGE") || modeInfo.mode.includes("IMMEDIATE") || modeInfo.mode.includes("INDIRECT")) {
 			bytesNeeded = 2;
 		} else if (modeInfo.mode.includes("ABSOLUTE")) {
 			bytesNeeded = 3;

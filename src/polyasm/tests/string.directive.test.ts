@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Assembler, type FileHandler } from "../polyasm";
+import { Logger } from "../logger";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -15,7 +16,8 @@ class MockFileHandler implements FileHandler {
 describe("String Directives", () => {
 	const createAssembler = () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
+		const logger = new Logger();
+		const cpu6502 = new Cpu6502Handler(logger);
 		return new Assembler(cpu6502, mockFileHandler);
 	};
 
@@ -32,18 +34,18 @@ describe("String Directives", () => {
 	it("should handle .CSTR directive and its aliases (.CSTRING, .ASCIIZ)", () => {
 		const assembler = createAssembler();
 		const source = `
+			.CSTRING "C2"
             .CSTR "C1"
-            .CSTRING "C2"
             .ASCIIZ "C3"
         `;
 		const machineCode = assembler.assemble(source);
 		expect(machineCode).toEqual([
 			0x43,
-			0x31,
-			0x00, // "C1" + null
-			0x43,
 			0x32,
 			0x00, // "C2" + null
+			0x43,
+			0x31,
+			0x00, // "C1" + null
 			0x43,
 			0x33,
 			0x00, // "C3" + null
@@ -120,8 +122,10 @@ describe("String Directives", () => {
 				.DB 0
 		`;
 		assembler.assemble(source);
-		const endAddress = assembler.symbolTable.lookupSymbol("End");
 		const startAddress = assembler.symbolTable.lookupSymbol("Start");
+		expect(startAddress).toBe(0);
+		const endAddress = assembler.symbolTable.lookupSymbol("End");
+		expect(endAddress).toBe(16);
 		const totalSize = (endAddress as number) - (startAddress as number);
 		expect(totalSize).toBe(3 + 4 + 4 + 5);
 	});

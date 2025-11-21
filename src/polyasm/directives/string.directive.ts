@@ -1,6 +1,6 @@
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
-import type { Token } from "../lexer/lexer.class";
+import type { DirectiveContext, IDirective } from "./directive.interface";
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 
 export type StringFormat = "TEXT" | "CSTR" | "PSTR" | "PSTRL";
 
@@ -11,36 +11,33 @@ export class StringDirective implements IDirective {
 		this.format = format;
 	}
 
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		assembler.currentPC += this.calculateSize(assembler, context);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		assembler.currentPC += this.calculateSize(directive, assembler, context);
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		if (assembler.isAssembling) {
-			const bytes = this.encodeData(assembler, context);
+			const bytes = this.encodeData(directive, assembler, context);
 			assembler.outputBuffer.push(...bytes);
 			assembler.currentPC += bytes.length;
 		} else {
 			// If not assembling, just advance PC
-			assembler.currentPC += this.calculateSize(assembler, context);
+			assembler.currentPC += this.calculateSize(directive, assembler, context);
 		}
-
-		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	private getStrings(assembler: Assembler, context: DirectiveContext): string[] {
-		const argTokens = assembler.getInstructionTokens(context.tokenIndex + 1);
+	private getStrings(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): string[] {
+		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
+		const argTokens = assembler.getInstructionTokens();
 		const strings: string[] = [];
 		let currentExpression: Token[] = [];
 
 		const evaluateAndPush = () => {
 			if (currentExpression.length === 0) return;
 
-			const value = assembler.expressionEvaluator.evaluate(currentExpression, context.evaluationContext);
-			if (typeof value !== "string") {
-				throw new Error(`Data directive expression must evaluate to a string on line ${context.token.line}.`);
-			}
+			const value = assembler.expressionEvaluator.evaluate(currentExpression, context);
+			if (typeof value !== "string") throw new Error(`Data directive expression must evaluate to a string on line ${directive.line}.`);
+
 			strings.push(value);
 			currentExpression = [];
 		};
@@ -52,14 +49,14 @@ export class StringDirective implements IDirective {
 				currentExpression.push(token);
 			}
 		}
-		evaluateAndPush(); // Push the last expression
+		evaluateAndPush();
 		return strings;
 	}
 
-	private calculateSize(assembler: Assembler, context: DirectiveContext): number {
-		const strings = this.getStrings(assembler, {
+	private calculateSize(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+		const strings = this.getStrings(directive, assembler, {
 			...context,
-			evaluationContext: { ...context.evaluationContext, allowForwardRef: true },
+			allowForwardRef: true,
 		});
 		let totalSize = 0;
 		for (const str of strings) {
@@ -79,8 +76,8 @@ export class StringDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeData(assembler: Assembler, context: DirectiveContext): number[] {
-		const strings = this.getStrings(assembler, context);
+	private encodeData(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
+		const strings = this.getStrings(directive, assembler, context);
 		const outputBytes: number[] = [];
 
 		for (const str of strings) {
@@ -94,13 +91,11 @@ export class StringDirective implements IDirective {
 					outputBytes.push(...chars, 0);
 					break;
 				case "PSTR":
-					if (str.length > 255)
-						throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${context.token.line}.`);
+					if (str.length > 255) throw new Error(`.PSTR string length cannot exceed 255 bytes on line ${directive.line}.`);
 					outputBytes.push(str.length, ...chars);
 					break;
 				case "PSTRL":
-					if (str.length > 65535)
-						throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${context.token.line}.`);
+					if (str.length > 65535) throw new Error(`.PSTRL string length cannot exceed 65535 bytes on line ${directive.line}.`);
 					outputBytes.push(str.length & 0xff, (str.length >> 8) & 0xff, ...chars); // Little-endian length
 					break;
 			}

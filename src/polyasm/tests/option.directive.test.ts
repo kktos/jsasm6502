@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Assembler, type FileHandler } from "../polyasm";
+import { Logger } from "../logger";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -15,7 +16,8 @@ class MockFileHandler implements FileHandler {
 describe(".OPTION Directive", () => {
 	const createAssembler = () => {
 		const mockFileHandler = new MockFileHandler();
-		const cpu6502 = new Cpu6502Handler();
+		const logger = new Logger();
+		const cpu6502 = new Cpu6502Handler(logger);
 		return new Assembler(cpu6502, mockFileHandler);
 	};
 
@@ -44,9 +46,7 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_style
         `;
-		expect(() => assembler.assemble(source)).toThrow(
-			"Invalid .OPTION syntax on line 2. Expected: .OPTION <name> <value>",
-		);
+		expect(() => assembler.assemble(source)).toThrow("Invalid .OPTION syntax on line 2. Expected: .OPTION <name> <value>");
 	});
 
 	it("should throw an error for an invalid value type", () => {
@@ -54,9 +54,7 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_style 123
         `;
-		expect(() => assembler.assemble(source)).toThrow(
-			"Value for 'local_label_style' must be a single character string on line 2.",
-		);
+		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_style' must be a single character string on line 2.");
 	});
 
 	it("should throw an error for an invalid value length", () => {
@@ -64,9 +62,7 @@ describe(".OPTION Directive", () => {
 		const source = `
             .OPTION local_label_style "@@"
         `;
-		expect(() => assembler.assemble(source)).toThrow(
-			"Value for 'local_label_style' must be a single character string on line 2.",
-		);
+		expect(() => assembler.assemble(source)).toThrow("Value for 'local_label_style' must be a single character string on line 2.");
 	});
 
 	// it("should not process the option in pass two", () => {

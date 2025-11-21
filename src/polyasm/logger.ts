@@ -6,17 +6,13 @@ export class Logger {
 	}
 
 	log(message: string): void {
-		if (this.enabled) {
-			console.log(message);
-		}
+		if (this.enabled) console.log(message);
 	}
 
 	warn(message: string): void {
-		if (this.enabled) {
-			console.warn(message);
-		}
+		if (this.enabled) console.warn(message);
 	}
 	error(message: string): void {
-		console.error(message); // Always show errors, regardless of 'enabled' state.
+		console.error(message);
 	}
 }

@@ -1,39 +1,37 @@
 import { type IDirective, type DirectiveContext, ADVANCE_TO_NEXT_LINE } from "./directive.interface";
 import type { Assembler } from "../polyasm";
+import type { ScalarToken } from "../lexer/lexer.class";
 
 export class OptionDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		this.setOption(assembler, context);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+		this.setOption(directive, assembler, context);
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		// Options are handled in Pass 1 (or a pre-pass for lexer options).
-		// This is a no-op in Pass 2.
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	private setOption(assembler: Assembler, context: DirectiveContext): void {
-		const { token, tokenIndex, evaluationContext } = context;
-		const argTokens = assembler.getInstructionTokens(tokenIndex + 1);
+	private setOption(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
+		const argTokens = assembler.getInstructionTokens();
 
-		if (argTokens.length < 2) {
-			throw new Error(`Invalid .OPTION syntax on line ${token.line}. Expected: .OPTION <name> <value>`);
-		}
+		if (argTokens.length < 2) throw new Error(`Invalid .OPTION syntax on line ${directive.line}. Expected: .OPTION <name> <value>`);
+
+		if (argTokens[0].type !== "IDENTIFIER") throw new Error(`Option name must be an identifier on line ${directive.line}.`);
 
 		const optionName = argTokens[0].value.toLowerCase();
-		const optionValue = assembler.expressionEvaluator.evaluate(argTokens.slice(1), evaluationContext);
+		const optionValue = assembler.expressionEvaluator.evaluate(argTokens.slice(1), context);
 
 		switch (optionName) {
 			case "local_label_style":
 				if (typeof optionValue !== "string" || optionValue.length !== 1) {
-					throw new Error(`Value for 'local_label_style' must be a single character string on line ${token.line}.`);
+					throw new Error(`Value for 'local_label_style' must be a single character string on line ${directive.line}.`);
 				}
 				assembler.options.set("local_label_style", optionValue);
 				assembler.logger.log(`[OPTION] Set local label character to: '${optionValue}'`);
 				break;
 			default:
-				assembler.logger.warn(`[OPTION] Unknown option '${optionName}' on line ${token.line}.`);
+				assembler.logger.warn(`[OPTION] Unknown option '${optionName}' on line ${directive.line}.`);
 		}
 	}
 }

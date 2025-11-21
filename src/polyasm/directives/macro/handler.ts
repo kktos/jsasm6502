@@ -1,4 +1,4 @@
-import type { OperatorStackToken, Token } from "../../lexer/lexer.class";
+import type { ScalarToken, Token } from "../../lexer/lexer.class";
 import type { Logger } from "../../logger";
 import type { Assembler } from "../../polyasm";
 
@@ -12,29 +12,27 @@ export class MacroHandler {
 	}
 
 	public isMacro(name: string): boolean {
-		return this.assembler.macroDefinitions.has(name.toUpperCase());
+		return this.assembler.macroDefinitions.has(name);
 	}
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
-	public expandMacro(callIndex: number): void {
-		const nameToken = this.assembler.activeTokens[callIndex] as OperatorStackToken; // Macro name is the current token
-		const macroName = nameToken.value.toUpperCase();
+	public expandMacro(macroToken: ScalarToken): void {
+		// const callIndex = this.assembler.getPosition();
+		// const nameToken = this.assembler.getTokenAt(callIndex) as OperatorStackToken; // Macro name is the current token
+		const macroName = macroToken.value;
 		const definition = this.assembler.macroDefinitions.get(macroName);
 
-		if (!definition) {
-			console.error(`ERROR: Macro '${macroName}' not defined.`);
-			return;
-		}
+		if (!definition) throw new Error(`[PASS 2] ERROR: Macro '${macroName}' not defined.`);
 
 		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
 
 		// 1. Parse arguments passed in the call line
-		const passedArgsArray = this.parseMacroArguments(this.getArgumentTokens(callIndex));
+		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 
 		// Check for argument count mismatch
 		if (passedArgsArray.length > definition.parameters.length) {
 			throw new Error(
-				`[PASS 2] Too many arguments for macro '${macroName}' on line ${nameToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+				`[PASS 2] Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
 			);
 		}
 
@@ -42,7 +40,7 @@ export class MacroHandler {
 
 		// 2. Push a new scope for the macro and define parameters as symbols.
 		// The scope will be popped automatically when the macro stream ends.
-		const scopeName = `__MACRO_${macroName}_${nameToken.line}__`;
+		const scopeName = `__MACRO_${macroName}_${macroToken.line}__`;
 		this.assembler.symbolTable.pushScope(scopeName);
 
 		definition.parameters.forEach((param, index) => {
@@ -54,44 +52,12 @@ export class MacroHandler {
 		// 3. Create a clean copy of the body tokens with updated line numbers.
 		const expandedTokens = definition.body.map((bodyToken) => ({
 			...bodyToken,
-			line: `${nameToken.line}.${bodyToken.line}`,
+			line: `${macroToken.line}.${bodyToken.line}`,
 		}));
 
-		// 4. Push the new stream and execute.
-		// We must also advance the token pointer on the *current* stream past the macro call line
-		// before pushing the new stream.
-		this.assembler.currentTokenIndex = this.assembler.skipToEndOfLine(callIndex);
+		// 4. Advance the current stream past the macro call line and push the new stream.
+		// this.assembler.consumeLine();
 		this.assembler.pushTokenStream(expandedTokens, argMap);
-	}
-
-	/**
-	 * Extracts the list of tokens that constitute the arguments for a macro call.
-	 * It handles both `MACRO arg1, arg2` and `MACRO(arg1, arg2)` syntax.
-	 * @param callIndex The index of the macro name token.
-	 * @returns A slice of tokens representing the arguments.
-	 */
-	private getArgumentTokens(callIndex: number): Token[] {
-		const callLine = this.assembler.activeTokens[callIndex].line;
-		const lineEndIndex = this.assembler.skipToEndOfLine(callIndex);
-		const startIndex = callIndex + 1;
-
-		// Check for arguments wrapped in parentheses, e.g., MACRO(arg1, arg2)
-		const firstToken = this.assembler.activeTokens[startIndex];
-		if (firstToken && firstToken.line === callLine && firstToken.value === "(") {
-			let parenDepth = 1;
-			for (let i = startIndex + 1; i < lineEndIndex; i++) {
-				const token = this.assembler.activeTokens[i];
-				if (token.value === "(") parenDepth++;
-				if (token.value === ")") parenDepth--;
-				if (parenDepth === 0) {
-					// Return tokens between the parentheses
-					return this.assembler.activeTokens.slice(startIndex + 1, i);
-				}
-			}
-		}
-
-		// No parentheses, arguments are the rest of the tokens on the line
-		return this.assembler.activeTokens.slice(startIndex, lineEndIndex);
 	}
 
 	/**
@@ -99,28 +65,70 @@ export class MacroHandler {
 	 * This method correctly handles empty arguments (e.g., `arg1,,arg3`).
 	 * @param argTokens The tokens to parse.
 	 */
-	private parseMacroArguments(argTokens: Token[]): Token[][] {
+	private parseMacroArguments(callLine?: string | number): Token[][] {
 		const argsArray: Token[][] = [];
 		let currentArgTokens: Token[] = [];
 		let parenDepth = 0;
 
-		for (const token of argTokens) {
-			if (token.type === "COMMA" && parenDepth === 0) {
-				argsArray.push(currentArgTokens);
-				currentArgTokens = [];
-			} else {
-				if (token.value === "(") parenDepth++;
-				if (token.value === ")") parenDepth--;
+		const firstPeek = this.assembler.peekToken();
+		if (!firstPeek || firstPeek.type === "EOF") return [];
+		const hasParens = firstPeek.value === "(";
+		const callLineNum = callLine ?? firstPeek.line;
+
+		if (hasParens) {
+			// consume opening '('
+			this.assembler.consume(1);
+			parenDepth = 1;
+			while (true) {
+				const token = this.assembler.peekToken();
+				if (!token || token.type === "EOF") break;
+				this.assembler.consume(1);
+
+				if (token.value === "(") {
+					parenDepth++;
+					currentArgTokens.push(token);
+					continue;
+				}
+
+				if (token.value === ")") {
+					parenDepth--;
+					if (parenDepth === 0) {
+						argsArray.push(currentArgTokens);
+						currentArgTokens = [];
+						break; // finished argument list
+					}
+					currentArgTokens.push(token);
+					continue;
+				}
+
+				if (token.type === "COMMA" && parenDepth === 1) {
+					argsArray.push(currentArgTokens);
+					currentArgTokens = [];
+					continue;
+				}
+
 				currentArgTokens.push(token);
 			}
+		} else {
+			// No parentheses: only take tokens on the same line as the macro call
+			while (true) {
+				const token = this.assembler.peekToken();
+				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
+				this.assembler.consume(1);
+				if (token.type === "COMMA") {
+					argsArray.push(currentArgTokens);
+					currentArgTokens = [];
+				} else {
+					currentArgTokens.push(token);
+				}
+			}
+			if (currentArgTokens.length > 0) argsArray.push(currentArgTokens);
 		}
-		argsArray.push(currentArgTokens); // Add the last argument
 
 		// If the original tokens were empty, or if the only argument found is empty,
 		// it means there were no actual arguments.
-		if (argTokens.length === 0 && argsArray.length === 1 && argsArray[0].length === 0) {
-			return [];
-		}
+		if (argsArray.length === 1 && argsArray[0].length === 0) return [];
+
 		return argsArray;
 	}
 }

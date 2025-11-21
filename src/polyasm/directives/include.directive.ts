@@ -1,31 +1,51 @@
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		const { token, tokenIndex } = context;
-		const filename = assembler.getFilenameArg(tokenIndex);
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		// const startIndex = assembler.getPosition();
 
-		if (filename) {
-			try {
-				const rawContent = assembler.fileHandler.readSourceFile(filename);
-				// const newTokens = tokenize(rawContent);
-				const newTokens = assembler.lexer.tokenize(rawContent);
-				assembler.activeTokens.splice(tokenIndex + 1, 0, ...newTokens);
-				assembler.logger.log(
-					`[PASS 1] Included and tokenized source file: ${filename}. ${newTokens.length} tokens inserted.`,
-				);
-			} catch (e) {
-				assembler.logger.error(`[PASS 1] ERROR including file ${filename} on line ${token.line}: ${e}`);
-			}
-		} else {
-			assembler.logger.error(`[PASS 1] ERROR: .INCLUDE requires a string argument on line ${token.line}.`);
+		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
+		const expressionTokens = assembler.getInstructionTokens();
+		// let asIndex = exprHeader.findIndex((t) => t.type === "IDENTIFIER" && t.value === "AS");
+		// if (asIndex === -1) asIndex = exprHeader.length;
+		// const expressionTokens = exprHeader.slice(0, asIndex);
+		// const indexIteratorToken = asIndex < exprHeader.length ? (exprHeader[asIndex + 1] as IdentifierToken) : undefined;
+
+		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+
+		// 2. Resolve the array from the symbol table
+		const evaluationContext = {
+			pc: assembler.currentPC,
+			macroArgs: assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1]?.macroArgs,
+			assembler,
+			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
+			options: assembler.options,
+		};
+
+		const filename = assembler.expressionEvaluator.evaluate(expressionTokens, evaluationContext);
+		if (typeof filename !== "string") throw new Error(`[PASS 1] ERROR: .INCLUDE requires a string argument on line ${directive.line}.`);
+
+		try {
+			const rawContent = assembler.fileHandler.readSourceFile(filename);
+			const newTokens = assembler.lexer.tokenize(rawContent);
+
+			// Advance main stream past the include directive so the pushed stream won't loop.
+			// assembler.setPosition(startIndex + 1);
+
+			// Push the included tokens as a new stream so they are processed immediately.
+			assembler.pushTokenStream(newTokens);
+
+			assembler.logger.log(`[PASS 1] Included and tokenized source file: ${filename}. ${newTokens.length} tokens pushed as stream.`);
+		} catch (e) {
+			assembler.logger.error(`[PASS 1] ERROR including file ${filename} on line ${directive.line}: ${e}`);
 		}
-		return tokenIndex + 1;
+
+		return undefined;
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		// .INCLUDE is fully handled in Pass 1, so this is a no-op in Pass 2.
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 }

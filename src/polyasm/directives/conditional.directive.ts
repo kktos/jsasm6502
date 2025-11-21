@@ -1,6 +1,6 @@
-import type { Token } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 /** Represents a conditional block state. */
 interface ConditionalBlock {
@@ -11,14 +11,12 @@ interface ConditionalBlock {
 export class ConditionalDirective implements IDirective {
 	private conditionalStack: ConditionalBlock[] = [];
 
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): number {
-		this.handleConditional(assembler, context);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		this.handleConditional(directive, assembler, context);
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): number {
-		this.handleConditional(assembler, context);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+		this.handleConditional(directive, assembler, context);
 	}
 
 	/**
@@ -26,28 +24,23 @@ export class ConditionalDirective implements IDirective {
 	 * This method is now polymorphic and can be called from either Pass 1 or Pass 2,
 	 * as long as it receives the appropriate context.
 	 */
-	private handleConditional(assembler: Assembler, context: DirectiveContext): void {
-		const { token, tokenIndex, evaluationContext } = context;
-		const directive = token.value.toUpperCase();
-
+	private handleConditional(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		// Only evaluate if we are not inside a non-assembling block
 		const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
 
 		const checkCondition = (expressionTokens: Token[]): boolean => {
 			try {
-				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, evaluationContext);
+				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, context);
 				return result !== 0;
 			} catch (e) {
-				assembler.logger.warn(
-					`[PASS 1/2] Warning on line ${token.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`,
-				);
+				assembler.logger.warn(`[PASS 1/2] Warning on line ${directive.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`);
 				return false;
 			}
 		};
 
-		switch (directive) {
+		switch (directive.value) {
 			case ".IF": {
-				const expressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+				const expressionTokens = assembler.getInstructionTokens();
 				const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 				this.conditionalStack.push({ isTrue: condition, hasPassed: condition });
 				break;
@@ -60,7 +53,7 @@ export class ConditionalDirective implements IDirective {
 				if (topIf.hasPassed) {
 					topIf.isTrue = false;
 				} else {
-					const expressionTokens = assembler.getInstructionTokens(tokenIndex + 1);
+					const expressionTokens = assembler.getInstructionTokens();
 					const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 					topIf.isTrue = condition;
 					topIf.hasPassed = condition;
@@ -77,6 +70,18 @@ export class ConditionalDirective implements IDirective {
 			}
 
 			case ".END":
+				// If the .END directive is followed by an identifier 'NAMESPACE', handle namespace pop.
+				const next = assembler.peekToken(0);
+				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {
+					// consume the identifier and pop the namespace
+					assembler.consume(1);
+					try {
+						assembler.symbolTable.popNamespace();
+						assembler.logger.log(`[PASS] .END NAMESPACE -> popped namespace, current: ${assembler.symbolTable.getCurrentNamespace()}`);
+					} catch (e) {
+						assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
+					}
+				}
 				if (this.conditionalStack.length > 0) this.conditionalStack.pop();
 				break;
 		}

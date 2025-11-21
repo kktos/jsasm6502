@@ -23,6 +23,8 @@ import type { DirectiveContext } from "./directive.interface";
 import { OptionDirective } from "./option.directive";
 import type { Logger } from "../logger";
 import { ListDirective } from "./list.directive";
+import type { ScalarToken } from "../lexer/lexer.class";
+import { LogDirective } from "./log.directive";
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
@@ -71,6 +73,19 @@ export class DirectiveHandler {
 
 		this.register(".LIST", new ListDirective(logger));
 
+		const logHandler = new LogDirective("LOG");
+		this.register(".LOG", logHandler);
+		this.register(".ECHO", logHandler);
+		this.register(".OUT", logHandler);
+
+		const errLogHandler = new LogDirective("ERR");
+		this.register(".ERROR", errLogHandler);
+		this.register(".ERR", errLogHandler);
+
+		const warnLogHandler = new LogDirective("WARN");
+		this.register(".WARNING", warnLogHandler);
+		this.register(".WARN", warnLogHandler);
+
 		const fillHandler = new FillDirective();
 		this.register(".FILL", fillHandler);
 		this.register(".DS", fillHandler);
@@ -83,19 +98,30 @@ export class DirectiveHandler {
 		this.directiveMap.set(name, handler);
 	}
 
-	public handlePassOneDirective(context: DirectiveContext): number {
-		const handler = this.directiveMap.get(context.token.value.toUpperCase());
+	public handlePassOneDirective(directive: ScalarToken, context: DirectiveContext) {
+		const handler = this.directiveMap.get(directive.value);
 		if (handler) {
-			return handler.handlePassOne(this.assembler, context);
+			handler.handlePassOne(directive, this.assembler, context);
+			// const result = handler.handlePassOne(directive, this.assembler, context);
+			// If handler returned undefined, assume it managed the assembler position itself
+			// if (result === undefined) return this.assembler.getPosition();
+			// return result;
 		}
-		return context.tokenIndex + 1; // Default behavior for unknown directives
+		// Default: advance one token from provided context index if available, otherwise use assembler position + 1
+		// if (typeof context.tokenIndex === "number") return context.tokenIndex + 1;
+		return this.assembler.getPosition() + 1;
 	}
 
-	public handlePassTwoDirective(context: DirectiveContext): number {
-		const handler = this.directiveMap.get(context.token.value.toUpperCase());
+	public handlePassTwoDirective(directive: ScalarToken, context: DirectiveContext) {
+		// const handler = this.directiveMap.get(String(context.token.value).toUpperCase());
+		const handler = this.directiveMap.get(directive.value);
 		if (handler) {
-			return handler.handlePassTwo(this.assembler, context);
+			handler.handlePassTwo(directive, this.assembler, context);
+			// const result = handler.handlePassTwo(directive, this.assembler, context);
+			// if (result === undefined) return this.assembler.getPosition();
+			// return result;
 		}
-		return context.tokenIndex + 1; // Default behavior for unknown directives
+		// if (typeof context.tokenIndex === "number") return context.tokenIndex + 1;
+		return this.assembler.getPosition() + 1;
 	}
 }
