@@ -2,7 +2,7 @@ import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { tokens } from "../parsers/pragma.tokens";
 
-const log = console.log;
+const _log = console.log;
 
 // .end
 //     if in a function, ends it

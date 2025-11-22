@@ -1,9 +1,9 @@
 import { VAParseError } from "../helpers/errors.class";
+import type { TDict, TNamespace, TNamespaceDict } from "./base.type";
 import type { BaseDict } from "./basedict.class";
-import type { TDict, TNamespaceDict, TNamespace } from "./base.type";
 
 const FUNCTIONS = Symbol("functions");
-const log = console.log;
+const _log = console.log;
 
 export class FunctionDict<T extends TDict> {
 	private fnStack: (string | null)[] = [];

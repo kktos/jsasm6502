@@ -28,7 +28,7 @@ const op65x02 = {
 	TOP: [-1, -1, 0x0c, 0x1c, -1, -1, -1, -1, -1, -1, -1, -1, -1],
 };
 
-const instrSynonyms = {
+const _instrSynonyms = {
 	ASO: "SLO",
 	LSE: "SRE",
 	AXS: "SAX",

@@ -1,11 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname } from "node:path";
-import type { Options } from "../lib/types/Options.type";
-import { link } from "./linker";
-import { readFile, parseYAML, setRootDir } from "./file";
-import { readConf } from "./conf";
 import { name, version } from "../../package.json";
+import type { Options } from "../lib/types/Options.type";
 import pc from "./colors";
+import { readConf } from "./conf";
+import { parseYAML, readFile, setRootDir } from "./file";
+import { link } from "./linker";
 
 const assemble = await import("../lib/assembler").then((m) => m.assemble);
 
@@ -94,8 +94,7 @@ try {
 	if (conf.link.post) {
 		const m = await import(`file://${process.cwd()}/${conf.link.post}`);
 		const res = m?.default?.(bin, linkRes.dir);
-		if (res && (typeof res !== "object" || !Array.isArray(res.bin)))
-			throw "linker post script needs to return a valid object { bin: [...] }";
+		if (res && (typeof res !== "object" || !Array.isArray(res.bin))) throw "linker post script needs to return a valid object { bin: [...] }";
 
 		bin = res.bin;
 	}

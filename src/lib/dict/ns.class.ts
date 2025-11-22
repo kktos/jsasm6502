@@ -1,5 +1,5 @@
-import type { BaseDict } from "./basedict.class";
 import { NS_GLOBAL, type TDict } from "./base.type";
+import type { BaseDict } from "./basedict.class";
 
 export class NSDict<T extends TDict> {
 	private nsStack: string[] = [];

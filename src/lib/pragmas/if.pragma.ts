@@ -1,11 +1,10 @@
 import type { Context } from "../context.class";
-import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
-import { type TReadBlockOptions, isPragma, readBlock } from "../parsers/block.parser";
+import { isPragma, readBlock, type TReadBlockOptions } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 
-const log = console.log;
+const _log = console.log;
 /*
 	; ASM style
 	.if <expr>
@@ -40,8 +39,7 @@ export function processIf(ctx: Context) {
 
 	// log("if res", res);
 
-	if (ctx.pass > 1 && (!res || res.type !== TOKEN_TYPES.NUMBER))
-		throw new VAParseError("IF: Need a number; 0 (false) or not 0 (true)");
+	if (ctx.pass > 1 && (!res || res.type !== TOKEN_TYPES.NUMBER)) throw new VAParseError("IF: Need a number; 0 (false) or not 0 (true)");
 
 	// log("if", ctx.lexer.token());
 

@@ -1,13 +1,16 @@
+import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
-import { type TPragmaHandlerFn, pragmaDefs, tokens } from "./pragma.tokens";
 import { processAlign } from "../pragmas/align.pragma";
 import { processData, processHex } from "../pragmas/data.pragma";
 import { processDefine } from "../pragmas/define.pragma";
 import { processEnd } from "../pragmas/end.pragma";
 import { processExport } from "../pragmas/export.pragma";
 import { processFill } from "../pragmas/fill.pragma";
+import { processFor } from "../pragmas/for.pragma";
+import { processFunction } from "../pragmas/function.pragma";
 import { processIf } from "../pragmas/if.pragma";
 import { processInclude } from "../pragmas/include.pragma";
+import { processLet } from "../pragmas/let.pragma";
 import { processListing } from "../pragmas/listing.pragma";
 import { processMacro } from "../pragmas/macro.pragma";
 import { processNamespace } from "../pragmas/namespace.pragma";
@@ -18,14 +21,10 @@ import { processRepeat } from "../pragmas/repeat.pragma";
 import { processSegment } from "../pragmas/segment.pragma";
 import { processSetCPU } from "../pragmas/setcpu.pragma";
 import { processText } from "../pragmas/string.pragma";
-import type { Context } from "../context.class";
-import { processFor } from "../pragmas/for.pragma";
-import { processFunction } from "../pragmas/function.pragma";
-import { processLet } from "../pragmas/let.pragma";
+import { pragmaDefs, type TPragmaHandlerFn, tokens } from "./pragma.tokens";
 
 function addPragmaDef(handlerFn: TPragmaHandlerFn | null, isBlock: boolean, pragmaNames: string[]) {
-	if (typeof handlerFn === "undefined")
-		throw new VAParseError(`PRAGMA: no handler defined for ${pragmaNames.join(",")}`);
+	if (typeof handlerFn === "undefined") throw new VAParseError(`PRAGMA: no handler defined for ${pragmaNames.join(",")}`);
 
 	for (const pragma of pragmaNames) {
 		if (Object.hasOwn(pragmaDefs, pragma)) throw new VAParseError(`PRAGMA: "${pragma}" already defined`);
@@ -67,16 +66,7 @@ addPragmaDef(processSegment, false, [tokens.SEGMENT]);
 addPragmaDef(processAlign, false, [tokens.ALIGN]);
 addPragmaDef(processFill, false, [tokens.FILL, tokens.RES, tokens.DS]);
 addPragmaDef(processHex, false, [tokens.HEX]);
-addPragmaDef(processData, false, [
-	tokens.DB,
-	tokens.BYTE,
-	tokens.DW,
-	tokens.WORD,
-	tokens.DL,
-	tokens.LONG,
-	tokens.DBYTE,
-	tokens.DWORD,
-]);
+addPragmaDef(processData, false, [tokens.DB, tokens.BYTE, tokens.DW, tokens.WORD, tokens.DL, tokens.LONG, tokens.DBYTE, tokens.DWORD]);
 
 addPragmaDef(processInclude, false, [tokens.INCLUDE]);
 addPragmaDef(processNamespace, false, [tokens.NAMESPACE]);

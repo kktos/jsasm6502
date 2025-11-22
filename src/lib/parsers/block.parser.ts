@@ -1,11 +1,10 @@
 import type { Context } from "../context.class";
-import { dbgStringList } from "../helpers/debug";
 import { VAParseError } from "../helpers/errors.class";
 import type { Lexer } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { isBlockPragma } from "./pragma.tokens";
 
-const log = console.log;
+const _log = console.log;
 
 const TOKENS_LOCALLABEL = [TOKEN_TYPES.COLON, TOKEN_TYPES.BANG];
 
@@ -39,8 +38,7 @@ export function readBlock(ctx: Context, opts?: TReadBlockOptions) {
 		if (!ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE)) throw new VAParseError("BLOCK: Invalid characters");
 	}
 
-	let isCStyleBlock =
-		opts?.isClikeBlock !== undefined ? opts?.isClikeBlock : ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE);
+	let isCStyleBlock = opts?.isClikeBlock !== undefined ? opts?.isClikeBlock : ctx.lexer.isToken(TOKEN_TYPES.LEFT_CURLY_BRACE);
 	blocksCStyleFlag.push(isCStyleBlock);
 
 	if (isCStyleBlock) {

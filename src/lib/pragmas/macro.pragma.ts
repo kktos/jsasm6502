@@ -7,7 +7,7 @@ import { readBlock, type TReadBlockOptions } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
-const log = console.log;
+const _log = console.log;
 
 function processMacroParams(ctx: Context, macro: TMacro, opts: TReadBlockOptions) {
 	const hasParenthesis = ctx.lexer.isToken(TOKEN_TYPES.LEFT_PARENT);
@@ -143,7 +143,7 @@ export function expandMacro(ctx: Context) {
 	if (hasParenthesis) ctx.lexer.next();
 
 	for (let idx = 0; idx < parms.length; idx++) {
-		let parm: TExprStackItem | undefined = undefined;
+		let parm: TExprStackItem | undefined;
 
 		if (ctx.lexer.token()) {
 			if (idx > 0) {
@@ -179,8 +179,7 @@ export function expandMacro(ctx: Context) {
 
 	if (macro.hasRestParm) {
 		if (macro.parms.length > 1) {
-			if (!ctx.lexer.isToken(paramSep))
-				throw new VAParseError("MACRO: Syntax Error; Missing parameter separator (, or :)");
+			if (!ctx.lexer.isToken(paramSep)) throw new VAParseError("MACRO: Syntax Error; Missing parameter separator (, or :)");
 			ctx.lexer.next();
 		}
 		const restParm = macro.parms[macro.parms.length - 1];
