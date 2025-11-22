@@ -4,7 +4,7 @@ import { TOKEN_TYPES } from "../lexer/token.class";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { addLabel } from "../parsers/label.parser";
 
-const log = console.log;
+const _log = console.log;
 
 // .let <string expression use for name> = < expression >
 export function processLet(ctx: Context) {

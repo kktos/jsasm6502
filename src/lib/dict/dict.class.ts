@@ -1,14 +1,14 @@
-import { BaseDict } from "./basedict.class";
+import { getHexWord } from "../helpers/utils";
+import { TOKEN_TYPES } from "../lexer/token.class";
 import type { TDict, TNamespaceKey } from "./base.type";
+import { BaseDict } from "./basedict.class";
 import { ExportDict } from "./export.class";
 import { FunctionDict } from "./functiondict.class";
 import { MarkerDict } from "./markerdict.class";
 import { NSDict } from "./ns.class";
 import { OverrideDict } from "./override.class";
-import { TOKEN_TYPES } from "../lexer/token.class";
-import { getHexWord } from "../helpers/utils";
 
-const log = console.log;
+const _log = console.log;
 
 export class Dict<T extends TDict> {
 	static newDict<T extends TDict>() {

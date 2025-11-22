@@ -1,16 +1,16 @@
 import type { Context } from "../context.class";
-import { fnDef, fnUndef } from "../functions/def.function";
-import { fnHex } from "../functions/hex.function";
-import { fnLen } from "../functions/len.function";
-import { fnType } from "../functions/type.function";
-import { fnEval } from "../functions/eval.function";
-import type { TExprStackItem } from "./expression/TExprStackItem.class";
-import { fnSplit } from "../functions/split.function";
-import { fnJson } from "../functions/json.function";
 import { fnArray } from "../functions/array.function";
-import { fnPush } from "../functions/push.function";
-import { fnPop } from "../functions/pop.function";
+import { fnDef, fnUndef } from "../functions/def.function";
+import { fnEval } from "../functions/eval.function";
+import { fnHex } from "../functions/hex.function";
 import { fnIif } from "../functions/iif.function";
+import { fnJson } from "../functions/json.function";
+import { fnLen } from "../functions/len.function";
+import { fnPop } from "../functions/pop.function";
+import { fnPush } from "../functions/push.function";
+import { fnSplit } from "../functions/split.function";
+import { fnType } from "../functions/type.function";
+import type { TExprStackItem } from "./expression/TExprStackItem.class";
 
 export type TFunctionFlags = {
 	allowUndef?: boolean;
@@ -24,7 +24,7 @@ type TFunctionDef = {
 };
 type TFunctionDefs = Record<string, TFunctionDef>;
 
-const NO_PARM = { minParmCount: 0, maxParmCount: 0 };
+const _NO_PARM = { minParmCount: 0, maxParmCount: 0 };
 const NONE_TO_MANY = { minParmCount: 0 };
 const ONE_PARM = { maxParmCount: 1 };
 

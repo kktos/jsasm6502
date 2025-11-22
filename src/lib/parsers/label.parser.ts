@@ -1,11 +1,11 @@
-import { parseExpression } from "./expression/expression.parser";
-import { isMacro } from "../pragmas/macro.pragma";
-import { VAParseError } from "../helpers/errors.class";
 import type { Context } from "../context.class";
+import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES, type Token } from "../lexer/token.class";
+import { isMacro } from "../pragmas/macro.pragma";
+import { parseExpression } from "./expression/expression.parser";
 import { TExprStackItem } from "./expression/TExprStackItem.class";
 
-const log = console.log;
+const _log = console.log;
 
 export function parseLocalLabel(ctx: Context) {
 	ctx.lexer.next();
@@ -33,9 +33,7 @@ function defineLabel(ctx: Context, name: string, value: TExprStackItem) {
 			label.extra.exported++;
 		} else {
 			const msg1 = `Duplicate Label : "${ctx.symbols.namespace}.${name}"`;
-			const msg2 = `${ctx.symbols.export.isExported(name) ? "Exported from" : "Defined in"} "${label?.extra?.file}":${
-				label?.extra?.line
-			}`;
+			const msg2 = `${ctx.symbols.export.isExported(name) ? "Exported from" : "Defined in"} "${label?.extra?.file}":${label?.extra?.line}`;
 			throw new VAParseError(`${msg1}\n${msg2}\n`);
 		}
 	}

@@ -2,7 +2,7 @@ import type { Context } from "./context.class";
 import { VAExprError } from "./helpers/errors.class";
 import { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
 
-const log = console.log;
+const _log = console.log;
 
 export function getSysVarValue(ctx: Context, name: string) {
 	// log("getVarValue", ctx.pass, name);

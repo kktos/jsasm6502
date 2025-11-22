@@ -7,7 +7,7 @@ import { EVENT_TYPES, Lexer } from "./lexer/lexer.class";
 import { TExprStackItem } from "./parsers/expression/TExprStackItem.class";
 import type { Options, ReadFileFunction, TConsole } from "./types/Options.type";
 
-const log = console.log;
+const _log = console.log;
 
 type LexerStackItem = {
 	filename: string | null;
@@ -91,9 +91,7 @@ export class Context {
 		// log("pushFile", file, "FROM", fromFile, "WD", wd);
 
 		const { path, dir, content, error } =
-			typeof file === "string"
-				? this._readFile(file, wd, false)
-				: { path: file.name, dir: "", content: file.content, error: "" };
+			typeof file === "string" ? this._readFile(file, wd, false) : { path: file.name, dir: "", content: file.content, error: "" };
 
 		if (error) {
 			throw new VAParseError(error);
@@ -142,7 +140,7 @@ export class Context {
 		this.listingFile = null;
 	}
 
-	print(msg: string, wantItDeferred = false) {
+	print(msg: string, _wantItDeferred = false) {
 		// if (wantItDeferred) {
 		// 	this._deferredMsg += `${msg}\n`;
 		// 	return;
@@ -171,9 +169,7 @@ export class Context {
 		const { posInLine, line: lineIdx, relativeToLine: relativeToLineIdx } = this.lexer.pos();
 		const line = this.lexer.line();
 		this.console.error(
-			`\n${msg} in ${this.filepath} at line ${relativeToLineIdx || lineIdx} at ${posInLine}\n${line?.slice(0, posInLine)}<>${line?.slice(
-				posInLine + 1,
-			)}`,
+			`\n${msg} in ${this.filepath} at line ${relativeToLineIdx || lineIdx} at ${posInLine}\n${line?.slice(0, posInLine)}<>${line?.slice(posInLine + 1)}`,
 		);
 		// this.lexer.stopSource();
 	}

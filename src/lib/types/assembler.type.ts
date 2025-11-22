@@ -1,4 +1,4 @@
-import type { TSegments, TCodeObj } from "../compiler.class";
+import type { TCodeObj, TSegments } from "../compiler.class";
 import type { Dict } from "../dict/dict.class";
 import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 

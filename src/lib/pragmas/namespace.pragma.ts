@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 
 export function processNamespace(ctx: Context) {
-	let ns = undefined;
+	let ns;
 
 	const token = ctx.lexer.token();
 	if (token) {

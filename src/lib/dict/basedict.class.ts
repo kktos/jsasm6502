@@ -1,6 +1,6 @@
-import { type TDict, NS_GLOBAL, type TNamespaceDict, type TNamespace, type TNamespaceKey } from "./base.type";
+import { NS_GLOBAL, type TDict, type TNamespace, type TNamespaceDict, type TNamespaceKey } from "./base.type";
 
-const log = console.log;
+const _log = console.log;
 
 export class BaseDict<T extends TDict> {
 	public namespace = NS_GLOBAL;
@@ -89,8 +89,6 @@ export class BaseDict<T extends TDict> {
 
 		if (ns) return Object.hasOwn(this.namespaces[ns], name);
 
-		return (
-			(this.fn && Object.hasOwn(this.fn, name)) || Object.hasOwn(this.currNs, name) || Object.hasOwn(this.global, name)
-		);
+		return (this.fn && Object.hasOwn(this.fn, name)) || Object.hasOwn(this.currNs, name) || Object.hasOwn(this.global, name);
 	}
 }

@@ -12,8 +12,7 @@ export function processOption(ctx: Context) {
 		case "CHARMAP": {
 			token = ctx.lexer.token();
 
-			if (!token || token.type !== TOKEN_TYPES.IDENTIFIER)
-				throw new VAParseError("OPTION: need a defined charmap name");
+			if (!token || token.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError("OPTION: need a defined charmap name");
 
 			const parm = token.asString;
 			ctx.lexer.next();
