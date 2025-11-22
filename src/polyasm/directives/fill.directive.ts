@@ -1,36 +1,31 @@
-import type { Token } from "../lexer/lexer.class";
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class FillDirective implements IDirective {
-	public handlePassOne(assembler: Assembler, context: DirectiveContext): void {
-		const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const argTokens = assembler.getInstructionTokens();
 
 		const [countTokens] = this.parseArguments(argTokens);
 
 		if (countTokens.length > 0) {
 			try {
-				const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context.evaluationContext);
+				const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
 				assembler.currentPC += count;
 			} catch (e) {
 				// Error evaluating in pass one, but we must continue. Assume 0 size.
-				assembler.logger.warn(`[PASS 1] Warning on line ${context.token.line}: Could not evaluate .FILL count. ${e}`);
+				assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not evaluate .FILL count. ${e}`);
 			}
 		}
-
-		// Advance past the directive line
-		assembler.setPosition(startIndex + 1);
 	}
 
-	public handlePassTwo(assembler: Assembler, context: DirectiveContext): void {
-		const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
+	public handlePassTwo(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
 		const argTokens = assembler.getInstructionTokens();
 
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 
-		const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context.evaluationContext);
-		const fillerValue = valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context.evaluationContext) : 0; // Default to 0 if no value is provided
+		const count = assembler.expressionEvaluator.evaluateAsNumber(countTokens, context);
+		const fillerValue = valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
 		if (assembler.isAssembling && count > 0) {
 			// Ensure filler value is a single byte
@@ -41,9 +36,6 @@ export class FillDirective implements IDirective {
 
 		// Advance PC if not assembling; writeBytes already advances PC when assembling
 		if (!assembler.isAssembling) assembler.currentPC += count;
-
-		// Advance past the directive line
-		assembler.setPosition(startIndex + 1);
 	}
 
 	/**
