@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { CPUHandler } from "./cpu/cpuhandler.class";
+import type { DirectiveContext } from "./directives/directive.interface";
 import { DirectiveHandler } from "./directives/handler";
 import { MacroHandler } from "./directives/macro/handler";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
@@ -41,6 +42,7 @@ export interface SegmentDefinition {
 export interface AssemblerOptions {
 	segments?: SegmentDefinition[];
 	logger?: Logger;
+	defineSymbolHandlers?: Map<string, (blockContent: string, context: DirectiveContext) => number>;
 }
 
 export class Assembler {
@@ -70,6 +72,7 @@ export class Assembler {
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
+	public defineSymbolHandlers?: Map<string, (blockContent: string, context: DirectiveContext) => number>;
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
@@ -78,6 +81,7 @@ export class Assembler {
 		this.fileHandler = fileHandler;
 		this.logger = options?.logger ?? new Logger();
 		this.linker = new Linker();
+		this.defineSymbolHandlers = options?.defineSymbolHandlers;
 		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
 		this.symbolTable.addSymbol("*", this.currentPC);
@@ -102,11 +106,6 @@ export class Assembler {
 		this.linker.addSegment(name, start, size, padValue, resizable);
 	}
 
-	/** Convenience: clear segments via the embedded linker. */
-	public clearSegments(): void {
-		this.linker.clearSegments();
-	}
-
 	/** Convenience: link segments via the linker. */
 	public link(segments?: Segment[]): number[] {
 		return this.linker.link(segments);
@@ -114,15 +113,18 @@ export class Assembler {
 
 	/** Select the active segment for subsequent writes. */
 	public useSegment(name: string): void {
-		this.linker.useSegment(name);
+		this.currentPC = this.linker.useSegment(name);
 	}
 
 	/** Write an array of bytes at the current PC via the linker and advance PC. */
 	public writeBytes(bytes: number[]): void {
-		for (const b of bytes) {
-			this.linker.writeByte(this.currentPC, b);
-			this.currentPC += 1;
-		}
+		this.linker.writeBytes(this.currentPC, bytes);
+		this.currentPC += bytes.length;
+
+		// for (const b of bytes) {
+		// 	this.linker.writeByte(this.currentPC, b);
+		// 	this.currentPC += 1;
+		// }
 	}
 
 	public assemble(source: string): Segment[] {
@@ -192,11 +194,7 @@ export class Assembler {
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
 
-		if (this.linker.segments.length) {
-			this.currentPC = this.linker.segments[0].start;
-		} else {
-			this.currentPC = DEFAULT_PC;
-		}
+		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (true) {
 			// const token = this.peekToken(0);
@@ -312,9 +310,11 @@ export class Assembler {
 	}
 
 	/** Read and consume the next token from the active stream. */
-	public nextToken(): Token | null {
+	public nextToken(options?: { endMarker?: string }): Token | null {
 		const pos = this.getPosition();
-		const t = this.getTokenAt(pos);
+		if (options?.endMarker) this.lexer.setEndMarker(options.endMarker);
+		const t = this.ensureToken(pos);
+		if (options?.endMarker) this.lexer.setEndMarker(undefined);
 		if (t) this.setPosition(pos + 1);
 		return t;
 	}
@@ -332,16 +332,11 @@ export class Assembler {
 		this.setPosition(this.getPosition() + n);
 	}
 
-	/** Return token at absolute index. */
-	public getTokenAt(index: number): Token | null {
-		return this.ensureToken(index);
-	}
-
 	/** Slice tokens from start (inclusive) to end (exclusive) using buffered access. */
 	public sliceTokens(start: number, end: number): Token[] {
 		const out: Token[] = [];
 		for (let i = start; i < end; i++) {
-			const t = this.getTokenAt(i);
+			const t = this.ensureToken(i);
 			if (!t) break;
 			out.push(t);
 		}
@@ -450,11 +445,8 @@ export class Assembler {
 			else this.logger.log(`[PASS 2] Defined symbol ${token.value} = $${(value as number).toString(16).toUpperCase()}`);
 
 			// If symbol exists already, update it; otherwise add it as a constant.
-			if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
-				this.symbolTable.setSymbol(token.value, value);
-			} else {
-				this.symbolTable.addSymbol(token.value, value);
-			}
+			if (this.symbolTable.lookupSymbol(token.value) !== undefined) this.symbolTable.setSymbol(token.value, value);
+			else this.symbolTable.addSymbol(token.value, value);
 		} catch (e) {
 			this.logger.error(`[PASS 2] ERROR defining .EQU for ${token.value}: ${e}`);
 			throw e instanceof Error ? e : new Error(String(e));
@@ -491,7 +483,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.pass = 2;
-		this.currentPC = DEFAULT_PC;
+		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
 
 		// this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
@@ -551,16 +543,17 @@ export class Assembler {
 								// 3. LOGGING (New location)
 								const hexBytes = encodedBytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
 								const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-
 								const operandString = operandTokens.map((t) => t.value).join("");
+								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${token.line}`);
 
-								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | Line ${token.line}: ${mnemonicToken.value} ${operandString}`);
+								this.linker.writeBytes(this.currentPC, encodedBytes);
+								this.currentPC += encodedBytes.length;
 
 								// Write each encoded byte into the segment that covers the current PC
-								for (const b of encodedBytes) {
-									this.linker.writeByte(this.currentPC, b);
-									this.currentPC += 1;
-								}
+								// for (const b of encodedBytes) {
+								// 	this.linker.writeByte(this.currentPC, b);
+								// 	this.currentPC += 1;
+								// }
 							} catch (e) {
 								const errorMessage = e instanceof Error ? e.message : String(e);
 								this.logger.error(`\nFATAL ERROR on line ${token.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
@@ -697,7 +690,30 @@ export class Assembler {
 			if (token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") break;
 			token = this.nextToken();
 			if (token) tokens.push(token);
-			// i++;
+		}
+		return tokens;
+	}
+
+	public getExpressionTokens(instructionToken?: Token): Token[] {
+		const tokens: Token[] = [];
+
+		const startToken = this.peekToken();
+		if (startToken?.type === "EOF") return tokens;
+		if (instructionToken && instructionToken.line !== startToken?.line) return tokens;
+
+		this.consume(1);
+		if (!startToken) return tokens;
+
+		tokens.push(startToken);
+
+		const startLine = instructionToken ? instructionToken.line : startToken.line;
+		while (true) {
+			let token = this.peekToken();
+			if (!token) break;
+			if (token.line !== startLine) break;
+			if (token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF" || token.type === "COMMA") break;
+			token = this.nextToken();
+			if (token) tokens.push(token);
 		}
 		return tokens;
 	}
