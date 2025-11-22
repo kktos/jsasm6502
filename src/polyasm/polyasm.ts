@@ -8,7 +8,7 @@ import { ExpressionEvaluator } from "./expression";
 import { AssemblyLexer, type IdentifierToken, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
 import { Linker, type Segment } from "./linker.class";
 import { Logger } from "./logger";
-import { PASymbolTable } from "./symbol.class";
+import { PASymbolTable, type SymbolValue } from "./symbol.class";
 
 const DEFAULT_PC = 0x1000;
 
@@ -42,7 +42,7 @@ export interface SegmentDefinition {
 export interface AssemblerOptions {
 	segments?: SegmentDefinition[];
 	logger?: Logger;
-	defineSymbolHandlers?: Map<string, (blockContent: string, context: DirectiveContext) => number>;
+	rawDataProcessors?: Map<string, (rawData: string, context: DirectiveContext) => SymbolValue>;
 }
 
 export class Assembler {
@@ -72,7 +72,7 @@ export class Assembler {
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
-	public defineSymbolHandlers?: Map<string, (blockContent: string, context: DirectiveContext) => number>;
+	private rawDataProcessors?: Map<string, (rawData: string, context: DirectiveContext) => SymbolValue>;
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
@@ -81,12 +81,11 @@ export class Assembler {
 		this.fileHandler = fileHandler;
 		this.logger = options?.logger ?? new Logger();
 		this.linker = new Linker();
-		this.defineSymbolHandlers = options?.defineSymbolHandlers;
+		this.rawDataProcessors = options?.rawDataProcessors;
 		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
 		this.symbolTable.addSymbol("*", this.currentPC);
 
-		// this.expressionEvaluator = new ExpressionEvaluator(this.symbolTable, this.logger);
 		this.expressionEvaluator = new ExpressionEvaluator(this, this.logger);
 		this.directiveHandler = new DirectiveHandler(this, this.logger);
 		this.macroHandler = new MacroHandler(this, this.logger);
@@ -125,6 +124,10 @@ export class Assembler {
 		// 	this.linker.writeByte(this.currentPC, b);
 		// 	this.currentPC += 1;
 		// }
+	}
+
+	public getDataProcessor(name: string) {
+		return this.rawDataProcessors?.get(name);
 	}
 
 	public assemble(source: string): Segment[] {
@@ -307,6 +310,13 @@ export class Assembler {
 	/** Peek relative to the current token pointer (0 == current). */
 	public peekToken(offset = 0): Token | null {
 		return this.ensureToken(this.getPosition() + offset);
+	}
+
+	public peekTokenUnbuffered(offset = 0): Token | null {
+		const lexerPos = this.lexer.getPosition();
+		const token = this.ensureToken(this.getPosition() + offset);
+		this.lexer.rewind(offset + 1, lexerPos);
+		return token;
 	}
 
 	/** Read and consume the next token from the active stream. */

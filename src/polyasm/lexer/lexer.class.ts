@@ -162,6 +162,14 @@ export class AssemblyLexer {
 		return this.tokenBuffer;
 	}
 
+	public rewind(offset: number, pos: { line: number; column: number; pos: number }) {
+		this.tokenBuffer.length -= offset;
+		this.line = pos.line;
+		this.column = pos.column;
+		this.pos = pos.pos;
+		this.lastToken = this.tokenBuffer[this.tokenBuffer.length - 1];
+	}
+
 	/** Consume and return the next token from the stream (or null at EOF). */
 	public nextFromStream(): Token | null {
 		// Ensure at least one token is buffered
@@ -610,8 +618,7 @@ export class AssemblyLexer {
 		let currentPos = rawDataStart;
 		let endOfRawData = -1;
 
-		// biome-ignore lint/suspicious/noAssignInExpressions: easier that way
-		while ((currentPos = this.source.indexOf("\n", currentPos)) !== -1) {
+		do {
 			let lineStart = currentPos + 1;
 			// Skip leading whitespace on the line
 			while (lineStart < this.length && (this.source[lineStart] === " " || this.source[lineStart] === "\t")) {
@@ -624,7 +631,8 @@ export class AssemblyLexer {
 				break;
 			}
 			currentPos++; // Move to the next character to continue searching
-		}
+			// biome-ignore lint/suspicious/noAssignInExpressions: easier that way
+		} while ((currentPos = this.source.indexOf("\n", currentPos)) !== -1);
 
 		if (endOfRawData === -1) {
 			endOfRawData = this.length; // Read to the end if marker not found
@@ -722,6 +730,9 @@ export class AssemblyLexer {
 	private advance(): void {
 		this.pos++;
 		this.column++;
+	}
+	public getPosition() {
+		return { line: this.line, column: this.column, pos: this.pos };
 	}
 
 	private makeToken(type: Exclude<TokenType, "ARRAY">, value: string, line = this.line, column = this.column, raw?: string): Token {

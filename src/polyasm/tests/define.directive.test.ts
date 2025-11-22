@@ -33,7 +33,7 @@ describe(".DEFINE Directive", () => {
 		segments: SegmentDefinition[] = DEFAULT_SEGMENTS,
 	) => {
 		const mockFileHandler = new MockFileHandler();
-		return new Assembler(fakeCPU, mockFileHandler, { segments, defineSymbolHandlers });
+		return new Assembler(fakeCPU, mockFileHandler, { segments, rawDataProcessors: defineSymbolHandlers });
 	};
 
 	it("should call the external handler and define the symbol", () => {
@@ -62,9 +62,14 @@ describe(".DEFINE Directive", () => {
                 that the handler will process.`);
 	});
 
-	// it("should throw an error for an unknown handler", () => {
-	// 	const assembler = createAssembler(new Map());
-	// 	const source = ".DEFINE MY_SYMBOL UNKNOWN_HANDLER { content }";
-	// 	expect(() => assembler.assemble(source)).toThrow("Unknown .DEFINE handler 'UNKNOWN_HANDLER' on line 1.");
-	// });
+	it("should throw an error for an unknown handler", () => {
+		const assembler = createAssembler(new Map());
+		const source = `
+			.DEFINE MY_SYMBOL
+			.END
+			.DEFINE MY_SYMBOL
+			.END
+		`;
+		expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: PASymbol global::MY_SYMBOL redefined.");
+	});
 });
