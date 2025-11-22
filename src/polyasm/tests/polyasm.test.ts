@@ -114,9 +114,11 @@ describe("PolyAsm", () => {
 	it("assemble a source", () => {
 		const mockFileHandler = new MockFileHandler();
 		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		const assembler6502 = new Assembler(cpu6502, mockFileHandler, logger);
-		const machineCode6502 = assembler6502.assemble(source6502);
+		const cpu6502 = new Cpu6502Handler();
+		const assembler6502 = new Assembler(cpu6502, mockFileHandler, { logger });
+
+		assembler6502.assemble(source6502);
+		const machineCode6502 = assembler6502.link();
 
 		console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);
 

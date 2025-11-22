@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
 import { Assembler, type FileHandler } from "../polyasm";
+
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "FakeCPU",
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	getPCSize: () => 8,
+};
 
 describe("ExpressionEvaluator", () => {
 	const setup = () => {
@@ -13,8 +25,7 @@ describe("ExpressionEvaluator", () => {
 				throw new Error(`Mock bin file not found: ${filename}`);
 			}
 		}
-		const logger = new Logger();
-		const assembler = new Assembler(new Cpu6502Handler(logger), new MockFileHandler(), logger);
+		const assembler = new Assembler(fakeCPU, new MockFileHandler());
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };

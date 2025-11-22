@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -13,12 +11,26 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "6502" as const,
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	getPCSize: () => 8,
+};
+
+const DEFAULT_SEGMENTS = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
 describe("String Directives", () => {
-	const createAssembler = () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		return new Assembler(cpu6502, mockFileHandler);
+		return new Assembler(fakeCPU, mockFileHandler, { segments });
 	};
 
 	it("should handle .TEXT directive with single and multiple strings", () => {
@@ -26,7 +38,8 @@ describe("String Directives", () => {
 		const source = `
             .TEXT "HELLO", " WORLD"
         `;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 		const expected = "HELLO WORLD".split("").map((c) => c.charCodeAt(0));
 		expect(machineCode).toEqual(expected);
 	});
@@ -38,7 +51,8 @@ describe("String Directives", () => {
             .CSTR "C1"
             .ASCIIZ "C3"
         `;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 		expect(machineCode).toEqual([
 			0x43,
 			0x32,
@@ -57,7 +71,8 @@ describe("String Directives", () => {
 		const source = `
             .PSTR "Pascal", ""
         `;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 		expect(machineCode).toEqual([
 			0x06,
 			0x50,
@@ -75,7 +90,8 @@ describe("String Directives", () => {
 		const source = `
             .PSTRL "Long Pascal"
         `;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 		expect(machineCode).toEqual([
 			0x0b,
 			0x00,
@@ -111,23 +127,21 @@ describe("String Directives", () => {
 	});
 
 	it("should correctly calculate size in Pass 1", () => {
-		const assembler = createAssembler();
+		const segments: SegmentDefinition[] = [{ name: "CODE", start: 0, size: 0x10000 }];
+		const assembler = createAssembler(segments);
 		const source = `
 			Start:
 				.TEXT "ABC"      ; 3 bytes
 				.CSTR "DEF"      ; 4 bytes
 				.PSTR "GHI"      ; 4 bytes
 				.PSTRL "JKL"     ; 5 bytes
-			End:
-				.DB 0
+			End: .DB 0
 		`;
 		assembler.assemble(source);
 		const startAddress = assembler.symbolTable.lookupSymbol("Start");
 		expect(startAddress).toBe(0);
 		const endAddress = assembler.symbolTable.lookupSymbol("End");
-		expect(endAddress).toBe(16);
-		const totalSize = (endAddress as number) - (startAddress as number);
-		expect(totalSize).toBe(3 + 4 + 4 + 5);
+		expect(endAddress).toBe(3 + 4 + 4 + 5);
 	});
 
 	it("should handle escape sequences correctly", () => {
@@ -135,7 +149,8 @@ describe("String Directives", () => {
 		const source = `
             .TEXT "Line 1\\nLine 2\\tTabbed\\rReturn'\\"Quote\\x21\\\\"
         `;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 		const expectedString = "Line 1\nLine 2\tTabbed\rReturn'\"Quote!\\";
 		const expected = expectedString.split("").map((c) => c.charCodeAt(0));
 		expect(machineCode).toEqual(expected);

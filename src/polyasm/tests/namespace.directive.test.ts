@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm";
+import { Assembler } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -42,14 +43,15 @@ class CaptureLogger extends Logger {
 	}
 }
 
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
 describe(".NAMESPACE Directive", () => {
-	const createAssembler = () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
 		const logger = new CaptureLogger();
-		const assembler = new Assembler(fakeCPU, mockFileHandler, logger);
-		return { assembler, mockFileHandler, logger };
+		const assembler = new Assembler(fakeCPU, mockFileHandler, { segments, logger });
+		return { assembler, logger };
 	};
-
 	it("should switch current namespace when given an identifier", () => {
 		const { assembler } = createAssembler();
 		const source = ".NAMESPACE myns\n";

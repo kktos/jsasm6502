@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
 import type { FileHandler } from "../polyasm";
 import { Assembler } from "../polyasm";
@@ -14,11 +13,24 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "6502" as const,
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	getPCSize: () => 8,
+};
+
 describe(".LIST Directive", () => {
 	it("should disable logging with .LIST OFF", () => {
 		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		const assembler = new Assembler(cpu6502, new MockFileHandler(), logger);
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
 
 		const source = `
             .LIST OFF
@@ -29,8 +41,7 @@ describe(".LIST Directive", () => {
 
 	it("should enable logging with .LIST ON after being disabled", () => {
 		const logger = new Logger(false); // Start with logging disabled
-		const cpu6502 = new Cpu6502Handler(logger);
-		const assembler = new Assembler(cpu6502, new MockFileHandler(), logger);
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
 
 		const source = `
             .LIST ON
@@ -41,8 +52,7 @@ describe(".LIST Directive", () => {
 
 	it.skip("should suppress log output when disabled and re-enable it", () => {
 		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		const assembler = new Assembler(cpu6502, new MockFileHandler(), logger);
+		const assembler = new Assembler(fakeCPU, new MockFileHandler(), { logger });
 		const logSpy = vi.spyOn(logger, "log").mockImplementation(() => {});
 
 		const source = `

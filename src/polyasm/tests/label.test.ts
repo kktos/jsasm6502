@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
+
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe("Label References", () => {
 	const setup = () => {
@@ -14,7 +16,8 @@ describe("Label References", () => {
 			}
 		}
 		const logger = new Logger();
-		const assembler = new Assembler(new Cpu6502Handler(logger), new MockFileHandler(), logger);
+		const cpu6502 = new Cpu6502Handler();
+		const assembler = new Assembler(cpu6502, new MockFileHandler(), { logger, segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };
@@ -100,7 +103,8 @@ describe("Label References", () => {
 				: ; Anonymous label at $1000
 				LDA :-
 			`;
-			const machineCode = assembler.assemble(source);
+			assembler.assemble(source);
+			const machineCode = assembler.link();
 			expect(machineCode).toEqual([0xad, 0x00, 0x10]); // JMP $1000
 		});
 	});
@@ -118,7 +122,8 @@ describe("Label References", () => {
 					BNE :loop
 					RTS
 			`;
-			const machineCode = assembler.assemble(source);
+			assembler.assemble(source);
+			const machineCode = assembler.link();
 			expect(machineCode).toEqual([
 				0xa2,
 				0x00, // LDX #$00

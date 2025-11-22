@@ -18,8 +18,7 @@ export class StringDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		if (assembler.isAssembling) {
 			const bytes = this.encodeData(directive, assembler, context);
-			assembler.outputBuffer.push(...bytes);
-			assembler.currentPC += bytes.length;
+			assembler.writeBytes(bytes);
 		} else {
 			// If not assembling, just advance PC
 			assembler.currentPC += this.calculateSize(directive, assembler, context);

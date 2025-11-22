@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -13,12 +11,26 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "FakeCPU",
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	getPCSize: () => 8,
+};
+
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
 describe(".FOR...OF", () => {
-	const createAssembler = () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		return new Assembler(cpu6502, mockFileHandler);
+		return new Assembler(fakeCPU, mockFileHandler, { segments });
 	};
 
 	it("should loop over an array of numbers", () => {
@@ -28,7 +40,8 @@ describe(".FOR...OF", () => {
 					.db item
 				}
 			`;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 
 		expect(machineCode).toEqual([10, 20]);
 	});
@@ -36,7 +49,8 @@ describe(".FOR...OF", () => {
 	it("should loop with single line block declaration", () => {
 		const assembler = createAssembler();
 		const source = ".for item of [10,20] { .db item }";
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 
 		expect(machineCode).toEqual([10, 20]);
 	});
@@ -48,7 +62,8 @@ describe(".FOR...OF", () => {
 					.db idx, item
 				}
 			`;
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 
 		expect(machineCode).toEqual([0, 10, 1, 20]);
 	});
@@ -56,7 +71,8 @@ describe(".FOR...OF", () => {
 	it("should loop with single line block declaration with iterator", () => {
 		const assembler = createAssembler();
 		const source = ".for item of [10,20] as idx { .db idx, item }";
-		const machineCode = assembler.assemble(source);
+		assembler.assemble(source);
+		const machineCode = assembler.link();
 
 		expect(machineCode).toEqual([0, 10, 1, 20]);
 	});

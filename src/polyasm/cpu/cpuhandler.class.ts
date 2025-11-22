@@ -7,7 +7,7 @@ import type { OperatorStackToken } from "../lexer/lexer.class";
 export type AddressingMode = string;
 
 export interface CPUHandler {
-	cpuType: "6502" | "65816" | "6809" | "ARM_RISC";
+	cpuType: string; //"6502" | "65816" | "6809" | "ARM_RISC";
 
 	/** * Core method to determine the specific addressing mode, opcode, and size
 	 * based on the mnemonic and the structure of the operand tokens.

@@ -5,8 +5,11 @@ import { MacroHandler } from "./directives/macro/handler";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
 import { ExpressionEvaluator } from "./expression";
 import { AssemblyLexer, type IdentifierToken, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
+import { Linker, type Segment } from "./linker.class";
 import { Logger } from "./logger";
 import { PASymbolTable } from "./symbol.class";
+
+const DEFAULT_PC = 0x1000;
 
 /** Defines the state of an active token stream. */
 interface StreamState {
@@ -16,12 +19,28 @@ interface StreamState {
 	macroArgs?: Map<string, Token[]>;
 }
 
+// Segment moved to `linker.class.ts`.
+
 export interface FileHandler {
 	/** Reads raw source content and returns the string content for .INCLUDE. */
 	readSourceFile(filename: string): string;
 
 	/** Reads raw file content and returns the byte array for .INCBIN. */
 	readBinaryFile(filename: string): number[];
+}
+
+/** Defines a segment for the linker. */
+export interface SegmentDefinition {
+	name: string;
+	start: number;
+	size: number;
+	padValue?: number;
+	resizable?: boolean;
+}
+
+export interface AssemblerOptions {
+	segments?: SegmentDefinition[];
+	logger?: Logger;
 }
 
 export class Assembler {
@@ -32,7 +51,8 @@ export class Assembler {
 	public fileHandler: FileHandler;
 	public currentPC: number;
 
-	public outputBuffer: number[] = [];
+	/** Linker responsible for segments and final linking. */
+	public linker: Linker;
 	public isAssembling = true;
 
 	private lastGlobalLabel: string | null = null;
@@ -52,13 +72,13 @@ export class Assembler {
 	public macroHandler: MacroHandler;
 	public emitter: EventEmitter;
 
-	constructor(handler: CPUHandler, fileHandler: FileHandler, logger?: Logger) {
+	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {
 		this.activeTokens = [];
 		this.cpuHandler = handler;
 		this.fileHandler = fileHandler;
-		this.logger = logger ?? new Logger();
-
-		this.currentPC = 0x0000;
+		this.logger = options?.logger ?? new Logger();
+		this.linker = new Linker();
+		this.currentPC = DEFAULT_PC;
 		this.symbolTable = new PASymbolTable();
 		this.symbolTable.addSymbol("*", this.currentPC);
 
@@ -71,9 +91,41 @@ export class Assembler {
 		this.emitter = new EventEmitter();
 
 		this.pass = -1;
+
+		if (options?.segments) {
+			for (const seg of options.segments) this.linker.addSegment(seg.name, seg.start, seg.size, seg.padValue, seg.resizable);
+			this.linker.useSegment(options.segments[0].name);
+		}
+	}
+	/** Convenience: add a segment via the embedded linker. */
+	public addSegment(name: string, start: number, size: number, padValue = 0, resizable = false): void {
+		this.linker.addSegment(name, start, size, padValue, resizable);
 	}
 
-	public assemble(source: string): number[] {
+	/** Convenience: clear segments via the embedded linker. */
+	public clearSegments(): void {
+		this.linker.clearSegments();
+	}
+
+	/** Convenience: link segments via the linker. */
+	public link(segments?: Segment[]): number[] {
+		return this.linker.link(segments);
+	}
+
+	/** Select the active segment for subsequent writes. */
+	public useSegment(name: string): void {
+		this.linker.useSegment(name);
+	}
+
+	/** Write an array of bytes at the current PC via the linker and advance PC. */
+	public writeBytes(bytes: number[]): void {
+		for (const b of bytes) {
+			this.linker.writeByte(this.currentPC, b);
+			this.currentPC += 1;
+		}
+	}
+
+	public assemble(source: string): Segment[] {
 		// Pre-scan for lexer-affecting options
 		const optionMatch = /^\s*\.OPTION\s+local_label_style\s+"(.)"/im.exec(source);
 		const localLabelStyle = optionMatch ? optionMatch[1] : ":";
@@ -103,7 +155,12 @@ export class Assembler {
 		this.symbolTable.setNamespace("global");
 
 		// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
-		this.outputBuffer = [];
+		// Ensure there's at least one segment: if none defined, create a default growable segment starting at 0
+		if (!this.linker.segments || this.linker.segments.length === 0) {
+			this.linker.addSegment("CODE", 0x1000, 0xefff);
+			this.linker.useSegment("CODE");
+		}
+
 		// Reset stream stack for Pass 2 (fresh position)
 		this.tokenStreamStack = [];
 		this.streamIdCounter = 0;
@@ -118,7 +175,9 @@ export class Assembler {
 
 		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
 		this.logger.log(`Final PC location: $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
-		return this.outputBuffer;
+
+		// All emitted bytes are stored in the linker segments (a default segment was created if none existed).
+		return this.linker.segments;
 	}
 
 	public getLastGlobalLabel(): string | null {
@@ -129,10 +188,15 @@ export class Assembler {
 		this.logger.log(`\n--- Starting Pass 1: PASymbol Definition & PC Calculation (${this.cpuHandler.cpuType}) ---`);
 
 		this.pass = 1;
-		this.currentPC = 0x0000;
 		this.setPosition(0);
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
+
+		if (this.linker.segments.length) {
+			this.currentPC = this.linker.segments[0].start;
+		} else {
+			this.currentPC = DEFAULT_PC;
+		}
 
 		while (true) {
 			// const token = this.peekToken(0);
@@ -427,6 +491,7 @@ export class Assembler {
 	private passTwo(): void {
 		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.pass = 2;
+		this.currentPC = DEFAULT_PC;
 
 		// this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
@@ -491,8 +556,11 @@ export class Assembler {
 
 								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | Line ${token.line}: ${mnemonicToken.value} ${operandString}`);
 
-								this.outputBuffer.push(...encodedBytes);
-								this.currentPC += encodedBytes.length;
+								// Write each encoded byte into the segment that covers the current PC
+								for (const b of encodedBytes) {
+									this.linker.writeByte(this.currentPC, b);
+									this.currentPC += 1;
+								}
 							} catch (e) {
 								const errorMessage = e instanceof Error ? e.message : String(e);
 								this.logger.error(`\nFATAL ERROR on line ${token.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);

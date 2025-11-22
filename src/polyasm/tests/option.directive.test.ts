@@ -1,6 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Logger } from "../logger";
 import { Assembler, type FileHandler } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
@@ -13,12 +11,24 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
+// Minimal fake CPU handler
+const fakeCPU = {
+	cpuType: "6502" as const,
+	isInstruction: () => false,
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
+	encodeInstruction: () => [],
+	getPCSize: () => 8,
+};
+
 describe(".OPTION Directive", () => {
 	const createAssembler = () => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger();
-		const cpu6502 = new Cpu6502Handler(logger);
-		return new Assembler(cpu6502, mockFileHandler);
+		return new Assembler(fakeCPU, mockFileHandler);
 	};
 
 	it("should set a valid option during pass one", () => {

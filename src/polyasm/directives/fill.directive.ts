@@ -36,10 +36,11 @@ export class FillDirective implements IDirective {
 			// Ensure filler value is a single byte
 			const byteValue = fillerValue & 0xff;
 			const bytes = new Array(count).fill(byteValue);
-			assembler.outputBuffer.push(...bytes);
+			assembler.writeBytes(bytes);
 		}
 
-		assembler.currentPC += count;
+		// Advance PC if not assembling; writeBytes already advances PC when assembling
+		if (!assembler.isAssembling) assembler.currentPC += count;
 
 		// Advance past the directive line
 		assembler.setPosition(startIndex + 1);

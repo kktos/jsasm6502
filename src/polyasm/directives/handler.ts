@@ -23,6 +23,7 @@ import { MacroDirective } from "./macro/macro.directive";
 import { NamespaceDirective } from "./namespace.directive";
 import { OptionDirective } from "./option.directive";
 import { OrgDirective } from "./org.directive";
+import { SegmentDirective } from "./segment.directive";
 import { StringDirective } from "./string.directive";
 
 export class DirectiveHandler {
@@ -91,6 +92,8 @@ export class DirectiveHandler {
 		this.register(".RES", fillHandler);
 
 		this.register(".ALIGN", new AlignDirective());
+
+		this.register(".SEGMENT", new SegmentDirective());
 	}
 
 	private register(name: string, handler: IDirective): void {

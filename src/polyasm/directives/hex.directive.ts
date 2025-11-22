@@ -29,9 +29,9 @@ export class HexDirective implements IDirective {
 			bytes.push(byte);
 		}
 
-		if (assembler.isAssembling && bytes.length > 0) assembler.outputBuffer.push(...bytes);
+		if (assembler.isAssembling && bytes.length > 0) assembler.writeBytes(bytes);
 
-		assembler.currentPC += bytes.length;
+		if (!assembler.isAssembling) assembler.currentPC += bytes.length;
 	}
 
 	/**

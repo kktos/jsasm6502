@@ -32,10 +32,10 @@ class CaptureLogger extends Logger {
 	}
 }
 
-function makeAssembler(logger?: CaptureLogger) {
-	const l = logger ?? new CaptureLogger();
-	const asm = new Assembler(fakeCPU, { readSourceFile: () => "", readBinaryFile: () => [] }, l);
-	return { asm, logger: l };
+function makeAssembler() {
+	const logger = new CaptureLogger();
+	const asm = new Assembler(fakeCPU, { readSourceFile: () => "", readBinaryFile: () => [] }, { logger });
+	return { asm, logger };
 }
 
 describe("Logging directives", () => {

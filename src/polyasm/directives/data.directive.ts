@@ -19,8 +19,7 @@ export class DataDirective implements IDirective {
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
 		if (assembler.isAssembling) {
 			const bytes = this.encodeDataDirective(directive, assembler, context);
-			assembler.outputBuffer.push(...bytes);
-			assembler.currentPC += bytes.length;
+			assembler.writeBytes(bytes);
 		} else {
 			// If not assembling (e.g., inside a false .IF block), just calculate size to advance PC
 			// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();

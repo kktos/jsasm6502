@@ -53,10 +53,10 @@ export class AlignDirective implements IDirective {
 				// Ensure filler value is a single byte
 				const filler = fillerValue & 0xff;
 				const bytes = new Array(paddingBytes).fill(filler);
-				assembler.outputBuffer.push(...bytes);
+				assembler.writeBytes(bytes);
+			} else {
+				assembler.currentPC = newPC;
 			}
-
-			assembler.currentPC = newPC;
 		} catch (e) {
 			assembler.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
 		}

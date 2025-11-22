@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -13,14 +13,14 @@ class MockFileHandler implements FileHandler {
 	}
 }
 
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
 describe("File Directives (.INCLUDE, .INCBIN)", () => {
-	const createAssembler = () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger();
-		// logger.setLogLevel(Logger.LOG_LEVEL_NONE); // Disable logs for tests
-		logger.enabled = false;
-		const cpuHandler = new Cpu6502Handler(logger);
-		const assembler = new Assembler(cpuHandler, mockFileHandler, logger);
+		const logger = new Logger(false);
+		const cpuHandler = new Cpu6502Handler();
+		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments });
 		return { assembler, mockFileHandler, logger };
 	};
 
@@ -35,7 +35,8 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 
 			const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);
 
-			const result = assembler.assemble(source);
+			assembler.assemble(source);
+			const result = assembler.link();
 
 			expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm");
 			expect(result).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x02]);
@@ -75,7 +76,8 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 
 			const readBinaryFileSpy = vi.spyOn(mockFileHandler, "readBinaryFile").mockReturnValue(binaryData);
 
-			const result = assembler.assemble(source);
+			assembler.assemble(source);
+			const result = assembler.link();
 
 			expect(readBinaryFileSpy).toHaveBeenCalledWith("data.bin");
 			expect(result).toEqual(binaryData);

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { Token } from "../lexer/lexer.class";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler } from "../polyasm";
+import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
+
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
 describe("Macro Handling", () => {
 	const setup = () => {
@@ -15,7 +17,7 @@ describe("Macro Handling", () => {
 			}
 		}
 		const logger = new Logger();
-		const assembler = new Assembler(new Cpu6502Handler(logger), new MockFileHandler(), logger);
+		const assembler = new Assembler(new Cpu6502Handler(), new MockFileHandler(), { logger, segments: DEFAULT_SEGMENTS });
 		const { symbolTable, expressionEvaluator: evaluator, lexer } = assembler;
 		const tokenize = (expr: string) => lexer.tokenize(expr).filter((t) => t.type !== "EOF");
 		return { assembler, symbolTable, evaluator, lexer, tokenize };
@@ -78,7 +80,8 @@ describe("Macro Handling", () => {
 				start:
 					nopnopnop
 			`;
-			const machineCode6502 = assembler.assemble(src);
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
 
 			expect(machineCode6502).toEqual([0xea, 0xea, 0xea]);
 		});
@@ -112,7 +115,9 @@ describe("Macro Handling", () => {
 				mem:
 				log "ABCD", mem
 			`;
-			const machineCode6502 = assembler.assemble(src);
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
 			expect(machineCode6502).toEqual([0x42, 0xff, 0x41, 0x42, 0x43, 0x44, 0x00, 0x01, 0x00, 0x10]);
 		});
 	});
