@@ -11,6 +11,7 @@ import type { Assembler } from "../polyasm";
 import { AlignDirective } from "./align.directive";
 import { ConditionalDirective } from "./conditional.directive";
 import { DataDirective } from "./data.directive";
+import { DefineDirective } from "./define.directive";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 import { FillDirective } from "./fill.directive";
 import { HexDirective } from "./hex.directive";
@@ -39,6 +40,7 @@ export class DirectiveHandler {
 		this.register(".ORG", new OrgDirective());
 		this.register(".NAMESPACE", new NamespaceDirective());
 		this.register(".MACRO", new MacroDirective());
+		this.register(".DEFINE", new DefineDirective());
 
 		this.register(".OPTION", new OptionDirective());
 
@@ -102,28 +104,11 @@ export class DirectiveHandler {
 
 	public handlePassOneDirective(directive: ScalarToken, context: DirectiveContext) {
 		const handler = this.directiveMap.get(directive.value);
-		if (handler) {
-			handler.handlePassOne(directive, this.assembler, context);
-			// const result = handler.handlePassOne(directive, this.assembler, context);
-			// If handler returned undefined, assume it managed the assembler position itself
-			// if (result === undefined) return this.assembler.getPosition();
-			// return result;
-		}
-		// Default: advance one token from provided context index if available, otherwise use assembler position + 1
-		// if (typeof context.tokenIndex === "number") return context.tokenIndex + 1;
-		return this.assembler.getPosition() + 1;
+		if (handler) handler.handlePassOne(directive, this.assembler, context);
 	}
 
 	public handlePassTwoDirective(directive: ScalarToken, context: DirectiveContext) {
-		// const handler = this.directiveMap.get(String(context.token.value).toUpperCase());
 		const handler = this.directiveMap.get(directive.value);
-		if (handler) {
-			handler.handlePassTwo(directive, this.assembler, context);
-			// const result = handler.handlePassTwo(directive, this.assembler, context);
-			// if (result === undefined) return this.assembler.getPosition();
-			// return result;
-		}
-		// if (typeof context.tokenIndex === "number") return context.tokenIndex + 1;
-		return this.assembler.getPosition() + 1;
+		if (handler) handler.handlePassTwo(directive, this.assembler, context);
 	}
 }
