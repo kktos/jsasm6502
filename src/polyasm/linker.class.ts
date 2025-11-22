@@ -19,19 +19,15 @@ export class Linker {
 		this.segments.push(seg);
 	}
 
-	public clearSegments(): void {
-		this.segments = [];
-	}
-
 	/** Selects a segment by name and makes it the active segment for subsequent writes. */
-	public useSegment(name: string): void {
+	public useSegment(name: string) {
 		const seg = this.segments.find((s) => s.name === name);
 		if (!seg) throw new Error(`Segment not found: ${name}`);
 		this.currentSegment = seg;
+		return seg.start;
 	}
 
-	public writeByte(addr: number, value: number): void {
-		// If a current segment is set, write relative to that segment and do not search by address.
+	public writeBytes(addr: number, values: number[]): void {
 		const active = this.currentSegment;
 		if (!active) throw new Error("Internal error: no active segment.");
 
@@ -50,11 +46,12 @@ export class Linker {
 			if (!active.resizable) {
 				throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
 			}
-			const needed = offset + 1 - active.data.length;
+			const needed = offset + values.length - active.data.length;
 			active.data.push(...new Array(needed).fill(0));
 		}
 
-		active.data[offset] = value & 0xff;
+		// active.data[offset] = value & 0xff;
+		active.data.splice(offset, values.length, ...values);
 		if (active.resizable && active.size < active.data.length) active.size = active.data.length;
 	}
 

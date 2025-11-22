@@ -42,15 +42,6 @@ describe("Linker", () => {
 		});
 	});
 
-	describe("clearSegments", () => {
-		it("should remove all segments", () => {
-			linker.addSegment("CODE", 0x100, 0x10);
-			linker.addSegment("DATA", 0x200, 0x10);
-			linker.clearSegments();
-			expect(linker.segments.length).toBe(0);
-		});
-	});
-
 	describe("useSegment", () => {
 		it("should select an existing segment", () => {
 			linker.addSegment("CODE", 0x100, 0x10);
@@ -71,29 +62,29 @@ describe("Linker", () => {
 		});
 
 		it("should throw if no segment is active", () => {
-			expect(() => linker.writeByte(0x100, 0x42)).toThrow("Internal error: no active segment.");
+			expect(() => linker.writeBytes(0x100, [0x42])).toThrow("Internal error: no active segment.");
 		});
 
 		it("should write a byte to the current segment", () => {
 			linker.useSegment("CODE");
-			linker.writeByte(0x105, 0x42);
+			linker.writeBytes(0x105, [0x42]);
 			expect(linker.currentSegment?.data[5]).toBe(0x42);
 		});
 
 		it("should throw when writing below segment start", () => {
 			linker.useSegment("CODE");
-			expect(() => linker.writeByte(0xff, 0x42)).toThrow("Write out of bounds: address $FF is below segment 'CODE' start $100.");
+			expect(() => linker.writeBytes(0xff, [0x42])).toThrow("Write out of bounds: address $FF is below segment 'CODE' start $100.");
 		});
 
 		it("should throw when writing outside a fixed segment", () => {
 			linker.useSegment("CODE");
-			expect(() => linker.writeByte(0x110, 0x42)).toThrow("Write out of bounds: address $110 outside fixed segment 'CODE' (start $100, size 16).");
+			expect(() => linker.writeBytes(0x110, [0x42])).toThrow("Write out of bounds: address $110 outside fixed segment 'CODE' (start $100, size 16).");
 		});
 
 		it("should resize a resizable segment when writing past its end", () => {
 			linker.useSegment("BSS");
-			linker.writeByte(0x200, 0xaa);
-			linker.writeByte(0x201, 0xbb);
+			linker.writeBytes(0x200, [0xaa]);
+			linker.writeBytes(0x201, [0xbb]);
 			const seg = linker.segments.find((s) => s.name === "BSS");
 			expect(seg?.data.length).toBe(2);
 			expect(seg?.size).toBe(2);
@@ -103,7 +94,7 @@ describe("Linker", () => {
 
 		it("should handle non-sequential writes in resizable segment", () => {
 			linker.useSegment("BSS");
-			linker.writeByte(0x204, 0xcc);
+			linker.writeBytes(0x204, [0xcc]);
 			const seg = linker.segments.find((s) => s.name === "BSS");
 			expect(seg?.data.length).toBe(5);
 			expect(seg?.size).toBe(5);
@@ -120,23 +111,23 @@ describe("Linker", () => {
 		it("should link a single segment", () => {
 			linker.addSegment("CODE", 0x100, 4, 0);
 			linker.useSegment("CODE");
-			linker.writeByte(0x100, 1);
-			linker.writeByte(0x101, 2);
-			linker.writeByte(0x102, 3);
-			linker.writeByte(0x103, 4);
+			linker.writeBytes(0x100, [1]);
+			linker.writeBytes(0x101, [2]);
+			linker.writeBytes(0x102, [3]);
+			linker.writeBytes(0x103, [4]);
 			expect(linker.link()).toEqual([1, 2, 3, 4]);
 		});
 
 		it("should link multiple segments, filling gaps with zeros", () => {
 			linker.addSegment("SEG1", 0x10, 2);
 			linker.useSegment("SEG1");
-			linker.writeByte(0x10, 0xaa);
-			linker.writeByte(0x11, 0xbb);
+			linker.writeBytes(0x10, [0xaa]);
+			linker.writeBytes(0x11, [0xbb]);
 
 			linker.addSegment("SEG2", 0x14, 2);
 			linker.useSegment("SEG2");
-			linker.writeByte(0x14, 0xcc);
-			linker.writeByte(0x15, 0xdd);
+			linker.writeBytes(0x14, [0xcc]);
+			linker.writeBytes(0x15, [0xdd]);
 
 			// SEG1 at 0x10, size 2 -> [0xaa, 0xbb]
 			// Gap of 2 bytes (0x12, 0x13)
@@ -148,17 +139,17 @@ describe("Linker", () => {
 		it("should handle overlapping segments, last segment wins", () => {
 			linker.addSegment("SEG1", 0x10, 4);
 			linker.useSegment("SEG1");
-			linker.writeByte(0x10, 1);
-			linker.writeByte(0x11, 2);
-			linker.writeByte(0x12, 3);
-			linker.writeByte(0x13, 4);
+			linker.writeBytes(0x10, [1]);
+			linker.writeBytes(0x11, [2]);
+			linker.writeBytes(0x12, [3]);
+			linker.writeBytes(0x13, [4]);
 
 			linker.addSegment("SEG2", 0x12, 4);
 			linker.useSegment("SEG2");
-			linker.writeByte(0x12, 5);
-			linker.writeByte(0x13, 6);
-			linker.writeByte(0x14, 7);
-			linker.writeByte(0x15, 8);
+			linker.writeBytes(0x12, [5]);
+			linker.writeBytes(0x13, [6]);
+			linker.writeBytes(0x14, [7]);
+			linker.writeBytes(0x15, [8]);
 
 			expect(linker.link()).toEqual([1, 2, 5, 6, 7, 8]);
 		});
@@ -166,8 +157,8 @@ describe("Linker", () => {
 		it("should use padValue for unfilled parts of segments", () => {
 			linker.addSegment("DATA", 0x100, 5, 0xff);
 			linker.useSegment("DATA");
-			linker.writeByte(0x100, 0xda);
-			linker.writeByte(0x101, 0xdb);
+			linker.writeBytes(0x100, [0xda]);
+			linker.writeBytes(0x101, [0xdb]);
 			expect(linker.link()).toEqual([0xda, 0xdb, 0xff, 0xff, 0xff]);
 		});
 	});
