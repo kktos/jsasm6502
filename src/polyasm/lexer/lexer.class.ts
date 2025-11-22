@@ -14,6 +14,7 @@ export type TokenType =
 	// Literals
 	| "NUMBER" // $1234, %1010, 42, -50
 	| "STRING"
+	| "RAW_TEXT"
 	| "ARRAY"
 	| "OPERATOR"
 
@@ -74,6 +75,7 @@ export class AssemblyLexer {
 	private lastToken: Token | null = null;
 	// Buffer for incremental/token-stream usage
 	private tokenBuffer: Token[] = [];
+	private endMarker: string | undefined;
 
 	constructor(options?: { localLabelStyle?: string }) {
 		if (options?.localLabelStyle) {
@@ -83,8 +85,6 @@ export class AssemblyLexer {
 
 	// Main tokenization loop - optimized for V8's speculative optimization
 	public tokenize(source: string): Token[] {
-		// Backwards-compatible full tokenization. Also populates internal buffer
-		// so callers can switch to streaming mode later if desired.
 		this.resetStream();
 		this.source = source;
 		this.length = source.length;
@@ -94,7 +94,6 @@ export class AssemblyLexer {
 		this.column = 1;
 		this.lastToken = null;
 
-		this.streaming = false;
 		this.tokenBuffer = [];
 
 		while (this.pos < this.length) {
@@ -120,13 +119,15 @@ export class AssemblyLexer {
 		this.column = 1;
 		this.lastToken = null;
 
-		this.streaming = true;
 		this.tokenBuffer = [];
 	}
 
 	private resetStream(): void {
 		this.tokenBuffer = [];
-		this.streaming = false;
+	}
+
+	public setEndMarker(endMarker: string | undefined): void {
+		this.endMarker = endMarker;
 	}
 
 	/**
@@ -146,7 +147,7 @@ export class AssemblyLexer {
 				break;
 			}
 
-			const t = this.nextToken();
+			const t = this.nextToken({ endMarker: this.endMarker });
 			if (!t) continue; // skip null tokens (e.g., newlines)
 			this.lastToken = t;
 			this.tokenBuffer.push(t);
@@ -179,36 +180,29 @@ export class AssemblyLexer {
 	}
 
 	// Single-pass token extraction with minimal backtracking
-	private nextToken(): Token | null {
+	public nextToken(options?: { endMarker?: string }): Token | null {
 		this.skipWhitespace();
 
-		if (this.pos >= this.length) {
-			return this.makeToken("EOF", "");
-		}
+		if (this.pos >= this.length) return this.makeToken("EOF", "");
+
+		if (options?.endMarker) return this.scanRawTextBlock(this.line, this.column, options.endMarker);
 
 		const ch = this.source[this.pos];
 		const startLine = this.line;
 		const startColumn = this.column;
 
 		// Comment - fast path for semicolon
-		if (ch === ";") {
-			return this.scanComment(startLine, startColumn);
-		}
+		if (ch === ";") return this.scanComment(startLine, startColumn);
 
 		// Named or Nameless Local Labels
-		if (ch === this.localLabelChar) {
-			return this.scanLocalLabel(startLine, startColumn, ch);
-		}
+		if (ch === this.localLabelChar) return this.scanLocalLabel(startLine, startColumn, ch);
 
 		// Check for // or /* comments
 		if (ch === "/") {
 			const next = this.peekAhead(1); // look ahead one char
-			if (next === "/") {
-				return this.scanComment(startLine, startColumn);
-			}
-			if (next === "*") {
-				return this.scanMultiLineComment(startLine, startColumn);
-			}
+			if (next === "/") return this.scanComment(startLine, startColumn);
+			if (next === "*") return this.scanMultiLineComment(startLine, startColumn);
+
 			// Otherwise it's division operator
 			this.advance();
 			// return this.makeToken("DIVIDE", "/", startLine, startColumn);
@@ -445,9 +439,8 @@ export class AssemblyLexer {
 
 		if (this.isAlpha(this.peek())) {
 			const start = this.pos - 1; // Include the dot
-			while (this.isIdentifierPart(this.peek())) {
-				this.advance();
-			}
+			while (this.isIdentifierPart(this.peek())) this.advance();
+
 			const value = this.source.slice(start, this.pos);
 
 			// If it's followed by '(', it's a function call like .LEN(..), treat as IDENTIFIER
@@ -559,7 +552,7 @@ export class AssemblyLexer {
 		let numericValue = Number.parseInt(numberString, radix);
 		if (negative) numericValue = -numericValue;
 
-		return this.makeToken("NUMBER", String(numericValue), line, column, numberString);
+		return this.makeToken("NUMBER", String(numericValue), line, column, radix === 16 ? `$${numberString}` : radix === 2 ? `%${numberString}` : numberString);
 	}
 
 	private scanLocalLabel(line: number, column: number, _char: string): Token {
@@ -603,6 +596,43 @@ export class AssemblyLexer {
 		// We need to check if it's followed by a colon, which would make it a '::' operator for namespacing.
 		// For now, we assume it's a definition and use the standard ":" value for the token.
 		return this.makeToken("ANONYMOUS_LABEL_DEF", ":", line, column);
+	}
+
+	private scanRawTextBlock(line: number, column: number, endMarker: string): Token | null {
+		// The raw data starts after the current line.
+		const endOfLine = this.source.indexOf("\n", this.pos);
+		// No newline after the directive, so no raw data.
+		if (endOfLine === -1) return null;
+
+		const rawDataStart = endOfLine + 1;
+
+		// Find the end marker, which can be preceded by whitespace on its own line.
+		let currentPos = rawDataStart;
+		let endOfRawData = -1;
+
+		// biome-ignore lint/suspicious/noAssignInExpressions: easier that way
+		while ((currentPos = this.source.indexOf("\n", currentPos)) !== -1) {
+			let lineStart = currentPos + 1;
+			// Skip leading whitespace on the line
+			while (lineStart < this.length && (this.source[lineStart] === " " || this.source[lineStart] === "\t")) {
+				lineStart++;
+			}
+
+			if (this.source.startsWith(endMarker, lineStart)) {
+				endOfRawData = currentPos; // The raw data ends at the newline before the end marker line.
+				this.pos = lineStart + endMarker.length; // Move position past the end marker
+				break;
+			}
+			currentPos++; // Move to the next character to continue searching
+		}
+
+		if (endOfRawData === -1) {
+			endOfRawData = this.length; // Read to the end if marker not found
+			this.pos = this.length;
+		}
+
+		const rawValue = this.source.slice(rawDataStart, endOfRawData);
+		return this.makeToken("RAW_TEXT", rawValue, line, column);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
