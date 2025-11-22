@@ -1,13 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Logger } from "../logger";
 import { Assembler } from "../polyasm";
 
 // Minimal fake CPU handler
 const fakeCPU = {
-	cpuType: "TEST",
+	cpuType: "6502" as const,
 	isInstruction: () => false,
-	resolveAddressingMode: () => ({ bytes: 0 }),
+	resolveAddressingMode: () => ({
+		mode: "",
+		opcode: 0,
+		bytes: 0,
+		resolvedAddress: 0,
+	}),
 	encodeInstruction: () => [],
+	getPCSize: () => 8,
 };
 
 class CaptureLogger extends Logger {
@@ -28,8 +34,7 @@ class CaptureLogger extends Logger {
 
 function makeAssembler(logger?: CaptureLogger) {
 	const l = logger ?? new CaptureLogger();
-	// @ts-ignore reuse same constructor shape
-	const asm = new Assembler(fakeCPU as any, { readSourceFile: () => "", readBinaryFile: () => [] }, l);
+	const asm = new Assembler(fakeCPU, { readSourceFile: () => "", readBinaryFile: () => [] }, l);
 	return { asm, logger: l };
 }
 
@@ -60,14 +65,14 @@ describe("Logging directives", () => {
 			const src = '.LOG 10, "HELLO", [1,2]';
 			asm.assemble(src);
 
-			const found = logger.lines.find((l) => l === `10, HELLO, [1, 2]`);
+			const found = logger.lines.find((l) => l === "10, HELLO, [1, 2]");
 			expect(found).toBeDefined();
 		});
 	});
 
 	describe(".ERR directive", () => {
 		it("log a simple error", () => {
-			const { asm, logger } = makeAssembler();
+			const { asm } = makeAssembler();
 			const src = `.ERR "Boom Bada Boom"`;
 			expect(() => asm.assemble(src)).toThrow("[ERROR] Boom Bada Boom");
 		});

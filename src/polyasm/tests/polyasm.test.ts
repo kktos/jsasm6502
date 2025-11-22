@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
-import { type FileHandler, Assembler } from "../polyasm";
+import { Assembler, type FileHandler } from "../polyasm";
 import { hexDump } from "../utils/hexdump.util";
 
-const TEMP = `
+const _TEMP = `
 	; Macro with optional and rest parameters
 	.MACRO DEFINE_DATA_BLOCK id, name, ...values
 		; .IF .ARGC < 2

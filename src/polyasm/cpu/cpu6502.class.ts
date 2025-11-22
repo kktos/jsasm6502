@@ -1,11 +1,8 @@
 import type { OperatorStackToken, Token } from "../lexer/lexer.class";
 import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
-import type { Logger } from "../logger";
 
 export class Cpu6502Handler implements CPUHandler {
 	cpuType = "6502" as const;
-
-	constructor(private logger: Logger) {}
 
 	// Define M6502 specific modes internally
 	private M6502_MODES = {
@@ -79,7 +76,7 @@ export class Cpu6502Handler implements CPUHandler {
 	getPCSize(): number {
 		return 16;
 	}
-	handleCPUSpecificDirective(directive: string, args: Token[]): void {}
+	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().split(".")[0];
@@ -240,7 +237,7 @@ export class Cpu6502Handler implements CPUHandler {
 		},
 	): number[] {
 		// We now switch on the mode string defined internally by this handler.
-		const mnemonic = tokens[0].value.toUpperCase();
+		const _mnemonic = tokens[0].value.toUpperCase();
 
 		if (modeInfo.mode === this.M6502_MODES.RELATIVE) {
 			const targetAddress = modeInfo.resolvedAddress;
@@ -248,9 +245,8 @@ export class Cpu6502Handler implements CPUHandler {
 			const offset = targetAddress - (modeInfo.pc + instructionSize);
 
 			// Check if the offset is within the valid 8-bit signed range (-128 to 127)
-			if (offset < -128 || offset > 127) {
+			if (offset < -128 || offset > 127)
 				throw new Error(`Branch target out of range. Target: $${targetAddress.toString(16)}, PC: $${modeInfo.pc.toString(16)}, Offset: ${offset}`);
-			}
 
 			// Convert to 8-bit two's complement if negative
 			const finalOffset = offset < 0 ? offset + 256 : offset;

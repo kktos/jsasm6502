@@ -1,6 +1,6 @@
+import type { Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
-import type { Token } from "../lexer/lexer.class";
 
 export class FillDirective implements IDirective {
 	public handlePassOne(assembler: Assembler, context: DirectiveContext): void {

@@ -1,12 +1,12 @@
-import type { CPUHandler } from "./cpu/cpuhandler.class";
-import { PASymbolTable } from "./symbol.class";
-import { Logger } from "./logger";
-import { ExpressionEvaluator } from "./expression";
-import { DirectiveHandler } from "./directives/handler";
-import { type Token, AssemblyLexer, type OperatorStackToken, type ScalarToken, type IdentifierToken } from "./lexer/lexer.class";
 import { EventEmitter } from "node:events";
-import type { MacroDefinition } from "./directives/macro/macro.interface";
+import type { CPUHandler } from "./cpu/cpuhandler.class";
+import { DirectiveHandler } from "./directives/handler";
 import { MacroHandler } from "./directives/macro/handler";
+import type { MacroDefinition } from "./directives/macro/macro.interface";
+import { ExpressionEvaluator } from "./expression";
+import { AssemblyLexer, type IdentifierToken, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
+import { Logger } from "./logger";
+import { PASymbolTable } from "./symbol.class";
 
 /** Defines the state of an active token stream. */
 interface StreamState {
@@ -26,7 +26,7 @@ export interface FileHandler {
 
 export class Assembler {
 	public lexer: AssemblyLexer;
-	public activeTokens: Token[];
+	private activeTokens: Token[];
 	private cpuHandler: CPUHandler;
 	public symbolTable: PASymbolTable;
 	public fileHandler: FileHandler;
@@ -85,9 +85,7 @@ export class Assembler {
 		this.activeTokens = this.lexer.getBufferedTokens();
 
 		// Set assembler options from the pre-scan so they are available in Pass 1
-		if (localLabelStyle) {
-			this.options.set("local_label_style", localLabelStyle);
-		}
+		if (localLabelStyle) this.options.set("local_label_style", localLabelStyle);
 
 		// Initialize token stream stack so Pass 1 can use positional helpers.
 		this.tokenStreamStack = [];
@@ -104,7 +102,7 @@ export class Assembler {
 		// Ensure we start Pass 2 in the GLOBAL namespace (reset any .NAMESPACE from Pass 1)
 		this.symbolTable.setNamespace("global");
 
-		this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
+		// this.currentPC = (this.symbolTable.lookupSymbol("*") as number) || 0x0000;
 		this.outputBuffer = [];
 		// Reset stream stack for Pass 2 (fresh position)
 		this.tokenStreamStack = [];
@@ -142,7 +140,7 @@ export class Assembler {
 			if (!token || token.type === "EOF") break;
 
 			// Always update PC symbol before any instruction/data
-			this.symbolTable.setSymbol("*", this.currentPC);
+			// this.symbolTable.setSymbol("*", this.currentPC);
 
 			switch (token.type) {
 				case "DIRECTIVE": {
@@ -153,11 +151,7 @@ export class Assembler {
 						options: this.options,
 					};
 
-					const nextTokenIndex = this.directiveHandler.handlePassOneDirective(token, directiveContext);
-					/*
-					if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) this.setPosition(this.skipToEndOfLine(this.getPosition()));
-					else this.setPosition(nextTokenIndex);
-					*/
+					this.directiveHandler.handlePassOneDirective(token, directiveContext);
 					break;
 				}
 
@@ -204,7 +198,7 @@ export class Assembler {
 						this.logger.error(`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`);
 					} else {
 						const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-						this.symbolTable.addSymbol(qualifiedName, this.currentPC, false);
+						this.symbolTable.addSymbol(qualifiedName, this.currentPC);
 					}
 					// this.consume(1);
 					break;
@@ -392,10 +386,10 @@ export class Assembler {
 			else this.logger.log(`[PASS 2] Defined symbol ${token.value} = $${(value as number).toString(16).toUpperCase()}`);
 
 			// If symbol exists already, update it; otherwise add it as a constant.
-			if (this.symbolTable.lookupSymbol((token as any).value) !== undefined) {
-				this.symbolTable.setSymbol((token as any).value, value);
+			if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
+				this.symbolTable.setSymbol(token.value, value);
 			} else {
-				this.symbolTable.addSymbol((token as any).value, value, true);
+				this.symbolTable.addSymbol(token.value, value);
 			}
 		} catch (e) {
 			this.logger.error(`[PASS 2] ERROR defining .EQU for ${token.value}: ${e}`);
@@ -434,7 +428,7 @@ export class Assembler {
 		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
 		this.pass = 2;
 
-		this.symbolTable.setSymbol("*", this.currentPC);
+		// this.symbolTable.setSymbol("*", this.currentPC);
 		this.anonymousLabels = [];
 		this.lastGlobalLabel = null;
 
@@ -449,7 +443,7 @@ export class Assembler {
 				continue;
 			}
 
-			this.symbolTable.setSymbol("*", this.currentPC);
+			// this.symbolTable.setSymbol("*", this.currentPC);
 
 			switch (token.type) {
 				case "IDENTIFIER": {
@@ -643,7 +637,6 @@ export class Assembler {
 	public getDirectiveBlockTokens(startDirective: string): Token[] | null {
 		const tokens: Token[] = [];
 		let depth = 0;
-		let useCurlyBraces = false;
 
 		while (true) {
 			const token = this.nextToken();
@@ -658,7 +651,6 @@ export class Assembler {
 
 			if (token.value === "{") {
 				depth++;
-				useCurlyBraces = true;
 				// Don't push opening brace
 				continue;
 			}
@@ -736,10 +728,10 @@ export class Assembler {
 		}
 
 		// Not found
-		return this.activeTokens.length;
+		return 0;
 	}
 
-	public getInstructionSize(startIndex?: number): number {
+	public getInstructionSize(): number {
 		try {
 			const instructionTokens = this.getInstructionTokens();
 			const mnemonicToken = instructionTokens[0] as ScalarToken;
@@ -754,7 +746,7 @@ export class Assembler {
 				}),
 			);
 			return sizeInfo.bytes;
-		} catch (e) {
+		} catch (_e) {
 			return this.cpuHandler.cpuType === "ARM_RISC" ? 4 : 3; // Robust default based on CPU type
 		}
 	}

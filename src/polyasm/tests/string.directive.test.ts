@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
-import { Assembler, type FileHandler } from "../polyasm";
 import { Logger } from "../logger";
+import { Assembler, type FileHandler } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -133,7 +133,7 @@ describe("String Directives", () => {
 	it("should handle escape sequences correctly", () => {
 		const assembler = createAssembler();
 		const source = `
-            .TEXT "Line 1\\nLine 2\\tTabbed\\rReturn'\\\"Quote\\x21\\\\"
+            .TEXT "Line 1\\nLine 2\\tTabbed\\rReturn'\\"Quote\\x21\\\\"
         `;
 		const machineCode = assembler.assemble(source);
 		const expectedString = "Line 1\nLine 2\tTabbed\rReturn'\"Quote!\\";

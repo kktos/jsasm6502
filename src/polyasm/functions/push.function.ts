@@ -1,6 +1,6 @@
-import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
 import type { SymbolValue } from "../symbol.class";
+import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const push: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const itemsToAdd: SymbolValue[] = [];

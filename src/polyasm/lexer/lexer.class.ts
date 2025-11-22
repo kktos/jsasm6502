@@ -74,7 +74,6 @@ export class AssemblyLexer {
 	private lastToken: Token | null = null;
 	// Buffer for incremental/token-stream usage
 	private tokenBuffer: Token[] = [];
-	private streaming = false;
 
 	constructor(options?: { localLabelStyle?: string }) {
 		if (options?.localLabelStyle) {
@@ -394,7 +393,7 @@ export class AssemblyLexer {
 		return null;
 	}
 
-	private scanComment(line: number, column: number) {
+	private scanComment(_line: number, _column: number) {
 		const start = this.pos;
 
 		// Skip comment starter (either ';' or '//')
@@ -414,7 +413,7 @@ export class AssemblyLexer {
 		return null; // this.makeToken("COMMENT", value, line, column);
 	}
 
-	private scanMultiLineComment(line: number, column: number) {
+	private scanMultiLineComment(_line: number, _column: number) {
 		// const start = this.pos;
 
 		this.advance(); // skip '/'
@@ -563,7 +562,7 @@ export class AssemblyLexer {
 		return this.makeToken("NUMBER", String(numericValue), line, column, numberString);
 	}
 
-	private scanLocalLabel(line: number, column: number, char: string): Token {
+	private scanLocalLabel(line: number, column: number, _char: string): Token {
 		this.advance(); // consume local label char
 		const nextChar = this.peek();
 
@@ -578,7 +577,7 @@ export class AssemblyLexer {
 		}
 		if (nextChar === "+" || nextChar === "-") {
 			// Nameless reference like ':-' or ':++' or ':+3'
-			const start = this.pos;
+			const _start = this.pos;
 			const sign = nextChar;
 			let count = 0;
 			while (this.peek() === sign) {

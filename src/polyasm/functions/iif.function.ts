@@ -1,5 +1,5 @@
-import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
+import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const iif: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const falseValue = stack.pop();

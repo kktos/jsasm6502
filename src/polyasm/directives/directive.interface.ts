@@ -1,6 +1,6 @@
-import type { Assembler } from "../polyasm";
 import type { EvaluationContext } from "../expression";
 import type { ScalarToken } from "../lexer/lexer.class";
+import type { Assembler } from "../polyasm";
 
 /** A special return value for directive handlers to signal default "next line" behavior. */
 export const ADVANCE_TO_NEXT_LINE = -1;

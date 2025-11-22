@@ -69,7 +69,7 @@ export class ConditionalDirective implements IDirective {
 				break;
 			}
 
-			case ".END":
+			case ".END": {
 				// If the .END directive is followed by an identifier 'NAMESPACE', handle namespace pop.
 				const next = assembler.peekToken(0);
 				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {
@@ -84,6 +84,7 @@ export class ConditionalDirective implements IDirective {
 				}
 				if (this.conditionalStack.length > 0) this.conditionalStack.pop();
 				break;
+			}
 		}
 		assembler.isAssembling = this.conditionalStack.every((block) => block.isTrue);
 	}

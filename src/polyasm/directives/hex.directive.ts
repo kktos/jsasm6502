@@ -3,7 +3,7 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class HexDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const hexString = this.extractHexData(directive, assembler);
 
 		try {
@@ -14,7 +14,7 @@ export class HexDirective implements IDirective {
 		}
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const hexString = this.extractHexData(directive, assembler);
 
 		const cleanedString = hexString.replace(/\s/g, "");

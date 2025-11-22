@@ -1,4 +1,4 @@
-import { ScalarToken } from "../lexer/lexer.class";
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
@@ -74,7 +74,7 @@ export class LogDirective implements IDirective {
 				outputs.push(this.formatValue(value));
 			} catch (e) {
 				assembler.logger.error(`[LOG] ERROR on line ${directive.line}: ${e}`);
-				outputs.push(`<ERROR>`);
+				outputs.push("<ERROR>");
 			}
 		}
 

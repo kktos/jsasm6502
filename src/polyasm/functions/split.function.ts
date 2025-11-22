@@ -1,5 +1,5 @@
-import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
+import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const split: FunctionHandler = (stack: EvaluationStack, token: Token, _symbolTable, argCount): void => {
 	const delimiterArg = argCount === 2 ? stack.pop() : " ";

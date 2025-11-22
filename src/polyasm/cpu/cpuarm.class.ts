@@ -1,7 +1,6 @@
 import type { OperatorStackToken, Token } from "../lexer/lexer.class";
-import type { CPUHandler, AddressingMode } from "./cpuhandler.class";
-
 import type { Logger } from "../logger";
+import type { AddressingMode, CPUHandler } from "./cpuhandler.class";
 export class CpuArmRiscHandler implements CPUHandler {
 	cpuType = "ARM_RISC" as const;
 
@@ -53,7 +52,7 @@ export class CpuArmRiscHandler implements CPUHandler {
 	constructor(logger: Logger) {
 		this.logger = logger;
 	}
-	handleCPUSpecificDirective(directive: string, args: Token[]): void {}
+	handleCPUSpecificDirective(_directive: string, _args: Token[]): void {}
 
 	isInstruction(mnemonic: string): boolean {
 		const baseMnemonic = mnemonic.toUpperCase().match(/^[A-Z]+/)?.[0];

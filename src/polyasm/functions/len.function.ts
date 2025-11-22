@@ -1,5 +1,5 @@
 import type { Token } from "../lexer/lexer.class";
-import type { FunctionHandler, EvaluationStack } from "./types";
+import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const len: FunctionHandler = (stack: EvaluationStack, token: Token): void => {
 	const arg = stack.pop();

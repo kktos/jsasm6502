@@ -1,6 +1,6 @@
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
-import type { ScalarToken, Token } from "../lexer/lexer.class";
 
 export class DataDirective implements IDirective {
 	private readonly bytesPerElement: number;
@@ -9,7 +9,7 @@ export class DataDirective implements IDirective {
 		this.bytesPerElement = bytesPerElement;
 	}
 
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): number {
 		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
 		const startIndex = assembler.getPosition();
 		assembler.currentPC += this.calculateDirectiveSize(assembler, startIndex);
@@ -31,7 +31,7 @@ export class DataDirective implements IDirective {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	private calculateDirectiveSize(assembler: Assembler, tokenIndex: number): number {
+	private calculateDirectiveSize(assembler: Assembler, _tokenIndex: number): number {
 		if (this.bytesPerElement === 0) {
 			// Special case for .TEXT or similar string-only directives
 		}
@@ -65,7 +65,7 @@ export class DataDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeDataDirective(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
+	private encodeDataDirective(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
 		const argTokens = assembler.getInstructionTokens();
 		const outputBytes: number[] = [];
 		let currentExpression: Token[] = [];

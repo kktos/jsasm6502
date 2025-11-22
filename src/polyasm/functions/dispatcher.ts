@@ -1,17 +1,17 @@
 import type { Token } from "../lexer/lexer.class";
-import { def, undef } from "./def.function";
-import { len } from "./len.function";
-import { hex } from "./hex.function";
-import { split } from "./split.function";
-import { array } from "./array.function";
-import type { EvaluationStack, IFunctionDef } from "./types";
 import type { PASymbolTable } from "../symbol.class";
-import { push } from "./push.function";
-import { pop } from "./pop.function";
-import { type } from "./type.function";
-import { json } from "./json.function";
+import { array } from "./array.function";
+import { def, undef } from "./def.function";
+import { hex } from "./hex.function";
 import { iif } from "./iif.function";
 import { join } from "./join.function";
+import { json } from "./json.function";
+import { len } from "./len.function";
+import { pop } from "./pop.function";
+import { push } from "./push.function";
+import { split } from "./split.function";
+import { type } from "./type.function";
+import type { EvaluationStack, IFunctionDef } from "./types";
 
 const functions = new Map<string, IFunctionDef>();
 

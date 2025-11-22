@@ -3,7 +3,7 @@ import type { Assembler } from "../polyasm";
 import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class IncludeDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		// const startIndex = assembler.getPosition();
 
 		// Find expression tokens on the header line after 'OF', optionally followed by 'AS'
@@ -45,7 +45,7 @@ export class IncludeDirective implements IDirective {
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext): number {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 }

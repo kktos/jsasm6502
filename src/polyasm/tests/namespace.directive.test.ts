@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { Assembler, type FileHandler } from "../polyasm";
+import { describe, expect, it } from "vitest";
 import { Logger } from "../logger";
+import { Assembler, type FileHandler } from "../polyasm";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -52,7 +52,7 @@ describe(".NAMESPACE Directive", () => {
 
 	it("should switch current namespace when given an identifier", () => {
 		const { assembler } = createAssembler();
-		const source = `.NAMESPACE myns\n`;
+		const source = ".NAMESPACE myns\n";
 
 		assembler.assemble(source);
 
@@ -72,7 +72,7 @@ describe(".NAMESPACE Directive", () => {
 
 	it("should update namespace on successive directives", () => {
 		const { assembler } = createAssembler();
-		const source = `.NAMESPACE one\n.NAMESPACE two\n`;
+		const source = ".NAMESPACE one\n.NAMESPACE two\n";
 
 		assembler.assemble(source);
 

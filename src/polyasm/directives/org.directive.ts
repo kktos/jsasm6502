@@ -1,6 +1,6 @@
 import type { ScalarToken } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {

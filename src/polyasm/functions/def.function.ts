@@ -1,6 +1,6 @@
-import type { PASymbolTable } from "../symbol.class";
-import type { FunctionHandler, EvaluationStack } from "./types";
 import type { Token } from "../lexer/lexer.class";
+import type { PASymbolTable } from "../symbol.class";
+import type { EvaluationStack, FunctionHandler } from "./types";
 
 export const def: FunctionHandler = (stack: EvaluationStack, _token: Token, symbolTable: PASymbolTable): void => {
 	stack.push(checkIfDefined(stack, symbolTable) ? 1 : 0);

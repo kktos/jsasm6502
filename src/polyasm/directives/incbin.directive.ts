@@ -3,7 +3,7 @@ import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const expressionTokens = assembler.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
@@ -30,7 +30,7 @@ export class IncbinDirective implements IDirective {
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		const expressionTokens = assembler.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 

@@ -5,33 +5,32 @@
  * * Acts as a dispatcher to specialized directive handlers.
  */
 
-import type { IDirective } from "./directive.interface";
-import { OrgDirective } from "./org.directive";
-import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
-import { IncbinDirective } from "./incbin.directive";
-import { NamespaceDirective } from "./namespace.directive";
+import type { ScalarToken } from "../lexer/lexer.class";
+import type { Logger } from "../logger";
+import type { Assembler } from "../polyasm";
+import { AlignDirective } from "./align.directive";
 import { ConditionalDirective } from "./conditional.directive";
 import { DataDirective } from "./data.directive";
-import { MacroDirective } from "./macro/macro.directive";
-import { LoopDirective } from "./loop.directive";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 import { FillDirective } from "./fill.directive";
-import { AlignDirective } from "./align.directive";
 import { HexDirective } from "./hex.directive";
-import type { Assembler } from "../polyasm";
-import { StringDirective } from "./string.directive";
-import type { DirectiveContext } from "./directive.interface";
-import { OptionDirective } from "./option.directive";
-import type { Logger } from "../logger";
+import { IncbinDirective } from "./incbin.directive";
+import { IncludeDirective } from "./include.directive"; // Not in context, but assumed to exist
 import { ListDirective } from "./list.directive";
-import type { ScalarToken } from "../lexer/lexer.class";
 import { LogDirective } from "./log.directive";
+import { LoopDirective } from "./loop.directive";
+import { MacroDirective } from "./macro/macro.directive";
+import { NamespaceDirective } from "./namespace.directive";
+import { OptionDirective } from "./option.directive";
+import { OrgDirective } from "./org.directive";
+import { StringDirective } from "./string.directive";
 
 export class DirectiveHandler {
 	private readonly directiveMap: Map<string, IDirective>;
 
 	constructor(
 		private readonly assembler: Assembler,
-		private readonly logger: Logger,
+		readonly logger: Logger,
 	) {
 		this.assembler = assembler;
 		this.directiveMap = new Map();

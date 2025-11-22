@@ -3,12 +3,12 @@ import type { Assembler } from "../../polyasm";
 import type { DirectiveContext, IDirective } from "../directive.interface";
 
 export class MacroDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		this.handleMacroDefinition(directive, assembler);
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		assembler.skipToDirectiveEnd(directive.value);
 
 		return undefined;

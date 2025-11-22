@@ -1,6 +1,6 @@
+import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
 import type { DirectiveContext, IDirective } from "./directive.interface";
-import type { ScalarToken, Token } from "../lexer/lexer.class";
 
 export class AlignDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {

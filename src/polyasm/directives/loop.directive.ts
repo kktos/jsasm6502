@@ -1,7 +1,7 @@
-import type { Assembler } from "../polyasm";
-import type { DirectiveContext, IDirective } from "./directive.interface";
 import type { IdentifierToken, ScalarToken, Token } from "../lexer/lexer.class";
+import type { Assembler } from "../polyasm";
 import type { SymbolValue } from "../symbol.class";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 interface LoopState {
 	iterator?: IdentifierToken;
@@ -15,12 +15,12 @@ interface LoopState {
 }
 
 export class LoopDirective implements IDirective {
-	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		assembler.skipToDirectiveEnd(directive.value);
 		return undefined;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
+	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		if (directive.value === ".FOR") {
 			this.handleForLoop(directive, assembler);
 			return undefined;

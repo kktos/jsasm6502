@@ -76,7 +76,7 @@ export interface EvaluationContext {
 export class ExpressionEvaluator {
 	constructor(
 		private assembler: Assembler,
-		private logger: Logger,
+		_logger: Logger,
 	) {}
 
 	/**

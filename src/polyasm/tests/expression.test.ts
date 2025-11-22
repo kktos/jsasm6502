@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
-import { type FileHandler, Assembler } from "../polyasm";
+import { Assembler, type FileHandler } from "../polyasm";
 
 describe("ExpressionEvaluator", () => {
 	const setup = () => {

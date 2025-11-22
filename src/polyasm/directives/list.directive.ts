@@ -1,7 +1,7 @@
-import type { IDirective, DirectiveContext } from "./directive.interface";
+import type { ScalarToken } from "../lexer/lexer.class";
 import type { Logger } from "../logger";
 import type { Assembler } from "../polyasm";
-import type { ScalarToken } from "../lexer/lexer.class";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class ListDirective implements IDirective {
 	private readonly logger: Logger;
@@ -18,7 +18,7 @@ export class ListDirective implements IDirective {
 		this.setListing(directive, assembler, context);
 	}
 
-	private setListing(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
+	private setListing(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
 		const argsToken = assembler.getInstructionTokens();
 
 		if (argsToken.length !== 1) {

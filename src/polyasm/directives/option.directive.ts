@@ -1,6 +1,6 @@
-import { type IDirective, type DirectiveContext, ADVANCE_TO_NEXT_LINE } from "./directive.interface";
-import type { Assembler } from "../polyasm";
 import type { ScalarToken } from "../lexer/lexer.class";
+import type { Assembler } from "../polyasm";
+import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
 
 export class OptionDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
@@ -8,7 +8,7 @@ export class OptionDirective implements IDirective {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+	public handlePassTwo(_directive: ScalarToken, _assembler: Assembler, _context: DirectiveContext): number {
 		return ADVANCE_TO_NEXT_LINE;
 	}
 
