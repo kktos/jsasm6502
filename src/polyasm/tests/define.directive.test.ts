@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DirectiveContext } from "../directives/directive.interface";
-import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+import type { SymbolValue } from "../symbol.class";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -29,7 +31,7 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 
 describe(".DEFINE Directive", () => {
 	const createAssembler = (
-		defineSymbolHandlers: Map<string, (blockContent: string, context: DirectiveContext) => number>,
+		defineSymbolHandlers: Map<string, (blockContent: string, context: DirectiveContext) => SymbolValue>,
 		segments: SegmentDefinition[] = DEFAULT_SEGMENTS,
 	) => {
 		const mockFileHandler = new MockFileHandler();
@@ -38,11 +40,10 @@ describe(".DEFINE Directive", () => {
 
 	it("should call the external handler and define the symbol", () => {
 		// 1. Create a mock handler function
-		const mockHandler = vi.fn((blockContent: string, _context: DirectiveContext) => {
-			// Example: handler calculates the length of the content
-			return blockContent.trim().length;
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => {
+			return blockContent;
 		});
-		const handlers = new Map([["TEST_HANDLER", mockHandler]]);
+		const handlers = new Map([["text", textHandler]]);
 
 		// 2. Create assembler with the handler
 		const assembler = createAssembler(handlers);
@@ -62,7 +63,7 @@ describe(".DEFINE Directive", () => {
                 that the handler will process.`);
 	});
 
-	it("should throw an error for an unknown handler", () => {
+	it("should throw an error for a duplicate symbol definition", () => {
 		const assembler = createAssembler(new Map());
 		const source = `
 			.DEFINE MY_SYMBOL
@@ -71,5 +72,48 @@ describe(".DEFINE Directive", () => {
 			.END
 		`;
 		expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: PASymbol global::MY_SYMBOL redefined.");
+	});
+
+	it("should throw an error for an unknown handler", () => {
+		const assembler = createAssembler(new Map());
+		const source = `
+			.DEFINE MY_SYMBOL AS TOML
+			.END
+		`;
+		expect(() => assembler.assemble(source)).toThrow("'.DEFINE' directive on line 2; unknown Data Processor 'TOML'.");
+	});
+
+	it("should return a text with a TEXT processor", () => {
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
+		const handlers = new Map([["TEXT", textHandler]]);
+		const assembler = createAssembler(handlers);
+
+		const source = `
+			.DEFINE MY_SYMBOL AS TEXT
+			toto
+			.END
+		`;
+		assembler.assemble(source);
+
+		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+		expect(symbolValue?.toString().trim()).toBe("toto");
+	});
+
+	it("should return a text with a TEXT processor", () => {
+		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
+		const handlers = new Map([["JSON", jsonHandler]]);
+		const assembler = createAssembler(handlers);
+
+		const source = `
+			.DEFINE MY_SYMBOL AS JSON
+			{
+				"name": "tata"
+			}
+			.END
+		`;
+		assembler.assemble(source);
+
+		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
+		expect(symbolValue).toEqual({ name: "tata" });
 	});
 });
