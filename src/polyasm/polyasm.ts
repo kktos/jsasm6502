@@ -1,6 +1,5 @@
 import { EventEmitter } from "node:events";
 import type { CPUHandler } from "./cpu/cpuhandler.class";
-import type { DirectiveContext } from "./directives/directive.interface";
 import { DirectiveHandler } from "./directives/handler";
 import { MacroHandler } from "./directives/macro/handler";
 import type { MacroDefinition } from "./directives/macro/macro.interface";
@@ -8,42 +7,10 @@ import { ExpressionEvaluator } from "./expression";
 import { AssemblyLexer, type IdentifierToken, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
 import { Linker, type Segment } from "./linker.class";
 import { Logger } from "./logger";
-import { PASymbolTable, type SymbolValue } from "./symbol.class";
+import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
+import { PASymbolTable } from "./symbol.class";
 
 const DEFAULT_PC = 0x1000;
-
-/** Defines the state of an active token stream. */
-interface StreamState {
-	id: number;
-	tokens: Token[];
-	index: number;
-	macroArgs?: Map<string, Token[]>;
-}
-
-// Segment moved to `linker.class.ts`.
-
-export interface FileHandler {
-	/** Reads raw source content and returns the string content for .INCLUDE. */
-	readSourceFile(filename: string): string;
-
-	/** Reads raw file content and returns the byte array for .INCBIN. */
-	readBinaryFile(filename: string): number[];
-}
-
-/** Defines a segment for the linker. */
-export interface SegmentDefinition {
-	name: string;
-	start: number;
-	size: number;
-	padValue?: number;
-	resizable?: boolean;
-}
-
-export interface AssemblerOptions {
-	segments?: SegmentDefinition[];
-	logger?: Logger;
-	rawDataProcessors?: Map<string, (rawData: string, context: DirectiveContext) => SymbolValue>;
-}
 
 export class Assembler {
 	public lexer: AssemblyLexer;
@@ -72,7 +39,7 @@ export class Assembler {
 	public expressionEvaluator: ExpressionEvaluator;
 	public directiveHandler: DirectiveHandler;
 	public macroHandler: MacroHandler;
-	private rawDataProcessors?: Map<string, (rawData: string, context: DirectiveContext) => SymbolValue>;
+	private rawDataProcessors?: Map<string, DataProcessor>;
 	public emitter: EventEmitter;
 
 	constructor(handler: CPUHandler, fileHandler: FileHandler, options?: AssemblerOptions) {

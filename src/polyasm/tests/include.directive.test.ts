@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
+import { Assembler } from "../polyasm";
+import { type FileHandler, type SegmentDefinition } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {

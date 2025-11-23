@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import type { Token } from "../lexer/lexer.class";
 import { Logger } from "../logger";
-import { Assembler, type FileHandler, type SegmentDefinition } from "../polyasm";
+import { Assembler } from "../polyasm";
+import { type FileHandler, type SegmentDefinition } from "../polyasm.types";
 
 const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
 
