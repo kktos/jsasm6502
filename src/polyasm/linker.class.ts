@@ -43,11 +43,10 @@ export class Linker {
 			);
 
 		if (offset >= active.data.length) {
-			if (!active.resizable) {
-				throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
-			}
+			if (!active.resizable) throw new Error(`Internal error: segment '${active.name}' data shorter than declared size and not resizable.`);
+
 			const needed = offset + values.length - active.data.length;
-			active.data.push(...new Array(needed).fill(0));
+			active.data.push(...new Array(needed).fill(active.padValue ?? 0));
 		}
 
 		// active.data[offset] = value & 0xff;

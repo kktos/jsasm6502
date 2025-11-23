@@ -56,10 +56,8 @@ export class AlignDirective implements IDirective {
 	private parseArguments(tokens: Token[]): [Token[], Token[]] {
 		const commaIndex = tokens.findIndex((t) => t.type === "COMMA");
 
-		if (commaIndex === -1) {
-			// No comma, all tokens are for the boundary.
-			return [tokens, []];
-		}
+		// No comma, all tokens are for the boundary.
+		if (commaIndex === -1) return [tokens, []];
 
 		const boundaryTokens = tokens.slice(0, commaIndex);
 		const valueTokens = tokens.slice(commaIndex + 1);
