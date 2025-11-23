@@ -2,7 +2,6 @@ import type { SymbolValue } from "../symbol.class";
 
 export type TokenType =
 	// Structural
-	| "DIRECTIVE" // .MACRO, .EQU, .ORG, etc.
 	| "IDENTIFIER" // labels, symbols, instructions
 	| "LABEL" // identifier followed by ':'
 	| "LOCAL_LABEL" // :loop
@@ -19,7 +18,7 @@ export type TokenType =
 	| "OPERATOR"
 
 	// Operators
-	| "DOT" // . (when not part of directive)
+	| "DOT"
 	| "COMMA"
 	| "HASH"
 	| "LPAREN"
@@ -53,7 +52,6 @@ export type StringValueToken<T extends TokenType> = BaseToken & {
 export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
 export type OperatorStackToken = OperatorToken | FunctionToken;
-export type DirectiveToken = StringValueToken<"DIRECTIVE">;
 export type IdentifierToken = StringValueToken<"IDENTIFIER">;
 
 export type ScalarToken = StringValueToken<Exclude<TokenType, "ARRAY">>;
