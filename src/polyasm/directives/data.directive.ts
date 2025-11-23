@@ -1,6 +1,6 @@
 import type { ScalarToken, Token } from "../lexer/lexer.class";
 import type { Assembler } from "../polyasm";
-import { ADVANCE_TO_NEXT_LINE, type DirectiveContext, type IDirective } from "./directive.interface";
+import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DataDirective implements IDirective {
 	private readonly bytesPerElement: number;
@@ -9,28 +9,18 @@ export class DataDirective implements IDirective {
 		this.bytesPerElement = bytesPerElement;
 	}
 
-	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): number {
-		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
-		const startIndex = assembler.getPosition();
-		assembler.currentPC += this.calculateDirectiveSize(assembler, startIndex);
-		return ADVANCE_TO_NEXT_LINE;
+	public handlePassOne(_directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+		if (assembler.isAssembling) assembler.currentPC += this.calculateDirectiveSize(assembler);
 	}
 
-	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number {
+	public handlePassTwo(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		if (assembler.isAssembling) {
-			const bytes = this.encodeDataDirective(directive, assembler, context);
+			const bytes = this.encodeDataDirective(assembler, context);
 			assembler.writeBytes(bytes);
-		} else {
-			// If not assembling (e.g., inside a false .IF block), just calculate size to advance PC
-			// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
-			const startIndex = assembler.getPosition();
-			assembler.currentPC += this.calculateDirectiveSize(assembler, startIndex);
 		}
-
-		return ADVANCE_TO_NEXT_LINE;
 	}
 
-	private calculateDirectiveSize(assembler: Assembler, _tokenIndex: number): number {
+	private calculateDirectiveSize(assembler: Assembler): number {
 		if (this.bytesPerElement === 0) {
 			// Special case for .TEXT or similar string-only directives
 		}
@@ -64,7 +54,7 @@ export class DataDirective implements IDirective {
 		return totalSize;
 	}
 
-	private encodeDataDirective(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext): number[] {
+	private encodeDataDirective(assembler: Assembler, context: DirectiveContext): number[] {
 		const argTokens = assembler.getInstructionTokens();
 		const outputBytes: number[] = [];
 		let currentExpression: Token[] = [];
@@ -73,11 +63,9 @@ export class DataDirective implements IDirective {
 			if (currentExpression.length === 0) return;
 
 			const value = assembler.expressionEvaluator.evaluateAsNumber(currentExpression, context);
-			// This check is now redundant due to evaluateAsNumber, but good for safety
-			if (typeof value !== "number") throw new Error("Data directive expression must evaluate to a number.");
-			for (let i = 0; i < this.bytesPerElement; i++) {
-				outputBytes.push((value >> (i * 8)) & 0xff);
-			}
+
+			for (let i = 0; i < this.bytesPerElement; i++) outputBytes.push((value >> (i * 8)) & 0xff);
+
 			currentExpression = [];
 		};
 
@@ -86,9 +74,7 @@ export class DataDirective implements IDirective {
 				case "STRING": {
 					evaluateAndPush(); // Push any pending expression before the string
 					const strValue = token.value;
-					for (let i = 0; i < strValue.length; i++) {
-						outputBytes.push(strValue.charCodeAt(i));
-					}
+					for (let i = 0; i < strValue.length; i++) outputBytes.push(strValue.charCodeAt(i));
 					break;
 				}
 				case "COMMA":

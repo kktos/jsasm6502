@@ -25,9 +25,6 @@ export class ConditionalDirective implements IDirective {
 	 * as long as it receives the appropriate context.
 	 */
 	private handleConditional(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		// Only evaluate if we are not inside a non-assembling block
-		const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
-
 		const checkCondition = (expressionTokens: Token[]): boolean => {
 			try {
 				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, context);
@@ -40,6 +37,7 @@ export class ConditionalDirective implements IDirective {
 
 		switch (directive.value) {
 			case "IF": {
+				const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
 				const expressionTokens = assembler.getInstructionTokens();
 				const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 				this.conditionalStack.push({ isTrue: condition, hasPassed: condition });
@@ -47,6 +45,7 @@ export class ConditionalDirective implements IDirective {
 			}
 
 			case "ELSEIF": {
+				const parentShouldEvaluate = this.conditionalStack.slice(0, -1).every((block) => block.isTrue);
 				const topIf = this.conditionalStack[this.conditionalStack.length - 1];
 				if (!topIf) return;
 
@@ -54,7 +53,7 @@ export class ConditionalDirective implements IDirective {
 					topIf.isTrue = false;
 				} else {
 					const expressionTokens = assembler.getInstructionTokens();
-					const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
+					const condition = parentShouldEvaluate ? checkCondition(expressionTokens) : false;
 					topIf.isTrue = condition;
 					topIf.hasPassed = condition;
 				}

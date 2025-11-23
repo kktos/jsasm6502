@@ -86,11 +86,6 @@ export class Assembler {
 	public writeBytes(bytes: number[]): void {
 		this.linker.writeBytes(this.currentPC, bytes);
 		this.currentPC += bytes.length;
-
-		// for (const b of bytes) {
-		// 	this.linker.writeByte(this.currentPC, b);
-		// 	this.currentPC += 1;
-		// }
 	}
 
 	public getDataProcessor(name: string) {
@@ -167,20 +162,15 @@ export class Assembler {
 		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
 
 		while (true) {
-			// const token = this.peekToken(0);
 			const token = this.nextToken();
 			if (!token || token.type === "EOF") break;
-
-			// Always update PC symbol before any instruction/data
-			// this.symbolTable.setSymbol("*", this.currentPC);
 
 			switch (token.type) {
 				// case "DIRECTIVE": {
 				case "DOT": {
-					const nextToken = this.peekToken(0);
-					if (nextToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
-
 					const directiveToken = this.nextToken() as ScalarToken;
+					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+
 					const directiveContext = {
 						pc: this.currentPC,
 						allowForwardRef: true,
@@ -370,10 +360,9 @@ export class Assembler {
 				}
 
 				case "DOT": {
-					const nextToken = this.peekToken(0);
-					if (nextToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
-
 					const directiveToken = this.nextToken() as ScalarToken;
+					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+
 					const streamBefore = this.tokenStreamStack.length;
 					const directiveContext = {
 						pc: this.currentPC,
