@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, it, test } from "vitest";
 import { AssemblyLexer, type Token } from "./lexer.class";
 
 describe("AssemblyLexer", () => {
@@ -29,7 +29,9 @@ describe("AssemblyLexer", () => {
 		expect(stripLocation(tokens)).toEqual([
 			{ type: "LABEL", value: "LOOP", raw: undefined },
 			{ type: "IDENTIFIER", value: "NOP", raw: "NOP" },
-			{ type: "IDENTIFIER", value: "LDA.W", raw: "LDA.W" },
+			{ type: "IDENTIFIER", value: "LDA", raw: "LDA" },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "W", raw: "W" },
 			{ type: "IDENTIFIER", value: "VALUE", raw: "VALUE" },
 		]);
 	});
@@ -67,9 +69,11 @@ describe("AssemblyLexer", () => {
 		const source = '.ORG $8000\n.BYTE "Hello, World!", $0D, $0A';
 		const tokens = lexer.tokenize(source);
 		expect(stripLocation(tokens)).toEqual([
-			{ type: "DIRECTIVE", value: ".ORG", raw: undefined },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "ORG", raw: "ORG" },
 			{ type: "NUMBER", value: "32768", raw: "$8000" },
-			{ type: "DIRECTIVE", value: ".BYTE", raw: undefined },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "BYTE", raw: "BYTE" },
 			{ type: "STRING", value: "Hello, World!", raw: undefined },
 			{ type: "COMMA", value: ",", raw: undefined },
 			{ type: "NUMBER", value: "13", raw: "$0D" },
@@ -131,7 +135,7 @@ describe("AssemblyLexer", () => {
 			{ type: "IDENTIFIER", value: "LDA", raw: "LDA" },
 			{ type: "OPERATOR", value: "(", raw: undefined },
 			{ type: "OPERATOR", value: "<", raw: undefined },
-			{ type: "IDENTIFIER", value: "ADDRESS", raw: "ADDRESS" },
+			{ type: "IDENTIFIER", value: "ADDRESS", raw: "address" },
 			{ type: "OPERATOR", value: "+", raw: undefined },
 			{ type: "NUMBER", value: "1", raw: "1" },
 			{ type: "OPERATOR", value: ">", raw: undefined },
@@ -156,6 +160,62 @@ describe("AssemblyLexer", () => {
 		]);
 	});
 
+	it("should recognize directive", () => {
+		const source = `
+		  .SEGMENT EXPR_SEG
+		  .BYTE $CA, $FE
+		`;
+		const tokens = lexer.tokenize(source);
+		expect(stripLocation(tokens)).toEqual([
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "SEGMENT", raw: "SEGMENT" },
+			{ type: "IDENTIFIER", value: "EXPR_SEG", raw: "EXPR_SEG" },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "BYTE", raw: "BYTE" },
+			{ type: "NUMBER", value: "202", raw: "$CA" },
+			{ type: "COMMA", value: ",", raw: undefined },
+			{ type: "NUMBER", value: "254", raw: "$FE" },
+			{ type: "EOF", value: "", raw: undefined },
+		]);
+	});
+
+	it("should recognize a label and a directive", () => {
+		const source = `
+		  test .EQU 0
+		`;
+		const tokens = lexer.tokenize(source);
+		expect(stripLocation(tokens)).toEqual([
+			{ type: "IDENTIFIER", value: "TEST", raw: "test" },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "EQU", raw: "EQU" },
+			{ type: "NUMBER", value: "0", raw: "0" },
+			{ type: "EOF", value: "", raw: undefined },
+		]);
+	});
+
+	it("should handle object properties", () => {
+		const source = "shape.name";
+		const tokens = lexer.tokenize(source);
+		expect(stripLocation(tokens)).toEqual([
+			{ type: "IDENTIFIER", value: "SHAPE", raw: "shape" },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "NAME", raw: "name" },
+		]);
+	});
+
+	test("should handle object properties and array indices", () => {
+		const source = "shapes[0].name";
+		const tokens = lexer.tokenize(source);
+		expect(stripLocation(tokens)).toEqual([
+			{ type: "IDENTIFIER", value: "SHAPES", raw: "shapes" },
+			{ type: "OPERATOR", value: "[", raw: undefined },
+			{ type: "NUMBER", value: "0", raw: "0" },
+			{ type: "OPERATOR", value: "]", raw: undefined },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "NAME", raw: "name" },
+		]);
+	});
+
 	test("should tokenize raw text block on demand", () => {
 		const source = `
 			.DEFINE myVar
@@ -173,6 +233,7 @@ describe("AssemblyLexer", () => {
 		lexer.nextToken();
 		// 1. Get .DEFINE directive
 		tokens.push(lexer.nextToken() as Token);
+		tokens.push(lexer.nextToken() as Token);
 		// 2. Get the end marker
 		lexer.nextToken() as Token;
 		// 3. Instruct the lexer to get the raw text block
@@ -189,7 +250,8 @@ describe("AssemblyLexer", () => {
 
 		expect(stripLocation(tokens)).toEqual([
 			// expect(tokens).toEqual([
-			{ type: "DIRECTIVE", value: ".DEFINE", raw: undefined },
+			{ type: "DOT", value: ".", raw: undefined },
+			{ type: "IDENTIFIER", value: "DEFINE", raw: "DEFINE" },
 			{
 				type: "RAW_TEXT",
 				value:

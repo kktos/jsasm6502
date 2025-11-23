@@ -175,7 +175,12 @@ export class Assembler {
 			// this.symbolTable.setSymbol("*", this.currentPC);
 
 			switch (token.type) {
-				case "DIRECTIVE": {
+				// case "DIRECTIVE": {
+				case "DOT": {
+					const nextToken = this.peekToken(0);
+					if (nextToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+
+					const directiveToken = this.nextToken() as ScalarToken;
 					const directiveContext = {
 						pc: this.currentPC,
 						allowForwardRef: true,
@@ -183,19 +188,32 @@ export class Assembler {
 						options: this.options,
 					};
 
-					this.directiveHandler.handlePassOneDirective(token, directiveContext);
+					this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext);
 					break;
+				}
+
+				case "OPERATOR": {
+					if (token.value === "*") {
+						this.lastGlobalLabel = "*";
+						break;
+					}
+
+					if (token.value === "=" && this.lastGlobalLabel) {
+						this.handleLabelInPassOne(token, this.lastGlobalLabel);
+						break;
+					}
+					throw new Error(`Syntax error in line ${token.line}`);
 				}
 
 				case "IDENTIFIER":
 				case "LABEL": {
 					// PRIORITY 1: SYMBOL ASSIGNMENT (IDENTIFIER .EQU VALUE)
-					const nextToken = this.peekToken(0);
-					if (nextToken && (nextToken.value === ".EQU" || nextToken.value === "=" || nextToken.value === ":")) {
-						this.consume(1);
-						this.handleLabelInPassOne(nextToken, token as ScalarToken);
-						break;
-					}
+					// const nextToken = this.peekToken(0);
+					// if (nextToken && (nextToken.value === "EQU" || nextToken.value === "=" || nextToken.value === ":")) {
+					// 	this.consume(1);
+					// 	this.handleLabelInPassOne(nextToken, token as ScalarToken);
+					// 	break;
+					// }
 
 					// PRIORITY 2: MACRO
 					if (this.macroHandler.isMacro(token.value)) {
@@ -219,31 +237,171 @@ export class Assembler {
 					this.symbolTable.addSymbol(token.value, this.currentPC);
 					this.logger.log(`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase()}`);
 
-					// Consume only the label token, and let the loop re-evaluate the next token (the instruction/directive)
-					// this.consume(1);
-
 					break;
 				}
 
 				case "LOCAL_LABEL": {
-					if (!this.lastGlobalLabel) {
-						this.logger.error(`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`);
-					} else {
+					if (this.lastGlobalLabel) {
 						const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
 						this.symbolTable.addSymbol(qualifiedName, this.currentPC);
+						break;
 					}
-					// this.consume(1);
+
+					this.logger.error(`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`);
 					break;
 				}
 
 				case "ANONYMOUS_LABEL_DEF": {
 					this.anonymousLabels.push(this.currentPC);
-					// this.consume(1);
+					break;
+				}
+			}
+		}
+	}
+
+	private passTwo(): void {
+		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
+		this.pass = 2;
+		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
+
+		// this.symbolTable.setSymbol("*", this.currentPC);
+		this.anonymousLabels = [];
+		this.lastGlobalLabel = null;
+
+		while (this.tokenStreamStack.length > 0) {
+			// const token = this.peekToken(0);
+			const token = this.nextToken();
+			// If no token or EOF, pop the active stream
+			if (!token || token.type === "EOF") {
+				const poppedStream = this.popTokenStream(false); // Don't emit event yet
+				if (this.tokenStreamStack.length === 0) break;
+				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+				continue;
+			}
+
+			// this.symbolTable.setSymbol("*", this.currentPC);
+
+			switch (token.type) {
+				case "OPERATOR": {
+					if (token.value === "*") {
+						this.lastGlobalLabel = "*";
+						break;
+					}
+
+					if (token.value === "=" && this.lastGlobalLabel) {
+						this.handleSymbolInPassTwo(this.lastGlobalLabel, token);
+						break;
+					}
+					throw new Error(`Syntax error in line ${token.line}`);
+				}
+
+				case "IDENTIFIER": {
+					// const nextToken = this.peekToken(0);
+					// if (nextToken?.value === ".EQU" || nextToken?.value === "=") {
+					// 	this.handleSymbolInPassTwo(token as ScalarToken);
+					// 	break;
+					// }
+
+					if (this.macroHandler.isMacro(token.value)) {
+						this.macroHandler.expandMacro(token);
+						break;
+					}
+
+					if (this.cpuHandler.isInstruction(token.value)) {
+						const instructionPC = this.currentPC;
+						// It's an instruction.
+						const mnemonicToken = token as OperatorStackToken;
+						const operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
+
+						if (this.isAssembling) {
+							try {
+								// 1. Resolve Mode & Address
+								const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
+									this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+										pc: this.currentPC,
+										macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+										assembler: this,
+										currentGlobalLabel: this.lastGlobalLabel,
+										options: this.options,
+									}),
+								);
+
+								// 2. Encode Bytes using resolved info
+								const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
+									...modeInfo,
+									pc: this.currentPC,
+								});
+
+								// 3. LOGGING (New location)
+								const hexBytes = encodedBytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+								const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
+								const operandString = operandTokens.map((t) => t.value).join("");
+								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${token.line}`);
+
+								this.linker.writeBytes(this.currentPC, encodedBytes);
+								this.currentPC += encodedBytes.length;
+
+								// Write each encoded byte into the segment that covers the current PC
+								// for (const b of encodedBytes) {
+								// 	this.linker.writeByte(this.currentPC, b);
+								// 	this.currentPC += 1;
+								// }
+							} catch (e) {
+								const errorMessage = e instanceof Error ? e.message : String(e);
+								this.logger.error(`\nFATAL ERROR on line ${token.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
+								throw new Error(`Assembly failed on line ${token.line}: ${errorMessage}`); // Stop execution
+							}
+						} else {
+							// Not assembling: just advance PC
+							this.currentPC += this.getInstructionSize();
+						}
+						// this.setPosition(this.skipToEndOfLine());
+						break;
+					}
+
+					if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
+						// It's a label definition (e.g., MyLoop:).
+						// Consume only the label token, and let the loop handle the instruction on the next iteration.
+						this.lastGlobalLabel = token.value;
+						break;
+					}
+
 					break;
 				}
 
-				// default:
-				// this.consume(1);
+				case "DOT": {
+					const nextToken = this.peekToken(0);
+					if (nextToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
+
+					const directiveToken = this.nextToken() as ScalarToken;
+					const streamBefore = this.tokenStreamStack.length;
+					const directiveContext = {
+						pc: this.currentPC,
+						macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+						currentGlobalLabel: this.lastGlobalLabel,
+						options: this.options,
+					};
+
+					this.directiveHandler.handlePassTwoDirective(directiveToken, directiveContext);
+
+					if (this.tokenStreamStack.length > streamBefore) {
+						// A new stream was pushed. The active context has changed, so we must start at its beginning.
+						this.setPosition(0);
+						break;
+					}
+					break;
+				}
+
+				case "LABEL":
+					this.lastGlobalLabel = token.value;
+					break;
+
+				// case "LOCAL_LABEL":
+				// 	this.currentTokenIndex++;
+				// 	break;
+				case "ANONYMOUS_LABEL_DEF":
+					this.anonymousLabels.push(this.currentPC);
+					break;
 			}
 		}
 	}
@@ -354,11 +512,10 @@ export class Assembler {
 		this.setPosition(i);
 	}
 
-	private handleLabelInPassOne(nextToken: Token, token: ScalarToken): void {
+	public handleLabelInPassOne(nextToken: Token, labelToken: string): void {
 		switch (nextToken.value) {
-			case ".EQU":
+			case "EQU":
 			case "=": {
-				const labelToken = token;
 				// Start expression after .EQU or =
 				const expressionTokens = this.getInstructionTokens();
 
@@ -370,39 +527,35 @@ export class Assembler {
 						options: this.options,
 					});
 
-					if (Array.isArray(value)) this.logger.log(`[PASS 1] Defined array symbol ${labelToken.value} with ${value.length} elements.`);
-					else this.logger.log(`[PASS 1] Defined symbol ${labelToken.value} = $${value.toString(16).toUpperCase()}`);
+					if (Array.isArray(value)) this.logger.log(`[PASS 1] Defined array symbol ${labelToken} with ${value.length} elements.`);
+					else this.logger.log(`[PASS 1] Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
 
-					if (this.symbolTable.lookupSymbol(labelToken.value) !== undefined) this.symbolTable.setSymbol(labelToken.value, value);
-					else this.symbolTable.addSymbol(labelToken.value, value);
+					if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
+					else this.symbolTable.addSymbol(labelToken, value);
 				} catch (e) {
-					this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken.value}: ${e}`);
+					this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken}: ${e}`);
 				}
 
-				// this.setPosition(this.skipToEndOfLine(this.getPosition()));
 				break;
 			}
 
-			case ":": {
-				this.lastGlobalLabel = token.value;
-				this.symbolTable.addSymbol(token.value, this.currentPC);
-				this.logger.log(`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
+			// case ":": {
+			// 	this.lastGlobalLabel = token.value;
+			// 	this.symbolTable.addSymbol(token.value, this.currentPC);
+			// 	this.logger.log(`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
 
-				// Consume the label (IDENTIFIER) AND the colon (OPERATOR)
-				this.consume(2);
-				break;
-			}
+			// 	// Consume the label (IDENTIFIER) AND the colon (OPERATOR)
+			// 	this.consume(2);
+			// 	break;
+			// }
 		}
 	}
 
-	private handleSymbolInPassTwo(token: ScalarToken): void {
+	public handleSymbolInPassTwo(label: string, token: ScalarToken): void {
 		// Re-evaluate symbol assignment in Pass 2 so forward-references
 		// that were unresolved in Pass 1 can be resolved now.
-		// Current position points at the assignment operator ('.EQU' / '=').
-		const equPos = this.getPosition(); // position of .EQU token
-		const exprStart = equPos + 1;
-		const exprEnd = this.skipToEndOfLine(equPos);
-		const expressionTokens = this.sliceTokens(exprStart, exprEnd);
+
+		const expressionTokens = this.getExpressionTokens(token);
 
 		try {
 			const value = this.expressionEvaluator.evaluate(expressionTokens, {
@@ -414,23 +567,20 @@ export class Assembler {
 
 			// If evaluation produced undefined, treat as an error in Pass 2
 			if (value === undefined) {
-				this.logger.error(`[PASS 2] ERROR defining .EQU for ${token.value}: unresolved expression`);
-				throw new Error(`Pass 2: Unresolved assignment for ${token.value} on line ${token.line}`);
+				this.logger.error(`[PASS 2] ERROR defining .EQU for ${label}: unresolved expression`);
+				throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
 			}
 
-			if (Array.isArray(value)) this.logger.log(`[PASS 2] Defined array symbol ${token.value} with ${value.length} elements.`);
-			else this.logger.log(`[PASS 2] Defined symbol ${token.value} = $${(value as number).toString(16).toUpperCase()}`);
+			if (Array.isArray(value)) this.logger.log(`[PASS 2] Defined array symbol ${label} with ${value.length} elements.`);
+			else this.logger.log(`[PASS 2] Defined symbol ${label} = $${(value as number).toString(16).toUpperCase()}`);
 
 			// If symbol exists already, update it; otherwise add it as a constant.
-			if (this.symbolTable.lookupSymbol(token.value) !== undefined) this.symbolTable.setSymbol(token.value, value);
-			else this.symbolTable.addSymbol(token.value, value);
+			if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
+			else this.symbolTable.addSymbol(label, value);
 		} catch (e) {
-			this.logger.error(`[PASS 2] ERROR defining .EQU for ${token.value}: ${e}`);
+			this.logger.error(`[PASS 2] ERROR defining .EQU for ${label}: ${e}`);
 			throw e instanceof Error ? e : new Error(String(e));
 		}
-
-		// Advance to the end of line and continue
-		this.setPosition(exprEnd);
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
@@ -454,150 +604,6 @@ export class Assembler {
 			// In case of error, assume a default size to prevent cascading PC errors.
 			// A better approach might be to halt or use a more intelligent guess.
 			this.currentPC += 1;
-		}
-	}
-
-	private passTwo(): void {
-		this.logger.log(`\n--- Starting Pass 2: Code Generation (${this.cpuHandler.cpuType}) ---`);
-		this.pass = 2;
-		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
-
-		// this.symbolTable.setSymbol("*", this.currentPC);
-		this.anonymousLabels = [];
-		this.lastGlobalLabel = null;
-
-		while (this.tokenStreamStack.length > 0) {
-			// const token = this.peekToken(0);
-			const token = this.nextToken();
-			// If no token or EOF, pop the active stream
-			if (!token || token.type === "EOF") {
-				const poppedStream = this.popTokenStream(false); // Don't emit event yet
-				if (this.tokenStreamStack.length === 0) break;
-				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
-				continue;
-			}
-
-			// this.symbolTable.setSymbol("*", this.currentPC);
-
-			switch (token.type) {
-				case "IDENTIFIER": {
-					const nextToken = this.peekToken(0);
-					if (nextToken?.value === ".EQU" || nextToken?.value === "=") {
-						this.handleSymbolInPassTwo(token as ScalarToken);
-						break;
-					}
-
-					if (this.macroHandler.isMacro(token.value)) {
-						this.macroHandler.expandMacro(token);
-						break;
-					}
-
-					if (this.cpuHandler.isInstruction(token.value)) {
-						const instructionPC = this.currentPC;
-						// It's an instruction.
-						const mnemonicToken = token as OperatorStackToken;
-						const operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
-
-						if (this.isAssembling) {
-							try {
-								// 1. Resolve Mode & Address
-								const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-									this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-										pc: this.currentPC,
-										macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
-										assembler: this,
-										currentGlobalLabel: this.lastGlobalLabel,
-										options: this.options,
-									}),
-								);
-
-								// 2. Encode Bytes using resolved info
-								const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
-									...modeInfo,
-									pc: this.currentPC,
-								});
-
-								// 3. LOGGING (New location)
-								const hexBytes = encodedBytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
-								const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-								const operandString = operandTokens.map((t) => t.value).join("");
-								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${token.line}`);
-
-								this.linker.writeBytes(this.currentPC, encodedBytes);
-								this.currentPC += encodedBytes.length;
-
-								// Write each encoded byte into the segment that covers the current PC
-								// for (const b of encodedBytes) {
-								// 	this.linker.writeByte(this.currentPC, b);
-								// 	this.currentPC += 1;
-								// }
-							} catch (e) {
-								const errorMessage = e instanceof Error ? e.message : String(e);
-								this.logger.error(`\nFATAL ERROR on line ${token.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
-								throw new Error(`Assembly failed on line ${token.line}: ${errorMessage}`); // Stop execution
-							}
-						} else {
-							// Not assembling: just advance PC
-							this.currentPC += this.getInstructionSize();
-						}
-						// this.setPosition(this.skipToEndOfLine());
-						break;
-					}
-
-					if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
-						// It's a label definition (e.g., MyLoop:).
-						// Consume only the label token, and let the loop handle the instruction on the next iteration.
-						this.lastGlobalLabel = token.value;
-						break;
-					}
-
-					break;
-				}
-
-				case "DIRECTIVE": {
-					const streamBefore = this.tokenStreamStack.length;
-					const directiveContext = {
-						pc: this.currentPC,
-						macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
-						currentGlobalLabel: this.lastGlobalLabel,
-						options: this.options,
-					};
-
-					this.directiveHandler.handlePassTwoDirective(token, directiveContext);
-
-					if (this.tokenStreamStack.length > streamBefore) {
-						// A new stream was pushed. The active context has changed, so we must start at its beginning.
-						this.setPosition(0);
-						break;
-					}
-					/*
-					if (nextTokenIndex === ADVANCE_TO_NEXT_LINE) {
-						// Directive requested default "next line" behavior.
-						this.setPosition(this.skipToEndOfLine(this.getPosition()));
-					} else {
-						// Directive is a block and has returned the exact index to continue from.
-						this.setPosition(nextTokenIndex);
-					}
-					*/
-					break;
-				}
-
-				case "LABEL":
-					this.lastGlobalLabel = token.value;
-					// this.consume(1);
-					break;
-				// This is a definition, already handled in Pass 1. Just skip it.
-				// case "LOCAL_LABEL":
-				// 	this.currentTokenIndex++;
-				// 	break;
-				case "ANONYMOUS_LABEL_DEF":
-					this.anonymousLabels.push(this.currentPC);
-					// this.consume(1);
-					break;
-
-				// default:
-				// 	this.consume(1);
-			}
 		}
 	}
 
@@ -704,24 +710,27 @@ export class Assembler {
 			if (!token) return null;
 
 			// Check for block start
-			if (token.type === "DIRECTIVE" && token.value === startDirective) {
-				depth++;
+			const nextToken = this.peekToken();
+			if (token.type === "DOT" && nextToken?.type === "IDENTIFIER") {
+				this.consume();
+				switch (nextToken?.value) {
+					case startDirective:
+						depth++;
+						break;
+
+					case "END":
+						depth--;
+						if (depth <= 0) return tokens; // Don't include .END
+						break;
+				}
 				tokens.push(token);
+				tokens.push(nextToken);
 				continue;
 			}
 
 			if (token.value === "{") {
 				depth++;
 				// Don't push opening brace
-				continue;
-			}
-
-			// Check for block end
-			if (token.type === "DIRECTIVE" && token.value === ".END") {
-				depth--;
-				if (depth <= 0) return tokens; // Don't include .END
-
-				tokens.push(token);
 				continue;
 			}
 
@@ -771,13 +780,25 @@ export class Assembler {
 			this.consume(1);
 			if (!token) break;
 
-			if ((token.type === "DIRECTIVE" && token.value === startDirective) || token.value === "{") {
-				depth++;
+			const nextToken = this.peekToken();
+			if (token.type === "DOT" && nextToken?.type === "IDENTIFIER") {
+				this.consume();
+				switch (nextToken?.value) {
+					case startDirective:
+						depth++;
+						break;
+
+					case "END":
+						depth--;
+						if (depth <= 0) return i; // Don't include .END
+						break;
+				}
+				i += 2;
+				continue;
 			}
 
-			if (token.type === "DIRECTIVE" && token.value === ".END") {
-				depth--;
-				if (depth <= 0) return i;
+			if (token.value === "{") {
+				depth++;
 			}
 
 			if (token.value === "}") {

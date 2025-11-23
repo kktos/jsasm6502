@@ -18,14 +18,14 @@ export function resolveSysVar(token: Token, context: SysVarContext): SymbolValue
 	const name = String(token.value).toUpperCase();
 
 	switch (name) {
-		case ".NAMESPACE":
-		case ".NS":
+		case "NAMESPACE":
+		case "NS":
 			return context.symbolTable.getCurrentNamespace();
 
-		case ".PC":
+		case "PC":
 			return context.pc;
 
-		case ".PASS":
+		case "PASS":
 			return context.pass;
 
 		default:

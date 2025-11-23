@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
 import { Assembler } from "../polyasm";
-import { type FileHandler } from "../polyasm.types";
+import type { FileHandler } from "../polyasm.types";
 import { hexDump } from "../utils/hexdump.util";
 
 const _TEMP = `

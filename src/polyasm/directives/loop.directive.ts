@@ -15,27 +15,26 @@ interface LoopState {
 }
 
 export class LoopDirective implements IDirective {
+	// A map to store the state of active loops between iterations. Key: A unique identifier for the loop.
+	private loopStates: Map<string, LoopState> = new Map();
+
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		assembler.skipToDirectiveEnd(directive.value);
 		return undefined;
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		if (directive.value === ".FOR") {
-			this.handleForLoop(directive, assembler);
-			return undefined;
+		switch (directive.value) {
+			case "FOR":
+				this.handleForLoop(directive, assembler);
+				return;
+			case "REPEAT":
+				this.handleRepeatLoop(directive, assembler);
+				return;
+			default:
+				throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
 		}
-
-		if (directive.value === ".REPEAT") {
-			this.handleRepeatLoop(directive, assembler);
-			return undefined;
-		}
-
-		throw new Error(`Invalid directive ${directive.value} on line ${directive.line}.`);
 	}
-
-	// A map to store the state of active loops between iterations. Key: A unique identifier for the loop.
-	private loopStates: Map<string, LoopState> = new Map();
 
 	private handleForLoop(directive: ScalarToken, assembler: Assembler): void {
 		// 1. Parse the .for <iterator> of <array> syntax using buffered access

@@ -4,17 +4,12 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class AlignDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
-		const startIndex = assembler.getPosition();
 		const alignExpressionTokens = assembler.getInstructionTokens();
 		const [boundaryTokens] = this.parseArguments(alignExpressionTokens);
 
 		try {
 			const boundary = assembler.expressionEvaluator.evaluateAsNumber(boundaryTokens, context);
-			if (boundary <= 0) {
-				assembler.setPosition(startIndex + 1);
-				return;
-			}
+			if (boundary <= 0) return;
 
 			// Check if boundary is a power of two, which is a common requirement.
 			if ((boundary & (boundary - 1)) !== 0) {
@@ -26,23 +21,15 @@ export class AlignDirective implements IDirective {
 		} catch (e) {
 			assembler.logger.warn(`[PASS 1] Warning on line ${directive.line}: Could not evaluate .ALIGN expression. ${e}`);
 		}
-
-		// Advance past the directive line
-		assembler.setPosition(startIndex + 1);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
-		const startIndex = assembler.getPosition();
 		const alignExpressionTokens = assembler.getInstructionTokens();
 		const [boundaryTokens, valueTokens] = this.parseArguments(alignExpressionTokens);
 
 		try {
 			const boundary = assembler.expressionEvaluator.evaluateAsNumber(boundaryTokens, context);
-			if (boundary <= 0) {
-				assembler.setPosition(startIndex + 1);
-				return;
-			}
+			if (boundary <= 0) return;
 
 			const fillerValue = valueTokens.length > 0 ? assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context) : 0; // Default to 0 if no value is provided
 
@@ -60,9 +47,6 @@ export class AlignDirective implements IDirective {
 		} catch (e) {
 			assembler.logger.error(`ERROR on line ${directive.line}: Failed to evaluate .ALIGN expression. ${e}`);
 		}
-
-		// Advance past the directive line
-		assembler.setPosition(startIndex + 1);
 	}
 
 	/**

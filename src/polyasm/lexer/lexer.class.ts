@@ -321,6 +321,10 @@ export class AssemblyLexer {
 				this.advance();
 				return this.makeToken("OPERATOR", "!", startLine, startColumn);
 
+			case ".":
+				this.advance();
+				return this.makeToken("DOT", ".", startLine, startColumn);
+
 			case "{":
 				this.advance();
 				return this.makeToken("LBRACE", "{", startLine, startColumn);
@@ -354,14 +358,10 @@ export class AssemblyLexer {
 		}
 
 		// Dot - either standalone or part of directive
-		if (ch === ".") {
-			return this.scanDotOrDirective(startLine, startColumn);
-		}
+		// if (ch === ".") return this.scanDotOrDirective(startLine, startColumn);
 
 		// String literals
-		if (ch === '"') {
-			return this.scanString(startLine, startColumn);
-		}
+		if (ch === '"') return this.scanString(startLine, startColumn);
 
 		// Numbers (hex $FF, binary %1010, decimal 42)
 		if (this.isDigit(ch) || ch === "$") {
@@ -440,28 +440,6 @@ export class AssemblyLexer {
 
 		// const value = this.source.slice(start, this.pos);
 		return null; // this.makeToken("COMMENT", value, line, column);
-	}
-
-	private scanDotOrDirective(line: number, column: number): Token {
-		this.advance(); // skip '.'
-
-		if (this.isAlpha(this.peek())) {
-			const start = this.pos - 1; // Include the dot
-			while (this.isIdentifierPart(this.peek())) this.advance();
-
-			const value = this.source.slice(start, this.pos);
-
-			// If it's followed by '(', it's a function call like .LEN(..), treat as IDENTIFIER
-			// Otherwise, it's a directive like .ORG
-			this.skipWhitespace();
-			if (this.peek() === "(") return this.makeToken("IDENTIFIER", value.toUpperCase(), line, column, value);
-
-			// It's a directive
-			return this.makeToken("DIRECTIVE", value.toUpperCase(), line, column);
-		}
-
-		// If not followed by a letter, it's just a dot operator for size overrides (e.g. LDA.W)
-		return this.makeToken("DOT", ".", line, column);
 	}
 
 	private scanString(line: number, column: number): Token {
@@ -649,11 +627,13 @@ export class AssemblyLexer {
 		// Scan identifier: letters, digits, underscore, and dot (for addressing modes like LDA.W)
 		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		const value = this.source.slice(start, this.pos).toUpperCase();
+		let value = this.source.slice(start, this.pos);
 
 		// Check if followed by : - that makes it a label
 		if (this.peek() === ":") {
 			this.advance(); // consume ':'
+
+			value = value.toUpperCase();
 
 			// Check if followed by :: - that makes it a namespace::symbol
 			if (this.peek() === ":") {
@@ -662,16 +642,16 @@ export class AssemblyLexer {
 				start = this.pos;
 				const ch = this.source[this.pos];
 				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
-				const symbolName = this.source.slice(start, this.pos).toUpperCase();
+				const symbolName = this.source.slice(start, this.pos);
 
-				return this.makeToken("IDENTIFIER", `${value}::${symbolName}`, line, column, symbolName);
+				return this.makeToken("IDENTIFIER", `${value}::${symbolName.toUpperCase()}`, line, column, symbolName);
 			}
 
 			return this.makeToken("LABEL", value, line, column);
 		}
 
 		// Otherwise it's just an identifier (could be instruction, symbol, macro name, etc.)
-		return this.makeToken("IDENTIFIER", value, line, column, value);
+		return this.makeToken("IDENTIFIER", value.toUpperCase(), line, column, value);
 	}
 
 	private isValidDigitForRadix(ch: string, radix: number): boolean {
@@ -703,7 +683,7 @@ export class AssemblyLexer {
 
 	private isIdentifierPart(ch: string): boolean {
 		// Allow dot in identifiers for addressing modes (LDA.W, LDA.B)
-		return this.isAlphaNumeric(ch) || ch === "_" || ch === ".";
+		return this.isAlphaNumeric(ch) || ch === "_";
 	}
 
 	private skipWhitespace(): void {

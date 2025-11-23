@@ -16,30 +16,30 @@ import type { EvaluationStack, IFunctionDef } from "./types";
 const functions = new Map<string, IFunctionDef>();
 
 // Register functions with their argument constraints
-functions.set(".LEN", { handler: len, minArgs: 1, maxArgs: 1 });
+functions.set("LEN", { handler: len, minArgs: 1, maxArgs: 1 });
 
-functions.set(".DEF", { handler: def, minArgs: 1, maxArgs: 1 });
-functions.set(".UNDEF", { handler: undef, minArgs: 1, maxArgs: 1 });
+functions.set("DEF", { handler: def, minArgs: 1, maxArgs: 1 });
+functions.set("UNDEF", { handler: undef, minArgs: 1, maxArgs: 1 });
 
-functions.set(".HEX", { handler: hex, minArgs: 1, maxArgs: 2 });
-functions.set(".SPLIT", { handler: split, minArgs: 1, maxArgs: 2 });
+functions.set("HEX", { handler: hex, minArgs: 1, maxArgs: 2 });
+functions.set("SPLIT", { handler: split, minArgs: 1, maxArgs: 2 });
 
-functions.set(".ARRAY", {
+functions.set("ARRAY", {
 	handler: array,
 	minArgs: 0,
 	maxArgs: Number.POSITIVE_INFINITY,
 });
-functions.set(".PUSH", {
+functions.set("PUSH", {
 	handler: push,
 	minArgs: 2,
 	maxArgs: Number.POSITIVE_INFINITY,
 });
-functions.set(".POP", { handler: pop, minArgs: 1, maxArgs: 1 });
+functions.set("POP", { handler: pop, minArgs: 1, maxArgs: 1 });
 
-functions.set(".TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
-functions.set(".JSON", { handler: json, minArgs: 1, maxArgs: 1 });
-functions.set(".IIF", { handler: iif, minArgs: 3, maxArgs: 3 });
-functions.set(".JOIN", { handler: join, minArgs: 2, maxArgs: 2 });
+functions.set("TYPE", { handler: type, minArgs: 1, maxArgs: 1 });
+functions.set("JSON", { handler: json, minArgs: 1, maxArgs: 1 });
+functions.set("IIF", { handler: iif, minArgs: 3, maxArgs: 3 });
+functions.set("JOIN", { handler: join, minArgs: 2, maxArgs: 2 });
 
 export function functionDispatcher(name: string, stack: EvaluationStack, token: Token, symbolTable: PASymbolTable, argCount: number): void {
 	const funcDef = functions.get(name.toUpperCase());

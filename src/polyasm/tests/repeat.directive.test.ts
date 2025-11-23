@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../polyasm";
-import { type FileHandler, type SegmentDefinition } from "../polyasm.types";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
@@ -83,7 +83,7 @@ describe("Repeat Directives", () => {
             .repeat 2 as idx {
                 .db idx
             }
-            test .equ idx
+            test = idx
         `;
 
 		expect(() => assembler.assemble(source)).toThrow(/Undefined symbol 'IDX'/);

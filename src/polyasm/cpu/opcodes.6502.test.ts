@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Assembler } from "../polyasm";
-import { type FileHandler } from "../polyasm.types";
+import type { FileHandler } from "../polyasm.types";
 import { Cpu6502Handler } from "./cpu6502.class";
 
 const mockFileHandler: FileHandler = {

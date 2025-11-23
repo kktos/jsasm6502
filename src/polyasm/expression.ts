@@ -5,7 +5,7 @@
  */
 
 import { functionDispatcher } from "./functions/dispatcher";
-import type { OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
+import type { FunctionToken, OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
 import type { Logger } from "./logger";
 import type { Assembler } from "./polyasm";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
@@ -126,115 +126,6 @@ export class ExpressionEvaluator {
 		}
 		evaluateAndPush(); // Push the last element
 		return elements;
-	}
-
-	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
-
-	private infixToRPN(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
-		const outputQueue: Token[] = [];
-		const operatorStack: OperatorToken[] = [];
-		let lastToken: Token | undefined;
-
-		for (let i = 0; i < tokens.length; i++) {
-			let processedToken = tokens[i]; // Use a mutable token for processing
-
-			// --- Array Literal Parsing (only if not preceded by an operand) ---
-			// This block handles `[1,2,3]`
-			const isPrecededByOperand =
-				lastToken &&
-				(lastToken.type === "NUMBER" ||
-					lastToken.type === "STRING" ||
-					lastToken.type === "IDENTIFIER" ||
-					lastToken.type === "LABEL" ||
-					lastToken.type === "LOCAL_LABEL" ||
-					lastToken.type === "ANONYMOUS_LABEL_REF" ||
-					lastToken.type === "ARRAY" ||
-					lastToken.value === ")"); // closing parenthesis of a sub-expression or array access
-
-			if (processedToken.value === "[" && !isPrecededByOperand) {
-				// Array literal detection
-				let balance = 1;
-				let j = i + 1;
-				for (; j < tokens.length; j++) {
-					if (tokens[j].value === "[") balance++;
-					if (tokens[j].value === "]") balance--;
-					if (balance === 0) break;
-				}
-
-				if (balance !== 0) throw new Error(`Mismatched brackets in array literal on line ${processedToken.line}.`);
-
-				const arrayContentTokens = tokens.slice(i + 1, j);
-				const arrayValue = this.evaluateArray(arrayContentTokens, context);
-				const arrayToken: Token = {
-					type: "ARRAY",
-					line: processedToken.line,
-					column: processedToken.column,
-					value: arrayValue, // Assign the evaluated array directly to the 'value' field
-				};
-				outputQueue.push(arrayToken);
-				i = j; // Move index past the array
-				lastToken = arrayToken;
-				continue;
-			}
-
-			switch (processedToken.type) {
-				case "DIRECTIVE": {
-					const funcToken: Token = {
-						...processedToken,
-						type: "SYSVAR",
-					};
-					outputQueue.push(funcToken);
-					break;
-				}
-				case "NUMBER":
-				case "STRING":
-				case "IDENTIFIER":
-				case "LABEL":
-				case "LOCAL_LABEL":
-				case "ANONYMOUS_LABEL_REF":
-				case "ARRAY":
-					if (this.handleOperand(processedToken, tokens, i, outputQueue, operatorStack, lastToken)) continue;
-					break;
-				case "COMMA":
-					this.handleComma(processedToken, outputQueue, operatorStack);
-					break;
-				case "OPERATOR":
-					processedToken = this.handleOperator(processedToken as OperatorToken, outputQueue, operatorStack, lastToken);
-					break;
-			}
-			lastToken = processedToken; // Always update lastToken
-		}
-
-		while (operatorStack.length > 0) {
-			const op = operatorStack.pop() as Token;
-			if (op.value === "(" || op.value === ")") {
-				throw new Error(`Mismatched parenthesis: unmatched '(' left in stack.`);
-			}
-			outputQueue.push(op);
-		}
-
-		return outputQueue;
-	}
-
-	/** Handles operand tokens (numbers, strings, identifiers). Returns true if the main loop should `continue`. */
-	private handleOperand(token: Token, tokens: Token[], index: number, outputQueue: Token[], operatorStack: Token[], lastToken: Token | undefined): boolean {
-		// Check for function call, e.g., IDENTIFIER followed by '('.
-		if (token.type === "IDENTIFIER" && tokens[index + 1]?.value === "(") {
-			const funcToken: Token = {
-				...token,
-				type: "FUNCTION",
-				argCount: 1, // Default to 1 for the first argument.
-			};
-			operatorStack.push(funcToken);
-			return true; // Main loop should skip to the next token.
-		}
-
-		// An operand should not follow another operand without an operator in between.
-		if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(") {
-			throw new Error(`Invalid expression format: Unexpected token '${token.value}' on line ${token.line}.`);
-		}
-		outputQueue.push(token);
-		return false;
 	}
 
 	/** Handles comma tokens, used as separators in function arguments. */
@@ -377,6 +268,118 @@ export class ExpressionEvaluator {
 			}
 		}
 		operatorStack.push(token);
+	}
+
+	/** Converts an infix token stream to Reverse Polish Notation (RPN). */
+	private infixToRPN(tokens: Token[], context: Omit<EvaluationContext, "symbolTable">) {
+		const outputQueue: Token[] = [];
+		const operatorStack: (OperatorToken | FunctionToken)[] = [];
+		let lastToken: Token | undefined;
+
+		for (let index = 0; index < tokens.length; index++) {
+			let processedToken = tokens[index]; // Use a mutable token for processing
+
+			// --- Array Literal Parsing (only if not preceded by an operand) ---
+			// This block handles `[1,2,3]`
+			const isPrecededByOperand =
+				lastToken &&
+				(lastToken.type === "NUMBER" ||
+					lastToken.type === "STRING" ||
+					lastToken.type === "IDENTIFIER" ||
+					lastToken.type === "LABEL" ||
+					lastToken.type === "LOCAL_LABEL" ||
+					lastToken.type === "ANONYMOUS_LABEL_REF" ||
+					lastToken.type === "ARRAY" ||
+					lastToken.value === ")"); // closing parenthesis of a sub-expression or array access
+
+			if (processedToken.value === "[" && !isPrecededByOperand) {
+				// Array literal detection
+				let balance = 1;
+				let j = index + 1;
+				for (; j < tokens.length; j++) {
+					if (tokens[j].value === "[") balance++;
+					if (tokens[j].value === "]") balance--;
+					if (balance === 0) break;
+				}
+
+				if (balance !== 0) throw new Error(`Mismatched brackets in array literal on line ${processedToken.line}.`);
+
+				const arrayContentTokens = tokens.slice(index + 1, j);
+				const arrayValue = this.evaluateArray(arrayContentTokens, context);
+				const arrayToken: Token = {
+					type: "ARRAY",
+					line: processedToken.line,
+					column: processedToken.column,
+					value: arrayValue, // Assign the evaluated array directly to the 'value' field
+				};
+				outputQueue.push(arrayToken);
+				index = j; // Move index past the array
+				lastToken = arrayToken;
+				continue;
+			}
+
+			switch (processedToken.type) {
+				case "IDENTIFIER": {
+					if (lastToken?.type === "DOT") {
+						// Check for function call, e.g., IDENTIFIER followed by '('.
+						if (tokens[index + 1]?.value === "(") {
+							const funcToken: FunctionToken = {
+								...processedToken,
+								type: "FUNCTION",
+								argCount: 1, // Default to 1 for the first argument.
+							};
+							operatorStack.push(funcToken);
+							lastToken = funcToken;
+							continue;
+						}
+
+						const funcToken: Token = {
+							...processedToken,
+							type: "SYSVAR",
+						};
+						outputQueue.push(funcToken);
+						break;
+					}
+
+					// An operand should not follow another operand without an operator in between.
+					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
+						throw new Error(`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`);
+
+					outputQueue.push(processedToken);
+					break;
+				}
+				case "NUMBER":
+				case "STRING":
+				case "LABEL":
+				case "LOCAL_LABEL":
+				case "ANONYMOUS_LABEL_REF":
+				case "ARRAY":
+					// An operand should not follow another operand without an operator in between.
+					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
+						throw new Error(`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`);
+
+					outputQueue.push(processedToken);
+					break;
+
+				case "COMMA":
+					this.handleComma(processedToken, outputQueue, operatorStack);
+					break;
+				case "OPERATOR":
+					processedToken = this.handleOperator(processedToken as OperatorToken, outputQueue, operatorStack, lastToken);
+					break;
+			}
+			lastToken = processedToken; // Always update lastToken
+		}
+
+		while (operatorStack.length > 0) {
+			const op = operatorStack.pop() as Token;
+			if (op.value === "(" || op.value === ")") {
+				throw new Error(`Mismatched parenthesis: unmatched '(' left in stack.`);
+			}
+			outputQueue.push(op);
+		}
+
+		return outputQueue;
 	}
 
 	/** Evaluates a Reverse Polish Notation (RPN) token stream. */

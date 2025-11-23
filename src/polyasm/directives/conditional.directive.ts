@@ -39,14 +39,14 @@ export class ConditionalDirective implements IDirective {
 		};
 
 		switch (directive.value) {
-			case ".IF": {
+			case "IF": {
 				const expressionTokens = assembler.getInstructionTokens();
 				const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
 				this.conditionalStack.push({ isTrue: condition, hasPassed: condition });
 				break;
 			}
 
-			case ".ELSEIF": {
+			case "ELSEIF": {
 				const topIf = this.conditionalStack[this.conditionalStack.length - 1];
 				if (!topIf) return;
 
@@ -61,7 +61,7 @@ export class ConditionalDirective implements IDirective {
 				break;
 			}
 
-			case ".ELSE": {
+			case "ELSE": {
 				const topElse = this.conditionalStack[this.conditionalStack.length - 1];
 				if (!topElse) return;
 				topElse.isTrue = !topElse.hasPassed;
@@ -69,7 +69,7 @@ export class ConditionalDirective implements IDirective {
 				break;
 			}
 
-			case ".END": {
+			case "END": {
 				// If the .END directive is followed by an identifier 'NAMESPACE', handle namespace pop.
 				const next = assembler.peekToken(0);
 				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {

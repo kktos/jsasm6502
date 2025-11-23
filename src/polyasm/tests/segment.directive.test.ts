@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Assembler } from "../polyasm";
-import { type FileHandler } from "../polyasm.types";
+import type { FileHandler } from "../polyasm.types";
 
 const mockFileHandler: FileHandler = {
 	readSourceFile: (_filename: string) => "",

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Assembler } from "../polyasm";
-import { type FileHandler } from "../polyasm.types";
+import type { FileHandler } from "../polyasm.types";
 
 class MockFileHandler implements FileHandler {
 	readSourceFile(filename: string): string {
