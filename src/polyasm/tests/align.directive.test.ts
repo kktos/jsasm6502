@@ -44,7 +44,7 @@ describe(".ALIGN", () => {
 		const machineCode = assembler.link();
 		const finalPC = assembler.currentPC;
 
-		expect(machineCode).toEqual([0, 0, 0, 0xFF]);
+		expect(machineCode).toEqual([0, 0, 0, 0xff]);
 		expect(finalPC).toBe(0x1005);
 	});
 
@@ -60,7 +60,7 @@ describe(".ALIGN", () => {
 		const machineCode = assembler.link();
 		const finalPC = assembler.currentPC;
 
-		expect(machineCode).toEqual([0xAB, 0xAB, 0xAB, 0xFF]);
+		expect(machineCode).toEqual([0xab, 0xab, 0xab, 0xff]);
 		expect(finalPC).toBe(0x1005);
 	});
 
@@ -76,7 +76,7 @@ describe(".ALIGN", () => {
 		const machineCode = assembler.link();
 		const finalPC = assembler.currentPC;
 
-		expect(machineCode).toEqual([0xFF]);
+		expect(machineCode).toEqual([0xff]);
 		expect(finalPC).toBe(0x1005);
 	});
 
@@ -95,7 +95,7 @@ describe(".ALIGN", () => {
 		const finalPC = assembler.currentPC;
 
 		// from 1001 to 1008 is 7 bytes
-		expect(machineCode).toEqual([0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xFF]);
+		expect(machineCode).toEqual([0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xff]);
 		expect(finalPC).toBe(0x1009);
 	});
 
