@@ -17,6 +17,7 @@ export type TokenType =
 	| "ARRAY"
 	| "OPERATOR"
 	| "PROPERTY_ACCESS"
+	| "REST_OPERATOR"
 
 	// Operators
 	| "DOT"
@@ -83,7 +84,6 @@ export class AssemblyLexer {
 		}
 	}
 
-	// Main tokenization loop - optimized for V8's speculative optimization
 	public tokenize(source: string): Token[] {
 		this.resetStream();
 		this.source = source;
@@ -260,6 +260,13 @@ export class AssemblyLexer {
 			return this.makeToken("OPERATOR", ">=", startLine, startColumn);
 		}
 
+		if (ch === "." && this.peekAhead(1) === "." && this.peekAhead(2) === ".") {
+			this.advance();
+			this.advance();
+			this.advance();
+			return this.makeToken("REST_OPERATOR", "...", startLine, startColumn);
+		}
+
 		// Single-char tokens - monomorphic check pattern for V8
 		switch (ch) {
 			// case ",":
@@ -356,9 +363,6 @@ export class AssemblyLexer {
 			// return this.makeToken("MINUS", "-", startLine, startColumn);
 			return this.makeToken("OPERATOR", "-", startLine, startColumn);
 		}
-
-		// Dot - either standalone or part of directive
-		// if (ch === ".") return this.scanDotOrDirective(startLine, startColumn);
 
 		// String literals
 		if (ch === '"') return this.scanString(startLine, startColumn);
