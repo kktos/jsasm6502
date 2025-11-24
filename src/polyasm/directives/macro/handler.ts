@@ -24,36 +24,75 @@ export class MacroHandler {
 
 		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
 
-		// 1. Parse arguments passed in the call line
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
-
-		// Check for argument count mismatch
-		if (passedArgsArray.length > definition.parameters.length)
-			throw new Error(
-				`[PASS 2] Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
-			);
-
 		const argMap = new Map<string, Token[]>();
 
-		// 2. Push a new scope for the macro and define parameters as symbols.
-		// The scope will be popped automatically when the macro stream ends.
 		const scopeName = `__MACRO_${macroName}_${macroToken.line}__`;
 		this.assembler.symbolTable.pushScope(scopeName);
 
-		definition.parameters.forEach((param, index) => {
-			const argTokens = passedArgsArray[index] || [];
-			// Define the parameter as a symbol within the new scope. Its value is the token array.
-			argMap.set(param.toUpperCase(), argTokens);
-		});
+		// Argument validation and mapping
+		if (definition.restParameter) {
+			if (passedArgsArray.length < definition.parameters.length)
+				throw new Error(
+					`[PASS 2] Not enough arguments for macro '${macroName}' on line ${macroToken.line}. Expected at least ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+				);
 
-		// 3. Create a clean copy of the body tokens with updated line numbers.
+			// Map regular parameters
+			definition.parameters.forEach((param, index) => {
+				const argTokens = passedArgsArray[index] || [];
+				argMap.set(param.toUpperCase(), argTokens);
+			});
+
+			// Map rest parameter
+			const restArgs = passedArgsArray.slice(definition.parameters.length);
+			const restTokens: Token[] = [
+				{
+					type: "OPERATOR",
+					value: "[",
+					line: macroToken.line,
+					column: macroToken.column,
+				},
+			];
+
+			restArgs.forEach((arg, index) => {
+				restTokens.push(...arg);
+				if (index < restArgs.length - 1) {
+					restTokens.push({
+						type: "COMMA",
+						value: ",",
+						line: macroToken.line,
+						column: macroToken.column,
+					});
+				}
+			});
+
+			restTokens.push({
+				type: "OPERATOR",
+				value: "]",
+				line: macroToken.line,
+				column: macroToken.column,
+			});
+			argMap.set(definition.restParameter.toUpperCase(), restTokens);
+		} else {
+			// Original logic for fixed arguments
+			if (passedArgsArray.length > definition.parameters.length)
+				throw new Error(
+					`[PASS 2] Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+				);
+
+			definition.parameters.forEach((param, index) => {
+				const argTokens = passedArgsArray[index] || [];
+				argMap.set(param.toUpperCase(), argTokens);
+			});
+		}
+
+		// Create a clean copy of the body tokens with updated line numbers.
 		const expandedTokens = definition.body.map((bodyToken) => ({
 			...bodyToken,
 			line: `${macroToken.line}.${bodyToken.line}`,
 		}));
 
-		// 4. Advance the current stream past the macro call line and push the new stream.
-		// this.assembler.consumeLine();
+		// Advance the current stream past the macro call line and push the new stream.
 		this.assembler.pushTokenStream(expandedTokens, argMap);
 	}
 

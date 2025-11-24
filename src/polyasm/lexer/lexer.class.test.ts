@@ -50,6 +50,21 @@ describe("AssemblyLexer", () => {
 		]);
 	});
 
+	test("should tokenize expression list", () => {
+		const source = '$300, "<", #130, end';
+		const tokens = lexer.tokenize(source);
+		expect(stripLocation(tokens)).toEqual([
+			{ type: "NUMBER", value: "768", raw: "$300" },
+			{ type: "COMMA", value: ",", raw: undefined },
+			{ type: "STRING", value: "<", raw: undefined },
+			{ type: "COMMA", value: ",", raw: undefined },
+			{ type: "OPERATOR", value: "#", raw: undefined },
+			{ type: "NUMBER", value: "130", raw: "130" },
+			{ type: "COMMA", value: ",", raw: undefined },
+			{ type: "IDENTIFIER", value: "END", raw: "end" },
+		]);
+	});
+
 	test("should distinguish unary minus from subtract operator", () => {
 		const source = "LDA #-10\nSUB #10-1";
 		const tokens = lexer.tokenize(source);

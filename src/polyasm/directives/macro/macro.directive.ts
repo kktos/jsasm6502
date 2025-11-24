@@ -8,6 +8,17 @@ export class MacroDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+		// Try to find the definition to get the pre-calculated end position for an O(1) skip.
+		const nameToken = assembler.peekToken(0);
+		if (nameToken && nameToken.type === "IDENTIFIER") {
+			const definition = assembler.macroDefinitions.get(nameToken.value);
+			if (definition && definition.endPosition !== undefined) {
+				assembler.setPosition(definition.endPosition);
+				return;
+			}
+		}
+
+		// If optimization fails (e.g., malformed macro), fall back to scanning.
 		assembler.skipToDirectiveEnd(directive.value);
 	}
 
@@ -19,38 +30,65 @@ export class MacroDirective implements IDirective {
 		const macroName = nameToken.value;
 
 		const parameters: string[] = [];
+		let restParameter: string | undefined;
 		const parameterTokens = assembler.getInstructionTokens(directive);
 
 		if (parameterTokens.length > 0) {
 			let paramIndex = 0;
-			const hasParentheses = parameterTokens[paramIndex].value === "(";
+			const hasParentheses = parameterTokens[0].value === "(";
 			if (hasParentheses) paramIndex++;
 
-			loop: while (paramIndex < parameterTokens.length) {
-				const t = parameterTokens[paramIndex];
-				switch (t.type) {
-					case "IDENTIFIER":
-						parameters.push(t.value);
-						break;
-					case "COMMA":
-						break;
-					default:
-						break loop;
+			while (paramIndex < parameterTokens.length) {
+				const token = parameterTokens[paramIndex];
+				if (hasParentheses && token.value === ")") break;
+
+				if (token.type === "REST_OPERATOR") {
+					paramIndex++; // consume '...'
+					const restToken = parameterTokens[paramIndex];
+					if (restToken?.type !== "IDENTIFIER") {
+						throw `[PASS 1] ERROR: Expected identifier after '...' in macro definition on line ${directive.line}.`;
+					}
+					restParameter = restToken.value;
+					paramIndex++; // consume identifier
+
+					// The rest parameter must be the last one. Check if we are at the end.
+					const nextToken = parameterTokens[paramIndex];
+					if (nextToken && ((hasParentheses && nextToken.value !== ")") || (!hasParentheses && nextToken.type === "COMMA"))) {
+						throw `[PASS 1] ERROR: The rest parameter must be the last parameter in a macro definition on line ${directive.line}.`;
+					}
+					break; // End of parameters
 				}
+
+				if (token.type === "IDENTIFIER") {
+					parameters.push(token.value);
+				} else if (token.type !== "COMMA") {
+					throw `[PASS 1] SYNTAX ERROR: Unexpected token in macro parameter list on line ${directive.line}.`;
+				}
+
 				paramIndex++;
 			}
-			if (hasParentheses && parameterTokens[paramIndex].value === ")") paramIndex++;
-			if (paramIndex !== parameterTokens.length) throw `[PASS 1] SYNTAX ERROR: Bad Macro parameter list on line ${directive.line}.`;
+
+			if (hasParentheses && parameterTokens[paramIndex]?.value === ")") paramIndex++;
+			// Ensure no trailing tokens exist
+			if (paramIndex < parameterTokens.length) {
+				throw `[PASS 1] SYNTAX ERROR: Unexpected tokens at the end of macro parameter list on line ${directive.line}.`;
+			}
 		}
 
 		const bodyTokens = assembler.getDirectiveBlockTokens(directive.value);
+		if (!bodyTokens) {
+			throw `[PASS 1] ERROR: Unterminated macro body for '${macroName}' on line ${directive.line}.`;
+		}
+		const endPosition = assembler.getPosition();
 
 		assembler.macroDefinitions.set(macroName, {
 			name: macroName,
-			parameters: parameters,
+			parameters,
+			restParameter,
 			body: bodyTokens,
+			endPosition,
 		});
 
-		assembler.logger.log(`[PASS 1] Defined macro: ${macroName} with ${parameters.length} params.`);
+		assembler.logger.log(`[PASS 1] Defined macro: ${macroName} with ${parameters.length} params${restParameter ? " and a rest parameter." : "."}`);
 	}
 }

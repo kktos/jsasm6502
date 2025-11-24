@@ -359,9 +359,7 @@ export class Cpu6502Handler implements CPUHandler {
 		const sizeSuffix = parts.length > 1 ? parts[1] : "";
 
 		const instructionModes = this.instructionMap.get(baseMnemonic);
-		if (!instructionModes) {
-			throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
-		}
+		if (!instructionModes) throw new Error(`Unknown instruction mnemonic: ${mnemonic}`);
 
 		// ... (rest of the mode detection logic is the same) ...
 		let forcedSize: "ZP" | "ABS" | null = null;

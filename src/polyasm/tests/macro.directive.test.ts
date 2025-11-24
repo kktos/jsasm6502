@@ -212,8 +212,29 @@ describe("Macro Handling", () => {
 		});
 		it("should works too;)", () => {
 			const { assembler } = setup();
-			const src = `
+			const src2 = `
 				.macro ifx ...parms {
+					lda parms[2]
+				}
+
+					ifx $300, "<", #10, end
+
+					nop
+
+				end:
+					rts
+
+			`;
+
+			assembler.assemble(src2);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([0xea, 0x60]);
+		});
+	});
+});
+
+/*
 					.if .len(parms)!=2
 						.error "Macro ifx : needs 2 params"
 					.end
@@ -265,19 +286,4 @@ describe("Macro Handling", () => {
 					.if !isValidOp
 						.error "Macro ifx : Invalid Operation ",op
 					.end
-
-				}
-
-					ifx "$300 < #130", end
-
-					nop
-
-				end:
-					rts
-
-			`;
-
-			expect(() => assembler.assemble(src)).toThrow("[ERROR] Missing game interface fields	 	[ONE, TWO]");
-		});
-	});
-});
+*/

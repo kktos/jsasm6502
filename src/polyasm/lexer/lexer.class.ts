@@ -694,11 +694,8 @@ export class AssemblyLexer {
 		// V8 optimizes simple loops with bounds checks
 		while (this.pos < this.length) {
 			const ch = this.source[this.pos];
-			if (ch === " " || ch === "\t" || ch === "\r") {
-				this.advance();
-			} else {
-				break;
-			}
+			if (ch !== " " && ch !== "\t" && ch !== "\r") break;
+			this.advance();
 		}
 	}
 

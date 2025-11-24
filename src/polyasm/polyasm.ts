@@ -197,21 +197,13 @@ export class Assembler {
 
 				case "IDENTIFIER":
 				case "LABEL": {
-					// PRIORITY 1: SYMBOL ASSIGNMENT (IDENTIFIER .EQU VALUE)
-					// const nextToken = this.peekToken(0);
-					// if (nextToken && (nextToken.value === "EQU" || nextToken.value === "=" || nextToken.value === ":")) {
-					// 	this.consume(1);
-					// 	this.handleLabelInPassOne(nextToken, token as ScalarToken);
-					// 	break;
-					// }
-
-					// PRIORITY 2: MACRO
+					// PRIORITY 1: MACRO
 					if (this.macroHandler.isMacro(token.value)) {
 						this.setPosition(this.skipToEndOfLine(this.getPosition()));
 						break;
 					}
 
-					// PRIORITY 3: CPU INSTRUCTION OR ...
+					// PRIORITY 2: CPU INSTRUCTION OR ...
 					// A mnemonic must be a string. If it's an array, it's an error.
 					if (typeof token.value !== "string") throw new Error("Invalid instruction: Mnemonic cannot be an array.");
 
@@ -298,9 +290,7 @@ export class Assembler {
 						let operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
 
 						const currentStream = this.tokenStreamStack[this.tokenStreamStack.length - 1];
-						if (currentStream.macroArgs) {
-							operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
-						}
+						if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 						if (this.isAssembling) {
 							try {
@@ -534,6 +524,8 @@ export class Assembler {
 				allowForwardRef: false, // now require resolution
 				currentGlobalLabel: this.lastGlobalLabel,
 				options: this.options,
+				macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+				assembler: this,
 			});
 
 			// If evaluation produced undefined, treat as an error in Pass 2
@@ -683,7 +675,7 @@ export class Assembler {
 
 	public getDirectiveBlockTokens(startDirective: string) {
 		const tokens: Token[] = [];
-		let depth = 1;
+		let depth = 0;
 		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
 
 		while (true) {
@@ -693,16 +685,20 @@ export class Assembler {
 			if (token.type === "DOT") {
 				const nextToken = this.peekToken(1);
 				if (nextToken?.type === "IDENTIFIER") {
+					this.consume(2);
 					const directiveName = nextToken.value;
 					if (blockDirectives.has(directiveName)) {
 						depth++;
 					} else if (directiveName === "END") {
 						depth--;
-						if (depth === 0) {
-							this.consume(2); // Consume . and END
+						if (depth <= 0) {
+							this.consume(1); // Consume . and END
 							return tokens;
 						}
 					}
+					tokens.push(token);
+					tokens.push(nextToken);
+					continue;
 				}
 			} else if (token.value === "{") {
 				depth++;
@@ -756,13 +752,14 @@ export class Assembler {
 			if (token.type === "DOT") {
 				const nextToken = this.peekToken(1);
 				if (nextToken?.type === "IDENTIFIER") {
+					this.consume(1);
 					const directiveName = nextToken.value;
 					if (blockDirectives.has(directiveName)) {
 						depth++;
 					} else if (directiveName === "END") {
 						depth--;
 						if (depth === 0) {
-							this.consume(2); // Consume . and END
+							this.consume(1); // Consume . and END
 							return;
 						}
 					}
@@ -802,16 +799,85 @@ export class Assembler {
 		}
 	}
 
+	private extractExpressionArrayTokens(tokens: Token[]) {
+		const result: Token[][] = [];
+		let current: Token[] = [];
+		let parenDepth = 0;
+
+		if (tokens.length < 2) return result;
+		if (tokens[0].value !== "[" || tokens[tokens.length - 1].value !== "]") return result;
+
+		// for (const token of tokens) {
+		for (let idx = 1; idx < tokens.length - 1; idx++) {
+			const token = tokens[idx];
+			if (token.type === "OPERATOR" && token.value === "(") parenDepth++;
+			if (token.type === "OPERATOR" && token.value === ")") parenDepth--;
+			if (token.type === "COMMA" && parenDepth === 0) {
+				result.push(current);
+				current = [];
+			} else {
+				current.push(token);
+			}
+		}
+		if (current.length > 0) result.push(current);
+
+		return result;
+	}
+
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
 		const result: Token[] = [];
-		for (const token of tokens) {
-			if (token.type === "IDENTIFIER") {
-				const arg = macroArgs.get(token?.value);
-				if (arg) result.push(...arg);
+		for (let i = 0; i < tokens.length; i++) {
+			const token = tokens[i];
+
+			if (token.type !== "IDENTIFIER" || !macroArgs.has(token.value)) {
+				result.push(token);
 				continue;
 			}
 
-			result.push(token);
+			// Token is a macro argument.
+
+			// Check for array access like `parms[0]`
+			if (i + 1 < tokens.length && tokens[i + 1].value === "[") {
+				let j = i + 2;
+				let parenDepth = 0;
+				const indexTokens = [];
+
+				// Find closing ']' and gather index tokens
+				while (j < tokens.length) {
+					if (tokens[j].value === "[") parenDepth++;
+					else if (tokens[j].value === "]") {
+						if (parenDepth === 0) break;
+						parenDepth--;
+					}
+					indexTokens.push(tokens[j]);
+					j++;
+				}
+
+				// If we found a complete `[...]` expression
+				if (j < tokens.length && tokens[j].value === "]") {
+					const indexValue = this.expressionEvaluator.evaluateAsNumber(indexTokens, {
+						pc: this.currentPC,
+						macroArgs: macroArgs, // Pass current macro args for evaluation context
+						assembler: this,
+						currentGlobalLabel: this.lastGlobalLabel,
+						options: this.options,
+					});
+
+					const argTokens = macroArgs.get(token.value) ?? [];
+					const expressions = this.extractExpressionArrayTokens(argTokens);
+					// const expressions = this.splitTokensByComma(argTokens);
+
+					if (indexValue < 0 || indexValue >= expressions.length)
+						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}' on line ${token.line}.`);
+
+					result.push(...expressions[indexValue]);
+					i = j; // Advance main loop past `]`
+					continue;
+				}
+			}
+
+			// If not array access, it's a simple substitution
+			result.push(...(macroArgs.get(token.value) ?? []));
 		}
 		return result;
 	}
