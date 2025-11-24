@@ -475,10 +475,14 @@ describe("ExpressionEvaluator", () => {
 			expect(result).toEqual("london");
 		});
 		it("should evaluate property access from sys variables", () => {
-			const { evaluator, tokenize } = setup();
-			const tokens = tokenize(".segment.name");
+			const { evaluator, tokenize, assembler } = setup();
+
+			assembler.addSegment("main", 0x1000, 0);
+			assembler.useSegment("main");
+
+			const tokens = tokenize('.segment.name +":"+ .segment.start');
 			const result = evaluator.evaluate(tokens, { pc: 0 });
-			expect(result).toEqual("london");
+			expect(result).toEqual("main:4096");
 		});
 	});
 });

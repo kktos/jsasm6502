@@ -327,27 +327,6 @@ export class ExpressionEvaluator {
 
 			switch (processedToken.type) {
 				case "IDENTIFIER": {
-					if (lastToken?.type === "DOT") {
-						// Check for function call, e.g., IDENTIFIER followed by '('.
-						if (tokens[index + 1]?.value === "(") {
-							const funcToken: FunctionToken = {
-								...processedToken,
-								type: "FUNCTION",
-								argCount: 1, // Default to 1 for the first argument.
-							};
-							operatorStack.push(funcToken);
-							lastToken = funcToken;
-							continue;
-						}
-
-						const funcToken: Token = {
-							...processedToken,
-							type: "SYSVAR",
-						};
-						outputQueue.push(funcToken);
-						break;
-					}
-
 					// An operand should not follow another operand without an operator in between.
 					if (lastToken && lastToken.type !== "OPERATOR" && lastToken.type !== "COMMA" && lastToken.value !== "(")
 						throw new Error(`Invalid expression format: Unexpected token '${processedToken.value}' on line ${processedToken.line}.`);
@@ -372,20 +351,50 @@ export class ExpressionEvaluator {
 					this.handleComma(processedToken, outputQueue, operatorStack);
 					break;
 
-				case "DOT":
-					if (tokens[index + 1]?.type === "IDENTIFIER") {
+				case "DOT": {
+					const isUnary = !lastToken || (lastToken.type === "OPERATOR" && lastToken.value !== "]") || lastToken.type === "COMMA";
+					const nextToken = tokens[index + 1];
+
+					if (nextToken?.type !== "IDENTIFIER") throw new Error(`Invalid syntax: '.' must be followed by an identifier on line ${processedToken.line}.`);
+
+					if (isUnary) {
+						// Check for function call, e.g., IDENTIFIER followed by '('.
+						if (tokens[index + 2]?.value === "(") {
+							const funcToken: FunctionToken = {
+								...nextToken,
+								type: "FUNCTION",
+								argCount: 1, // Default to 1 for the first argument.
+							};
+							operatorStack.push(funcToken);
+							lastToken = funcToken;
+							index += 1;
+							continue;
+						}
+
+						// This is a system variable, e.g., .PC or .SEGMENT
+						const sysVarToken: Token = {
+							type: "SYSVAR",
+							value: nextToken.value,
+							line: processedToken.line,
+							column: processedToken.column,
+						};
+						outputQueue.push(sysVarToken);
+						lastToken = sysVarToken;
+					} else {
+						// This is a property access on an object, e.g., myObj.prop
 						const propertyAccessToken: ScalarToken = {
 							type: "PROPERTY_ACCESS",
-							value: tokens[index + 1].raw as string,
+							value: nextToken.raw as string,
 							line: processedToken.line,
 							column: processedToken.column,
 						};
 						outputQueue.push(propertyAccessToken);
-						index++; // Skip the identifier token
 						lastToken = propertyAccessToken;
-						continue;
 					}
-					throw new Error(`Invalid syntax: '.' must be followed by an identifier on line ${processedToken.line}.`);
+
+					index++; // Skip the identifier token
+					continue;
+				}
 
 				case "OPERATOR":
 					processedToken = this.handleOperator(processedToken as OperatorToken, outputQueue, operatorStack, lastToken);
@@ -396,9 +405,8 @@ export class ExpressionEvaluator {
 
 		while (operatorStack.length > 0) {
 			const op = operatorStack.pop() as Token;
-			if (op.value === "(" || op.value === ")") {
-				throw new Error(`Mismatched parenthesis: unmatched '(' left in stack.`);
-			}
+			if (op.value === "(" || op.value === ")") throw new Error(`Mismatched parenthesis: unmatched '(' left in stack.`);
+
 			outputQueue.push(op);
 		}
 
