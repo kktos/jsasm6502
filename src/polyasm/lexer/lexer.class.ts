@@ -16,6 +16,7 @@ export type TokenType =
 	| "RAW_TEXT"
 	| "ARRAY"
 	| "OPERATOR"
+	| "PROPERTY_ACCESS"
 
 	// Operators
 	| "DOT"
@@ -53,6 +54,7 @@ export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
 export type OperatorStackToken = OperatorToken | FunctionToken;
 export type IdentifierToken = StringValueToken<"IDENTIFIER">;
+export type PropAccessToken = StringValueToken<"PROPERTY_ACCESS">;
 
 export type ScalarToken = StringValueToken<Exclude<TokenType, "ARRAY">>;
 

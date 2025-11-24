@@ -1,4 +1,5 @@
 import type { Token } from "./lexer/lexer.class";
+import type { Segment } from "./linker.class";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 
 /** Minimal context shape required by sysvar resolver. Avoid importing EvaluationContext to prevent circular imports. */
@@ -6,6 +7,7 @@ export interface SysVarContext {
 	pc: number;
 	symbolTable: PASymbolTable;
 	pass: number;
+	segment: Segment;
 }
 
 /**
@@ -15,7 +17,7 @@ export interface SysVarContext {
  * - .PC -> returns the current program counter as a number
  */
 export function resolveSysVar(token: Token, context: SysVarContext): SymbolValue {
-	const name = String(token.value).toUpperCase();
+	const name = token.value;
 
 	switch (name) {
 		case "NAMESPACE":
@@ -27,6 +29,9 @@ export function resolveSysVar(token: Token, context: SysVarContext): SymbolValue
 
 		case "PASS":
 			return context.pass;
+
+		case "SEGMENT":
+			return context.segment;
 
 		default:
 			throw new Error(`Unknown system variable: ${name} on line ${token.line}.`);

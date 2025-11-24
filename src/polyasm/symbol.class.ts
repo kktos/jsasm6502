@@ -3,7 +3,7 @@ import type { Token } from "./lexer/lexer.class";
 // Internal unique key for the global namespace to avoid collisions with user namespaces
 const INTERNAL_GLOBAL = Symbol("GLOBAL");
 
-export type SymbolValue = number | string | Token[] | SymbolValue[];
+export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
 interface PASymbol {
 	name: string;

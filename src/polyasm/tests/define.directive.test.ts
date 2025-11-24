@@ -40,9 +40,7 @@ describe(".DEFINE Directive", () => {
 
 	it("should call the external handler and define the symbol", () => {
 		// 1. Create a mock handler function
-		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => {
-			return blockContent;
-		});
+		const textHandler = vi.fn((blockContent: string, _context: DirectiveContext) => blockContent);
 		const handlers = new Map([["text", textHandler]]);
 
 		// 2. Create assembler with the handler
@@ -99,7 +97,7 @@ describe(".DEFINE Directive", () => {
 		expect(symbolValue?.toString().trim()).toBe("toto");
 	});
 
-	it("should return a text with a TEXT processor", () => {
+	it("should return an object with a JSON processor", () => {
 		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
 		const handlers = new Map([["JSON", jsonHandler]]);
 		const assembler = createAssembler(handlers);
@@ -115,5 +113,23 @@ describe(".DEFINE Directive", () => {
 
 		const symbolValue = assembler.symbolTable.lookupSymbol("MY_SYMBOL");
 		expect(symbolValue).toEqual({ name: "tata" });
+	});
+
+	it("should return an object with a JSON processor", () => {
+		const jsonHandler = vi.fn((blockContent: string, _context: DirectiveContext) => JSON.parse(blockContent));
+		const handlers = new Map([["JSON", jsonHandler]]);
+		const assembler = createAssembler(handlers);
+
+		const source = `
+			.DEFINE list AS JSON
+			{
+				"count": 16
+			}
+			.END
+			.db list.count
+		`;
+		assembler.assemble(source);
+		const machineCode = assembler.link();
+		expect(machineCode).toEqual([16]);
 	});
 });

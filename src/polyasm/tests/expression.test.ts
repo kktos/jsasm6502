@@ -391,6 +391,12 @@ describe("ExpressionEvaluator", () => {
 			const result = evaluator.evaluate(tokens, { pc: 0 });
 			expect(result).toBe("Hello World");
 		});
+		it("should evaluate string concatenation", () => {
+			const { evaluator, tokenize } = setup();
+			const tokens = tokenize('"Hello"+" "+"World"');
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toBe("Hello World");
+		});
 	});
 
 	describe("Error Handling", () => {
@@ -432,19 +438,47 @@ describe("ExpressionEvaluator", () => {
 		});
 	});
 
-	describe("System Variables", () => {
-		it("should evaluate .NAMESPACE to the current namespace", () => {
-			const { evaluator, tokenize } = setup();
-			const tokens = tokenize(".NAMESPACE");
+	describe("Object properties", () => {
+		it("should evaluate direct property access", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("person", { name: "tom" });
+			const tokens = tokenize("person.name");
 			const result = evaluator.evaluate(tokens, { pc: 0 });
-			expect(result).toBe("global");
+			expect(result).toEqual("tom");
 		});
-
-		it("should evaluate .NAMESPACE to the current namespace", () => {
+		it("should evaluate property access from any level of nesting", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("person", { name: "tom", town: { name: "paris" } });
+			const tokens = tokenize("person.town.name");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual("paris");
+		});
+		it("should evaluate property access from array item too", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("personList", [{ name: "tom" }, { name: "bob" }]);
+			const tokens = tokenize("personList[1].name");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual("bob");
+		});
+		it("should evaluate property access as array", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("person", { names: ["tom", "bob"] });
+			const tokens = tokenize("person.names[1]");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual("bob");
+		});
+		it("should evaluate property access as array of objects", () => {
+			const { evaluator, tokenize, symbolTable } = setup();
+			symbolTable.addSymbol("person", { towns: [{ name: "paris" }, { name: "london" }] });
+			const tokens = tokenize("person.towns[1].name");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual("london");
+		});
+		it("should evaluate property access from sys variables", () => {
 			const { evaluator, tokenize } = setup();
-			const tokens = tokenize(".PC");
-			const result = evaluator.evaluate(tokens, { pc: 1000 });
-			expect(result).toBe(1000);
+			const tokens = tokenize(".segment.name");
+			const result = evaluator.evaluate(tokens, { pc: 0 });
+			expect(result).toEqual("london");
 		});
 	});
 });

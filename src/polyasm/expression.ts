@@ -5,13 +5,17 @@
  */
 
 import { functionDispatcher } from "./functions/dispatcher";
-import type { FunctionToken, OperatorStackToken, OperatorToken, Token } from "./lexer/lexer.class";
+import type { FunctionToken, OperatorStackToken, OperatorToken, ScalarToken, Token } from "./lexer/lexer.class";
+import type { Segment } from "./linker.class";
 import type { Logger } from "./logger";
 import type { Assembler } from "./polyasm";
 import type { PASymbolTable, SymbolValue } from "./symbol.class";
 import { resolveSysVar } from "./sysvar";
 
 const PRECEDENCE: Record<string, number> = {
+	// Property access has the highest precedence
+	PROPERTY_ACCESS: 10,
+
 	// Unary operators (highest precedence)
 	UNARY_MINUS: 9,
 	"!": 9,
@@ -183,6 +187,8 @@ export class ExpressionEvaluator {
 				outputQueue.push(arrayAccessOp);
 				break;
 			}
+			case ".":
+				break;
 
 			case "-":
 			case "+":
@@ -286,6 +292,7 @@ export class ExpressionEvaluator {
 				(lastToken.type === "NUMBER" ||
 					lastToken.type === "STRING" ||
 					lastToken.type === "IDENTIFIER" ||
+					lastToken.type === "PROPERTY_ACCESS" ||
 					lastToken.type === "LABEL" ||
 					lastToken.type === "LOCAL_LABEL" ||
 					lastToken.type === "ANONYMOUS_LABEL_REF" ||
@@ -364,6 +371,22 @@ export class ExpressionEvaluator {
 				case "COMMA":
 					this.handleComma(processedToken, outputQueue, operatorStack);
 					break;
+
+				case "DOT":
+					if (tokens[index + 1]?.type === "IDENTIFIER") {
+						const propertyAccessToken: ScalarToken = {
+							type: "PROPERTY_ACCESS",
+							value: tokens[index + 1].raw as string,
+							line: processedToken.line,
+							column: processedToken.column,
+						};
+						outputQueue.push(propertyAccessToken);
+						index++; // Skip the identifier token
+						lastToken = propertyAccessToken;
+						continue;
+					}
+					throw new Error(`Invalid syntax: '.' must be followed by an identifier on line ${processedToken.line}.`);
+
 				case "OPERATOR":
 					processedToken = this.handleOperator(processedToken as OperatorToken, outputQueue, operatorStack, lastToken);
 					break;
@@ -416,6 +439,7 @@ export class ExpressionEvaluator {
 						pc: context.pc,
 						symbolTable: this.assembler.symbolTable,
 						pass: this.assembler.pass,
+						segment: this.assembler.linker.currentSegment as Segment,
 					});
 					stack.push(val);
 					break;
@@ -425,6 +449,20 @@ export class ExpressionEvaluator {
 					const argCount = token.argCount ?? 0;
 					functionDispatcher(token.value.toUpperCase(), stack, token, this.assembler.symbolTable, argCount);
 					break;
+				}
+
+				case "PROPERTY_ACCESS": {
+					const obj = stack.pop() as Record<string, SymbolValue>;
+					if (typeof obj !== "object" || obj === null || Array.isArray(obj))
+						throw new Error(`Invalid property access on a non-object value on line ${token.line}.`);
+
+					const property = token.value;
+					if (property && property in obj) {
+						stack.push(obj[property]);
+						break;
+					}
+
+					throw new Error(`Property '${property}' does not exist on object.`);
 				}
 
 				case "OPERATOR": {
@@ -437,18 +475,11 @@ export class ExpressionEvaluator {
 			}
 		}
 
-		// After the loop, if the top of the stack is a function, it means it was called with no arguments.
-		// const lastOp = operatorStack[operatorStack.length - 1];
-		// if (lastOp?.type === "FUNCTION") {
-		// 	outputQueue.push(operatorStack.pop() as Token);
-		// }
-
 		if (stack.length !== 1) {
 			// This can happen with expressions like "5 5" which is not a valid single expression.
 			// It might also indicate an issue with string literals not being part of a valid expression.
-			if (rpnTokens.length === 1 && (rpnTokens[0].type === "STRING" || rpnTokens[0].type === "IDENTIFIER")) {
-				return stack[0];
-			}
+			if (rpnTokens.length === 1 && (rpnTokens[0].type === "STRING" || rpnTokens[0].type === "IDENTIFIER")) return stack[0];
+
 			throw new Error("Invalid expression format.");
 		}
 
