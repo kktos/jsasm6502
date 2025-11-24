@@ -1,5 +1,5 @@
-import type { BaseDict } from "./basedict.class";
 import type { TDict } from "./base.type";
+import type { BaseDict } from "./basedict.class";
 
 export const MARKERS = Symbol("markers");
 

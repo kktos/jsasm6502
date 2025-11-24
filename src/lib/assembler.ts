@@ -9,10 +9,10 @@ import { parsePragma } from "./parsers/pragma.parser";
 import { isPragma } from "./parsers/pragma.tokens";
 import { expandMacro, isMacro } from "./pragmas/macro.pragma";
 import { setcpu } from "./pragmas/setcpu.pragma";
-import type { Options } from "./types/Options.type";
 import type { TAssemblerDisasm, TAssemblerResult } from "./types/assembler.type";
+import type { Options } from "./types/Options.type";
 
-const log = console.log;
+const _log = console.log;
 
 const ASM_BYTES_LEN = 34;
 

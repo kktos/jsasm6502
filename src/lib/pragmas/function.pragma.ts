@@ -1,12 +1,12 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
+import { EVENT_TYPES } from "../lexer/lexer.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { addLabel } from "../parsers/label.parser";
-import { EVENT_TYPES } from "../lexer/lexer.class";
 
-const log = console.log;
+const _log = console.log;
 
 export function processFunction(ctx: Context) {
 	const token = ctx.lexer.token();

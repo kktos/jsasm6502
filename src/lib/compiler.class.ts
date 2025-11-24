@@ -1,7 +1,7 @@
 import { VABuildError, VAExprError } from "./helpers/errors.class";
 import { getHexByte, getHexWord, low } from "./helpers/utils";
 
-const log = console.log;
+const _log = console.log;
 
 const BYTECOUNTPERLINE = 6;
 const ADDR_PREFIX_LENGTH = 7;
@@ -83,9 +83,7 @@ export class Compiler {
 
 		const seg = this.segments[this.currentSegment];
 		if (addr < seg.start || addr > seg.end)
-			throw new VABuildError(
-				`ORG is out of Segment "${this.currentSegment}" range ${getHexWord(seg.start)}:${getHexWord(seg.end)}`,
-			);
+			throw new VABuildError(`ORG is out of Segment "${this.currentSegment}" range ${getHexWord(seg.start)}:${getHexWord(seg.end)}`);
 		this.pc = addr;
 	}
 

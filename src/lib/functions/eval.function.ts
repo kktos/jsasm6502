@@ -3,12 +3,11 @@ import { VAParseError } from "../helpers/errors.class";
 import { TOKEN_TYPES } from "../lexer/token.class";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 
-const log = console.log;
+const _log = console.log;
 
 export function fnEval(ctx: Context, parms: (TExprStackItem | undefined)[]) {
 	const parm = parms[0];
-	if (!parm || parm.type !== TOKEN_TYPES.STRING)
-		throw new VAParseError(`EVAL: Parameter should be a string  - "${parm}"`);
+	if (!parm || parm.type !== TOKEN_TYPES.STRING) throw new VAParseError(`EVAL: Parameter should be a string  - "${parm}"`);
 
 	ctx.lexer.pushSource(parm.string);
 

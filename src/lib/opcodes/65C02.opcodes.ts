@@ -38,7 +38,7 @@ export const op65c02: Record<string, number[]> = {
 	W65C02S, without the B.  By the July '96 data sheet, these instructions were standard
 	in all of them.
 */
-const op65c02s = {
+const _op65c02s = {
 	// BBR  ZP       0F-7F [1]   Branch if specified Bit is Reset. ‾⌉ These are most useful
 	// BBS  ZP       8F-FF [1]   Branch if specified Bit is Set.    | when I/O is in ZP.  They
 	// RMB  ZP       07-77 [1]   Reset specified Memory Bit.        | are on WDC & Rockwell but

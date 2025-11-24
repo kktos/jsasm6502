@@ -4,11 +4,7 @@ const argv = p.argv || [];
 const env = p.env || {};
 const isColorSupported =
 	!(!!env.NO_COLOR || argv.includes("--no-color")) &&
-	(!!env.FORCE_COLOR ||
-		argv.includes("--color") ||
-		p.platform === "win32" ||
-		(p.stdout?.isTTY && env.TERM !== "dumb") ||
-		!!env.CI);
+	(!!env.FORCE_COLOR || argv.includes("--color") || p.platform === "win32" || (p.stdout?.isTTY && env.TERM !== "dumb") || !!env.CI);
 
 const formatter = (open: string, close: string, replace = open) => {
 	return (input: string | number | null | undefined) => {

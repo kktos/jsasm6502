@@ -1,4 +1,4 @@
-import { TOKEN_TYPES, Token, getTypeName } from "../../lexer/token.class";
+import { getTypeName, TOKEN_TYPES, Token } from "../../lexer/token.class";
 import type { IExprItem } from "../../types/ExprItem.type";
 import type { TValue, TValueType } from "../../types/Value.type";
 import type { TExprStackOperation } from "./expression.type";

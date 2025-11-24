@@ -1,15 +1,15 @@
 import type { Context } from "../../context.class";
 import { VAExprError } from "../../helpers/errors.class";
 import { getValueType } from "../../helpers/utils";
-import { TOKEN_TYPES, Token, getTypeName } from "../../lexer/token.class";
+import { getTypeName, TOKEN_TYPES, Token } from "../../lexer/token.class";
 import { getSysVarValue } from "../../sysvariable";
+import type { TValueType } from "../../types/Value.type";
 import { fnFlags, fnParmCount, isFunctionExists } from "../function.parser";
+import { evalExpr } from "./expression.eval";
 import type { TExprCtx, TExprStackOperation } from "./expression.type";
 import { TExprStackItem } from "./TExprStackItem.class";
-import { evalExpr } from "./expression.eval";
-import type { TValueType } from "../../types/Value.type";
 
-const log = console.log;
+const _log = console.log;
 
 const LLCHARSET = new Set([TOKEN_TYPES.MINUS, TOKEN_TYPES.PLUS]);
 const FIELD_TOKENS = [TOKEN_TYPES.DOT, TOKEN_TYPES.LEFT_BRACKET];
@@ -67,11 +67,7 @@ export function parseExpression(ctx: Context, endSet?: Set<number>, expectedType
 	// ctx.pass >1 && log("parseExpression RESULT", res, exprCtx.stack);
 
 	if (res?.type && expectedType && expectedType !== res?.type)
-		throw new VAExprError(
-			`EXPR: Invalid type - expected ${getTypeName(expectedType)} received ${getTypeName(
-				res?.type ?? 0,
-			)} (${JSON.stringify(res?.value)})`,
-		);
+		throw new VAExprError(`EXPR: Invalid type - expected ${getTypeName(expectedType)} received ${getTypeName(res?.type ?? 0)} (${JSON.stringify(res?.value)})`);
 
 	return res;
 }
@@ -279,8 +275,7 @@ function parse_term(exprCtx: TExprCtx) {
 			parseExpr(ctx);
 			exprCtx.stack.push(ctx.stack as Array<TExprStackItem>);
 
-			if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
-				throw new VAExprError('TERM: Syntax Error: Missing ")"');
+			if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAExprError('TERM: Syntax Error: Missing ")"');
 
 			exprCtx.ctx.lexer.next();
 			break;
@@ -415,7 +410,7 @@ function parse_scalar(exprCtx: TExprCtx) {
 // (ns.)? varname ( .fieldname | [expr] )*
 function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	let varname = tok.asString;
-	let ns = undefined;
+	let ns;
 	const checkIfExists = exprCtx.ctx.pass > 1 && !exprCtx.flags?.allowUndef;
 
 	// exprCtx.ctx.lexer.next();
@@ -425,8 +420,7 @@ function parse_var_label(exprCtx: TExprCtx, tok: Token) {
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.DOT)) {
 		// log("parse_var_label", name, exprCtx.ctx.symbols.exists(name), exprCtx.ctx.symbols.nsExists(name));
 
-		if (exprCtx.ctx.symbols.fn.has(varname))
-			throw new VAExprError("IDENTIFIER : Labels inside a function can't be access");
+		if (exprCtx.ctx.symbols.fn.has(varname)) throw new VAExprError("IDENTIFIER : Labels inside a function can't be access");
 
 		// namespace.labelname
 		// not a label, being a namespace
@@ -504,11 +498,7 @@ function parse_function(exprCtx: TExprCtx) {
 
 	if (exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) {
 		if (minParmCount !== 0)
-			throw new VAExprError(
-				`TERM: Wrong number of parameters for function "${fnName}". Expected ${
-					maxParmCount ?? minParmCount
-				} Got ${parmCount}`,
-			);
+			throw new VAExprError(`TERM: Wrong number of parameters for function "${fnName}". Expected ${maxParmCount ?? minParmCount} Got ${parmCount}`);
 	} else {
 		if (maxParmCount === 0) throw new VAExprError(`TERM: function "${fnName}" admits no parameter.`);
 
@@ -529,11 +519,7 @@ function parse_function(exprCtx: TExprCtx) {
 		if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAExprError('TERM: Syntax Error: Missing ")"');
 
 		if ((minParmCount && parmCount < minParmCount) || (maxParmCount && parmCount > maxParmCount))
-			throw new VAExprError(
-				`TERM: Wrong number of parameters for function "${fnName}". Expected ${
-					maxParmCount ?? minParmCount
-				} Got ${parmCount}`,
-			);
+			throw new VAExprError(`TERM: Wrong number of parameters for function "${fnName}". Expected ${maxParmCount ?? minParmCount} Got ${parmCount}`);
 	}
 
 	// log("ExprParser FN", fnName, parmCount);
@@ -561,12 +547,7 @@ function parse_variable(exprCtx: TExprCtx) {
 // parse object fields and array indices
 //  field : "." <identifier>
 //  array : "[" <expr> "]"
-function parse_object_and_array(
-	exprCtx: TExprCtx,
-	varNamespace: string | undefined,
-	varName: string,
-	varValue: TExprStackItem | undefined,
-) {
+function parse_object_and_array(exprCtx: TExprCtx, varNamespace: string | undefined, varName: string, varValue: TExprStackItem | undefined) {
 	const ns = varNamespace;
 	let name = varName;
 	let value = varValue;
@@ -576,8 +557,7 @@ function parse_object_and_array(
 			case TOKEN_TYPES.DOT: {
 				exprCtx.ctx.lexer.next();
 
-				if (value && value.type !== TOKEN_TYPES.OBJECT)
-					throw new VAExprError(`IDENTIFIER : Not an object: "${name}" ${JSON.stringify(value)}`);
+				if (value && value.type !== TOKEN_TYPES.OBJECT) throw new VAExprError(`IDENTIFIER : Not an object: "${name}" ${JSON.stringify(value)}`);
 
 				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.IDENTIFIER))
 					throw new VAExprError(`IDENTIFIER : Invalid field name: "${exprCtx.ctx.lexer.tokenOrThrow().text}"`);
@@ -602,8 +582,7 @@ function parse_object_and_array(
 			}
 
 			case TOKEN_TYPES.LEFT_BRACKET: {
-				if (value && value.type !== TOKEN_TYPES.ARRAY)
-					throw new VAExprError(`IDENTIFIER : Not an array ${ns ? `${ns}.` : ""}${name}`);
+				if (value && value.type !== TOKEN_TYPES.ARRAY) throw new VAExprError(`IDENTIFIER : Not an array ${ns ? `${ns}.` : ""}${name}`);
 
 				// log(exprCtx.ctx.pass, "ARRAY");
 
@@ -612,8 +591,7 @@ function parse_object_and_array(
 
 				if (!arrayIdx) throw new VAExprError("IDENTIFIER: Missing array index !?!");
 
-				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET))
-					throw new VAExprError(`IDENTIFIER : Missing close bracket ${ns ? `${ns}.` : ""}${name}`);
+				if (!exprCtx.ctx.lexer.isToken(TOKEN_TYPES.RIGHT_BRACKET)) throw new VAExprError(`IDENTIFIER : Missing close bracket ${ns ? `${ns}.` : ""}${name}`);
 
 				exprCtx.ctx.lexer.next();
 
@@ -622,8 +600,7 @@ function parse_object_and_array(
 				const valueArray = value?.value as Array<TExprStackItem | Token>;
 				const idx = arrayIdx.number;
 
-				if (idx >= valueArray.length)
-					throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${valueArray.length}`);
+				if (idx >= valueArray.length) throw new VAExprError(`IDENTIFIER : Array index ${arrayIdx.value} out of bounds LEN:${valueArray.length}`);
 
 				// exprCtx.ctx.pass > 1 && log("ARRAY", idx, valueArray[idx], valueArray);
 
