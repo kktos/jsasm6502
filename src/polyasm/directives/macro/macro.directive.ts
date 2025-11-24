@@ -5,13 +5,10 @@ import type { DirectiveContext, IDirective } from "../directive.interface";
 export class MacroDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		this.handleMacroDefinition(directive, assembler);
-		return undefined;
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
 		assembler.skipToDirectiveEnd(directive.value);
-
-		return undefined;
 	}
 
 	/** Pass 1: Parses and stores a macro definition. */
@@ -43,7 +40,7 @@ export class MacroDirective implements IDirective {
 				paramIndex++;
 			}
 			if (hasParentheses && parameterTokens[paramIndex].value === ")") paramIndex++;
-			if (paramIndex !== parameterTokens.length) throw `[PASS 1] SYNTAS ERROR: Bad Macro parameter list on line ${directive.line}.`;
+			if (paramIndex !== parameterTokens.length) throw `[PASS 1] SYNTAX ERROR: Bad Macro parameter list on line ${directive.line}.`;
 		}
 
 		const bodyTokens = assembler.getDirectiveBlockTokens(directive.value);

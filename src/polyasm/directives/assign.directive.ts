@@ -7,7 +7,7 @@ export class AssignDirective implements IDirective {
 		const label = assembler.getLastGlobalLabel();
 		if (!label) throw new Error(`Syntax error in line ${directive.line}`);
 
-		assembler.handleLabelInPassOne(directive, label);
+		assembler.handleSymbolInPassOne(directive, label);
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {

@@ -30,61 +30,106 @@ export class ConditionalDirective implements IDirective {
 				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, context);
 				return result !== 0;
 			} catch (e) {
-				assembler.logger.warn(`[PASS 1/2] Warning on line ${directive.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`);
+				assembler.logger.warn(
+					`[PASS ${assembler.pass}] Warning on line ${directive.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`,
+				);
 				return false;
 			}
 		};
 
 		switch (directive.value) {
 			case "IF": {
-				const shouldEvaluate = this.conditionalStack.every((block) => block.isTrue);
-				const expressionTokens = assembler.getInstructionTokens();
-				const condition = shouldEvaluate ? checkCondition(expressionTokens) : false;
-				this.conditionalStack.push({ isTrue: condition, hasPassed: condition });
+				const parentIsTrue = this.conditionalStack.every((block) => block.isTrue);
+				const expressionTokens = assembler.getInstructionTokens(directive);
+				const isTrue = parentIsTrue ? checkCondition(expressionTokens) : false;
+
+				this.conditionalStack.push({ isTrue, hasPassed: isTrue });
+
+				if (!isTrue) this.skipToNextConditionalBoundary(assembler);
+
 				break;
 			}
 
 			case "ELSEIF": {
-				const parentShouldEvaluate = this.conditionalStack.slice(0, -1).every((block) => block.isTrue);
 				const topIf = this.conditionalStack[this.conditionalStack.length - 1];
-				if (!topIf) return;
+				if (!topIf) throw new Error(`.ELSEIF without .IF on line ${directive.line}`);
 
 				if (topIf.hasPassed) {
 					topIf.isTrue = false;
+					this.skipToNextConditionalBoundary(assembler);
 				} else {
-					const expressionTokens = assembler.getInstructionTokens();
-					const condition = parentShouldEvaluate ? checkCondition(expressionTokens) : false;
-					topIf.isTrue = condition;
-					topIf.hasPassed = condition;
+					const parentIsTrue = this.conditionalStack.slice(0, -1).every((block) => block.isTrue);
+					const expressionTokens = assembler.getInstructionTokens(directive);
+					const isTrue = parentIsTrue ? checkCondition(expressionTokens) : false;
+
+					topIf.isTrue = isTrue;
+					if (isTrue) topIf.hasPassed = true;
+					else this.skipToNextConditionalBoundary(assembler);
 				}
 				break;
 			}
 
 			case "ELSE": {
-				const topElse = this.conditionalStack[this.conditionalStack.length - 1];
-				if (!topElse) return;
-				topElse.isTrue = !topElse.hasPassed;
-				topElse.hasPassed = true;
+				const topIf = this.conditionalStack[this.conditionalStack.length - 1];
+				if (!topIf) throw new Error(`.ELSE without .IF on line ${directive.line}`);
+
+				if (topIf.hasPassed) {
+					topIf.isTrue = false;
+					assembler.skipToDirectiveEnd("IF");
+				} else {
+					topIf.isTrue = true;
+					topIf.hasPassed = true;
+				}
 				break;
 			}
 
 			case "END": {
-				// If the .END directive is followed by an identifier 'NAMESPACE', handle namespace pop.
 				const next = assembler.peekToken(0);
 				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {
-					// consume the identifier and pop the namespace
 					assembler.consume(1);
 					try {
 						assembler.symbolTable.popNamespace();
-						assembler.logger.log(`[PASS] .END NAMESPACE -> popped namespace, current: ${assembler.symbolTable.getCurrentNamespace()}`);
 					} catch (e) {
 						assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
 					}
 				}
-				if (this.conditionalStack.length > 0) this.conditionalStack.pop();
+				if (this.conditionalStack.length > 0) {
+					// const topIf = this.conditionalStack[this.conditionalStack.length - 1];
+					// If we are ending a block where no branch was taken, but there was an .ELSE,
+					// the final state of topIf.isTrue might be true, but we were skipping.
+					// The pop correctly restores the parent state.
+					this.conditionalStack.pop();
+				}
 				break;
 			}
 		}
-		assembler.isAssembling = this.conditionalStack.every((block) => block.isTrue);
+	}
+
+	private skipToNextConditionalBoundary(assembler: Assembler): void {
+		let depth = 0;
+
+		while (true) {
+			const token = assembler.peekToken(0);
+			if (!token || token.type === "EOF") break;
+
+			if (token.type === "DOT") {
+				const nextToken = assembler.peekToken(1);
+				if (nextToken?.type === "IDENTIFIER") {
+					const directiveName = nextToken.value;
+
+					if (directiveName === "IF") {
+						depth++;
+					} else if (directiveName === "END") {
+						if (depth === 0) {
+							return; // Stop before .END
+						}
+						depth--;
+					} else if (depth === 0 && (directiveName === "ELSE" || directiveName === "ELSEIF")) {
+						return; // Stop before .ELSE or .ELSEIF
+					}
+				}
+			}
+			assembler.consume(1);
+		}
 	}
 }

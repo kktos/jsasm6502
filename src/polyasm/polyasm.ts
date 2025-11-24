@@ -189,7 +189,7 @@ export class Assembler {
 					}
 
 					if (token.value === "=" && this.lastGlobalLabel) {
-						this.handleLabelInPassOne(token, this.lastGlobalLabel);
+						this.handleSymbolInPassOne(token, this.lastGlobalLabel);
 						break;
 					}
 					throw new Error(`Syntax error in line ${token.line}`);
@@ -286,12 +286,6 @@ export class Assembler {
 				}
 
 				case "IDENTIFIER": {
-					// const nextToken = this.peekToken(0);
-					// if (nextToken?.value === ".EQU" || nextToken?.value === "=") {
-					// 	this.handleSymbolInPassTwo(token as ScalarToken);
-					// 	break;
-					// }
-
 					if (this.macroHandler.isMacro(token.value)) {
 						this.macroHandler.expandMacro(token);
 						break;
@@ -301,7 +295,12 @@ export class Assembler {
 						const instructionPC = this.currentPC;
 						// It's an instruction.
 						const mnemonicToken = token as OperatorStackToken;
-						const operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
+						let operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
+
+						const currentStream = this.tokenStreamStack[this.tokenStreamStack.length - 1];
+						if (currentStream.macroArgs) {
+							operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
+						}
 
 						if (this.isAssembling) {
 							try {
@@ -349,12 +348,13 @@ export class Assembler {
 						break;
 					}
 
-					if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
-						// It's a label definition (e.g., MyLoop:).
-						// Consume only the label token, and let the loop handle the instruction on the next iteration.
-						this.lastGlobalLabel = token.value;
-						break;
-					}
+					this.lastGlobalLabel = token.value;
+					// if (this.symbolTable.lookupSymbol(token.value) !== undefined) {
+					// It's a label definition (e.g., MyLoop:).
+					// Consume only the label token, and let the loop handle the instruction on the next iteration.
+					// 	this.lastGlobalLabel = token.value;
+					// 	break;
+					// }
 
 					break;
 				}
@@ -501,46 +501,28 @@ export class Assembler {
 		this.setPosition(i);
 	}
 
-	public handleLabelInPassOne(nextToken: Token, labelToken: string): void {
-		switch (nextToken.value) {
-			case "EQU":
-			case "=": {
-				// Start expression after .EQU or =
-				const expressionTokens = this.getInstructionTokens();
+	public handleSymbolInPassOne(_nextToken: Token, labelToken: string) {
+		const expressionTokens = this.getInstructionTokens();
 
-				try {
-					const value = this.expressionEvaluator.evaluate(expressionTokens, {
-						pc: this.currentPC,
-						allowForwardRef: true,
-						currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
-						options: this.options,
-					});
+		try {
+			const value = this.expressionEvaluator.evaluate(expressionTokens, {
+				pc: this.currentPC,
+				allowForwardRef: true,
+				currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
+				options: this.options,
+			});
 
-					if (Array.isArray(value)) this.logger.log(`[PASS 1] Defined array symbol ${labelToken} with ${value.length} elements.`);
-					else this.logger.log(`[PASS 1] Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
+			if (Array.isArray(value)) this.logger.log(`[PASS 1] Defined array symbol ${labelToken} with ${value.length} elements.`);
+			else this.logger.log(`[PASS 1] Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
 
-					if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
-					else this.symbolTable.addSymbol(labelToken, value);
-				} catch (e) {
-					this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken}: ${e}`);
-				}
-
-				break;
-			}
-
-			// case ":": {
-			// 	this.lastGlobalLabel = token.value;
-			// 	this.symbolTable.addSymbol(token.value, this.currentPC);
-			// 	this.logger.log(`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
-
-			// 	// Consume the label (IDENTIFIER) AND the colon (OPERATOR)
-			// 	this.consume(2);
-			// 	break;
-			// }
+			if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
+			else this.symbolTable.addSymbol(labelToken, value);
+		} catch (e) {
+			this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken}: ${e}`);
 		}
 	}
 
-	public handleSymbolInPassTwo(label: string, token: ScalarToken): void {
+	public handleSymbolInPassTwo(label: string, token: ScalarToken) {
 		// Re-evaluate symbol assignment in Pass 2 so forward-references
 		// that were unresolved in Pass 1 can be resolved now.
 
@@ -630,9 +612,7 @@ export class Assembler {
 
 		// If the popped stream was a macro, its scope name will start with __MACRO_.
 		// This is our cue to pop the symbol scope as well.
-		if (this.symbolTable.getCurrentNamespace().startsWith("__MACRO_")) {
-			this.symbolTable.popScope();
-		}
+		if (this.symbolTable.getCurrentNamespace().startsWith("__MACRO_")) this.symbolTable.popScope();
 
 		if (this.tokenStreamStack.length > 0) {
 			const previousState = this.tokenStreamStack[this.tokenStreamStack.length - 1];
@@ -668,70 +648,76 @@ export class Assembler {
 
 	public getExpressionTokens(instructionToken?: Token): Token[] {
 		const tokens: Token[] = [];
+		let parenDepth = 0;
 
 		const startToken = this.peekToken();
-		if (startToken?.type === "EOF") return tokens;
-		if (instructionToken && instructionToken.line !== startToken?.line) return tokens;
+		if (!startToken || startToken.type === "EOF") return tokens;
+		if (instructionToken && instructionToken.line !== startToken.line) return tokens;
 
 		this.consume(1);
-		if (!startToken) return tokens;
-
 		tokens.push(startToken);
+
+		if (startToken.value === "(") parenDepth++;
+		if (startToken.value === ")") parenDepth--;
 
 		const startLine = instructionToken ? instructionToken.line : startToken.line;
 		while (true) {
-			let token = this.peekToken();
-			if (!token) break;
-			if (token.line !== startLine) break;
-			if (token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF" || token.type === "COMMA") break;
-			token = this.nextToken();
-			if (token) tokens.push(token);
+			const token = this.peekToken();
+			if (!token || token.line !== startLine || token.type === "LBRACE" || token.type === "RBRACE" || token.type === "EOF") {
+				break;
+			}
+
+			if (token.value === "(") {
+				parenDepth++;
+			} else if (token.value === ")") {
+				parenDepth--;
+			} else if (token.type === "COMMA" && parenDepth <= 0) {
+				break;
+			}
+
+			this.consume(1);
+			tokens.push(token);
 		}
 		return tokens;
 	}
 
-	public getDirectiveBlockTokens(startDirective: string): Token[] | null {
+	public getDirectiveBlockTokens(startDirective: string) {
 		const tokens: Token[] = [];
-		let depth = 0;
+		let depth = 1;
+		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
 
 		while (true) {
-			const token = this.nextToken();
-			if (!token) return null;
+			const token = this.peekToken(0);
+			if (!token || token.type === "EOF") throw new Error(`[Assembler] Unterminated '${startDirective}' block.`);
 
-			// Check for block start
-			const nextToken = this.peekToken();
-			if (token.type === "DOT" && nextToken?.type === "IDENTIFIER") {
-				this.consume();
-				switch (nextToken?.value) {
-					case startDirective:
+			if (token.type === "DOT") {
+				const nextToken = this.peekToken(1);
+				if (nextToken?.type === "IDENTIFIER") {
+					const directiveName = nextToken.value;
+					if (blockDirectives.has(directiveName)) {
 						depth++;
-						break;
-
-					case "END":
+					} else if (directiveName === "END") {
 						depth--;
-						if (depth <= 0) return tokens; // Don't include .END
-						break;
+						if (depth === 0) {
+							this.consume(2); // Consume . and END
+							return tokens;
+						}
+					}
 				}
-				tokens.push(token);
-				tokens.push(nextToken);
-				continue;
-			}
-
-			if (token.value === "{") {
+			} else if (token.value === "{") {
 				depth++;
-				// Don't push opening brace
+				this.consume(1); // consume { but do not add to body
 				continue;
-			}
-
-			if (token.value === "}") {
+			} else if (token.value === "}") {
 				depth--;
-				if (depth === 0) return tokens; // Don't include closing brace
+				this.consume(1); // consume } but do not add to body
+				if (depth === 0) return tokens;
 
-				tokens.push(token);
 				continue;
 			}
 
-			// Regular token
+			// It's a regular token, part of the body. Consume and add to list.
+			this.consume(1);
 			tokens.push(token);
 		}
 	}
@@ -756,50 +742,44 @@ export class Assembler {
 	 * for the starting block (directive or '{'). Accepts both typed block tokens
 	 * and plain '{' / '}' operator tokens emitted by the tokenizer.
 	 */
-	public skipToDirectiveEnd(startDirective: string): number {
-		let depth = 0;
-		const start = this.getPosition();
+	public skipToDirectiveEnd(startDirective: string): void {
+		let depth = 1;
+		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
 
-		let i = start + 1;
 		while (true) {
-			// const token = this.ensureToken(i) as ScalarToken | null;
-			const token = this.peekToken();
-			if (token?.type === "EOF") break;
+			const token = this.peekToken(0);
+			if (!token || token.type === "EOF") {
+				this.logger.error(`[Assembler] Unterminated '${startDirective}' block while skipping.`);
+				return;
+			}
 
-			this.consume(1);
-			if (!token) break;
-
-			const nextToken = this.peekToken();
-			if (token.type === "DOT" && nextToken?.type === "IDENTIFIER") {
-				this.consume();
-				switch (nextToken?.value) {
-					case startDirective:
+			if (token.type === "DOT") {
+				const nextToken = this.peekToken(1);
+				if (nextToken?.type === "IDENTIFIER") {
+					const directiveName = nextToken.value;
+					if (blockDirectives.has(directiveName)) {
 						depth++;
-						break;
-
-					case "END":
+					} else if (directiveName === "END") {
 						depth--;
-						if (depth <= 0) return i; // Don't include .END
-						break;
+						if (depth === 0) {
+							this.consume(2); // Consume . and END
+							return;
+						}
+					}
 				}
-				i += 2;
-				continue;
-			}
-
-			if (token.value === "{") {
+			} else if (token.value === "{") {
 				depth++;
-			}
-
-			if (token.value === "}") {
+			} else if (token.value === "}") {
 				depth--;
-				if (depth === 0) return i;
+				if (depth === 0) {
+					this.consume(1); // consume }
+					return;
+				}
 			}
 
-			i++;
+			// Consume token to advance the stream
+			this.consume(1);
 		}
-
-		// Not found
-		return 0;
 	}
 
 	public getInstructionSize(): number {
@@ -820,5 +800,19 @@ export class Assembler {
 		} catch (_e) {
 			return this.cpuHandler.cpuType === "ARM_RISC" ? 4 : 3; // Robust default based on CPU type
 		}
+	}
+
+	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
+		const result: Token[] = [];
+		for (const token of tokens) {
+			if (token.type === "IDENTIFIER") {
+				const arg = macroArgs.get(token?.value);
+				if (arg) result.push(...arg);
+				continue;
+			}
+
+			result.push(token);
+		}
+		return result;
 	}
 }

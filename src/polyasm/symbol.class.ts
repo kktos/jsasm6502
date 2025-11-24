@@ -1,7 +1,7 @@
 import type { Token } from "./lexer/lexer.class";
 
 // Internal unique key for the global namespace to avoid collisions with user namespaces
-const INTERNAL_GLOBAL = Symbol("GLOBAL");
+const INTERNAL_GLOBAL = "@@GLOBAL";
 
 export type SymbolValue = number | string | object | Token[] | SymbolValue[];
 
@@ -9,12 +9,12 @@ interface PASymbol {
 	name: string;
 	value: SymbolValue;
 	isGlobal: boolean;
-	namespace: string | symbol;
+	namespace: string;
 }
 
 export class PASymbolTable {
-	private symbols: Map<string | symbol, Map<string, PASymbol>> = new Map();
-	private scopeStack: (string | symbol)[] = [];
+	private symbols: Map<string, Map<string, PASymbol>> = new Map();
+	private scopeStack: string[] = [];
 	private scopeCounter = 0;
 
 	constructor() {
@@ -26,9 +26,7 @@ export class PASymbolTable {
 	pushScope(name?: string): void {
 		const newScopeName = name || `__LOCAL_${this.scopeCounter++}__`;
 		this.scopeStack.push(newScopeName);
-		if (!this.symbols.has(newScopeName)) {
-			this.symbols.set(newScopeName, new Map());
-		}
+		if (!this.symbols.has(newScopeName)) this.symbols.set(newScopeName, new Map());
 	}
 
 	/** Pops the current scope from the stack, returning to the parent scope. */
@@ -86,7 +84,7 @@ export class PASymbolTable {
 	getCurrentNamespace(): string {
 		const current = this.scopeStack[this.scopeStack.length - 1];
 		if (current === INTERNAL_GLOBAL) return "global";
-		return String(current);
+		return current;
 	}
 
 	/**
@@ -201,9 +199,7 @@ export class PASymbolTable {
 
 		for (const symbolName of allSymbols) {
 			const distance = levenshteinDistance(name, symbolName);
-			if (distance <= maxDistance) {
-				suggestions.push({ name: symbolName, distance });
-			}
+			if (distance <= maxDistance) suggestions.push({ name: symbolName, distance });
 		}
 
 		// Sort by distance to show the closest match first

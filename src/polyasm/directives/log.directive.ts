@@ -21,7 +21,7 @@ export class LogDirective implements IDirective {
 
 	private handle(directive: ScalarToken, assembler: Assembler, context: DirectiveContext & { allowForwardRef?: boolean }): void {
 		// Retrieve tokens on the same line after the directive
-		const tokens = assembler.getInstructionTokens();
+		const tokens = assembler.getInstructionTokens(directive);
 
 		// Split tokens into comma-separated expressions, but respect nested
 		// parentheses/brackets/braces so commas inside arrays or function calls
@@ -46,9 +46,7 @@ export class LogDirective implements IDirective {
 			if (t.type === "COMMA" && atTopLevel) {
 				exprs.push(currentExpr);
 				currentExpr = [];
-			} else {
-				currentExpr.push(t);
-			}
+			} else currentExpr.push(t);
 		}
 		if (currentExpr.length > 0) exprs.push(currentExpr);
 
@@ -78,7 +76,7 @@ export class LogDirective implements IDirective {
 			}
 		}
 
-		this.emitLog(assembler, outputs.join(", "));
+		this.emitLog(assembler, outputs.join("\t"));
 	}
 
 	private formatValue(value: unknown): string {

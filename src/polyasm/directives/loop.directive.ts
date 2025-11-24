@@ -63,15 +63,10 @@ export class LoopDirective implements IDirective {
 		if (!Array.isArray(arrayValue)) throw new Error(`The expression in the .FOR loop on line ${directive.line} did not evaluate to an array.`);
 
 		// 3. Find the loop body
-		const startIndex = assembler.getPosition();
-		const endTokenIndex = assembler.skipToDirectiveEnd(directive.value);
-		const bodyTokens = assembler.sliceTokens(startIndex, endTokenIndex);
+		const bodyTokens = assembler.getDirectiveBlockTokens(directive.value);
 
-		if (arrayValue.length === 0) {
-			// Empty array, advance past block
-			assembler.setPosition(endTokenIndex + 1);
-			return;
-		}
+		// Empty array, advance past block
+		if (arrayValue.length === 0) return;
 
 		// 4. Create a local scope for the entire loop's duration.
 		assembler.symbolTable.pushScope();

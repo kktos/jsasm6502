@@ -16,9 +16,7 @@ export class MacroHandler {
 	}
 
 	/** Pass 2: Expands a macro by injecting its tokens into the stream with argument substitution. */
-	public expandMacro(macroToken: ScalarToken): void {
-		// const callIndex = this.assembler.getPosition();
-		// const nameToken = this.assembler.getTokenAt(callIndex) as OperatorStackToken; // Macro name is the current token
+	public expandMacro(macroToken: ScalarToken) {
 		const macroName = macroToken.value;
 		const definition = this.assembler.macroDefinitions.get(macroName);
 
@@ -30,11 +28,10 @@ export class MacroHandler {
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 
 		// Check for argument count mismatch
-		if (passedArgsArray.length > definition.parameters.length) {
+		if (passedArgsArray.length > definition.parameters.length)
 			throw new Error(
 				`[PASS 2] Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
 			);
-		}
 
 		const argMap = new Map<string, Token[]>();
 

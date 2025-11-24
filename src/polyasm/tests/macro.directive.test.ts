@@ -64,6 +64,34 @@ describe("Macro Handling", () => {
 			const source = "MY_MACRO(10, 20)";
 			assembler.assemble(source);
 
+			const machineCode6502 = assembler.link();
+			expect(machineCode6502).toEqual([0xa9, 0x0a, 0x8d, 0x00, 0x20, 0xa9, 0x14, 0x8d, 0x01, 0x20]);
+
+			// Check if the symbols are defined correctly after macro expansion
+			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
+			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
+		});
+
+		it("should perform a full argument substitution", () => {
+			const { assembler, symbolTable } = setup();
+
+			// Define a simple macro
+			assembler.assemble(`
+				.MACRO MY_MACRO arg1, arg2
+					LDA arg1
+					STA $2000
+					LDA arg2
+					STA $2001
+				.END
+			`);
+
+			// Now, use the macro
+			const source = "MY_MACRO #$10, $300";
+			assembler.assemble(source);
+
+			const machineCode6502 = assembler.link();
+			expect(machineCode6502).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x20, 0xad, 0x0, 0x3, 0x8d, 0x01, 0x20]);
+
 			// Check if the symbols are defined correctly after macro expansion
 			expect(symbolTable.lookupSymbol("arg1")).toBeUndefined(); // Macro arguments should not leak into the symbol table
 			expect(symbolTable.lookupSymbol("arg2")).toBeUndefined();
@@ -120,6 +148,136 @@ describe("Macro Handling", () => {
 			const machineCode6502 = assembler.link();
 
 			expect(machineCode6502).toEqual([0x42, 0xff, 0x41, 0x42, 0x43, 0x44, 0x00, 0x01, 0x00, 0x10]);
+		});
+	});
+
+	describe("Macro and Namespace", () => {
+		it("should resolve a simple numeric macro argument in an expression", () => {
+			const { assembler } = setup();
+			const src = `
+				test = 1
+
+				.namespace earth
+					test = 2
+					.macro log
+						.db test
+					.end
+					log
+				.end namespace
+
+				log
+			`;
+			assembler.assemble(src);
+			const machineCode6502 = assembler.link();
+
+			expect(machineCode6502).toEqual([2, 1]);
+		});
+	});
+
+	describe("real life example", () => {
+		it("should works ;)", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro assertDefinedLabels neededLabels, errmsg
+					.if .type(neededLabels) != "array"
+						.error "checkIfDefined needs an array of strings as label names"
+					.end
+
+					.log "neededLabels = ", neededLabels
+
+					missingLabels = .array()
+					.for label of neededLabels
+
+						.log "label = ",label, "undef?", .undef(label)
+
+						.if .undef(label)
+							.log "add label", label
+							missingLabels= .push(missingLabels, label)
+						.end
+					.end
+
+					.log "len(missingLabels) = ", .len(missingLabels)
+
+					.if .len(missingLabels) != 0
+						.error errmsg, " ", missingLabels
+					.end
+				.end
+
+				labels = .array("ONE", "TWO")
+				assertDefinedLabels labels, "Missing game interface fields"
+
+			`;
+
+			expect(() => assembler.assemble(src)).toThrow("[ERROR] Missing game interface fields	 	[ONE, TWO]");
+		});
+		it("should works too;)", () => {
+			const { assembler } = setup();
+			const src = `
+				.macro ifx ...parms {
+					.if .len(parms)!=2
+						.error "Macro ifx : needs 2 params"
+					.end
+
+					.if .type(parms[0])!="string"
+						.error "Macro ifx : the first parm <",parms[0],"> needs to be a string"
+					.end
+
+					expr= .split(parms[0])
+					goto= parms[1]
+					parmIdx= 0
+
+					.if .len(expr)=3
+						ldx %(expr[parmIdx])
+						parmIdx= parmIdx + 1
+					.end
+
+					op= expr[parmIdx]
+					value= expr[parmIdx+1]
+
+					isValidOp= 0
+
+					cpx %(value)
+
+					.if op="<" {
+						isValidOp= 1
+						bcc goto
+					}
+
+					.if op="<="
+						isValidOp= 1
+						bcc goto
+						beq goto
+					.end
+
+					.if op=">"
+						isValidOp= 1
+						beq :+
+						bcs goto
+						:
+					.end
+
+					.if op=">="
+						isValidOp= 1
+						bcs goto
+						:
+					.end
+
+					.if !isValidOp
+						.error "Macro ifx : Invalid Operation ",op
+					.end
+
+				}
+
+					ifx "$300 < #130", end
+
+					nop
+
+				end:
+					rts
+
+			`;
+
+			expect(() => assembler.assemble(src)).toThrow("[ERROR] Missing game interface fields	 	[ONE, TWO]");
 		});
 	});
 });

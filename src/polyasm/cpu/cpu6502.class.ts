@@ -354,7 +354,7 @@ export class Cpu6502Handler implements CPUHandler {
 		resolvedAddress: number;
 	} {
 		// Check if the base mnemonic is supported. If not, THROW to signal a potential label.
-		const parts = mnemonic.toUpperCase().split(".");
+		const parts = mnemonic.split(".");
 		const baseMnemonic = parts[0];
 		const sizeSuffix = parts.length > 1 ? parts[1] : "";
 
