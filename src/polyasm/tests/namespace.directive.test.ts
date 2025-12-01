@@ -102,11 +102,11 @@ describe(".NAMESPACE Directive", () => {
 		assembler.assemble(source);
 
 		expect(logger.lines.filter((l) => l.startsWith("1NS>> "))).toEqual([
-			"1NS>> global:, global",
-			"1NS>> one:, ONE",
-			"1NS>> global:, global",
-			"1NS>> two:, TWO",
-			"1NS>> global:, global",
+			"1NS>> global:	global",
+			"1NS>> one:	ONE",
+			"1NS>> global:	global",
+			"1NS>> two:	TWO",
+			"1NS>> global:	global",
 		]);
 	});
 
@@ -125,6 +125,6 @@ describe(".NAMESPACE Directive", () => {
 
 		assembler.assemble(source);
 
-		expect(logger.lines.filter((l) => l.startsWith(">>"))).toEqual([">>, 45, 56", ">>, 45, 56"]);
+		expect(logger.lines.filter((l) => l.startsWith(">>"))).toEqual([">>	45	56", ">>	45	56"]);
 	});
 });

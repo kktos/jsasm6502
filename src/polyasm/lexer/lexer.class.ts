@@ -53,7 +53,8 @@ export type StringValueToken<T extends TokenType> = BaseToken & {
 
 export type OperatorToken = StringValueToken<"OPERATOR">;
 export type FunctionToken = StringValueToken<"FUNCTION">;
-export type OperatorStackToken = OperatorToken | FunctionToken;
+export type NumberToken = StringValueToken<"NUMBER">;
+export type OperatorStackToken = OperatorToken | FunctionToken | NumberToken;
 export type IdentifierToken = StringValueToken<"IDENTIFIER">;
 export type PropAccessToken = StringValueToken<"PROPERTY_ACCESS">;
 
@@ -66,65 +67,61 @@ export type ArrayValueToken = BaseToken & {
 
 export type Token = ScalarToken | ArrayValueToken;
 
+type Stream = {
+	source: string;
+	pos: number;
+	line: number;
+	column: number;
+	length: number;
+	lastToken: Token | null;
+	tokenBuffer: Token[];
+};
 export class AssemblyLexer {
-	private source = "";
-	private pos = 0;
-	private line = 1;
-	private column = 1;
-	private length = 0;
-	private localLabelChar = ":";
-	private lastToken: Token | null = null;
-	// Buffer for incremental/token-stream usage
-	private tokenBuffer: Token[] = [];
 	private endMarker: string | undefined;
+	private localLabelChar = ":";
+
+	private streamStack: Stream[] = [];
+	private currentStream: Stream;
 
 	constructor(options?: { localLabelStyle?: string }) {
+		this.currentStream = this.streamStack[0];
 		if (options?.localLabelStyle) {
 			this.localLabelChar = options.localLabelStyle;
 		}
 	}
 
 	public tokenize(source: string): Token[] {
-		this.resetStream();
-		this.source = source;
-		this.length = source.length;
+		this.startStream(source);
 
-		this.pos = 0;
-		this.line = 1;
-		this.column = 1;
-		this.lastToken = null;
-
-		this.tokenBuffer = [];
-
-		while (this.pos < this.length) {
+		while (this.currentStream.pos < this.currentStream.length) {
 			const token = this.nextToken();
-			if (token) {
-				this.lastToken = token;
-				this.tokenBuffer.push(token);
-				if (token.type === "EOF") break;
-			}
+			if (!token) continue; // skip null tokens (e.g., newlines)
+
+			this.currentStream.lastToken = token;
+			this.currentStream.tokenBuffer.push(token);
+			if (token.type === "EOF") break;
 		}
 
-		return this.tokenBuffer.slice();
+		return this.currentStream.tokenBuffer.slice();
 	}
 
 	/** Initializes the lexer for incremental/token-stream consumption. */
-	public startStream(source: string): void {
-		this.resetStream();
-		this.source = source;
-		this.length = source.length;
-
-		this.pos = 0;
-		this.line = 1;
-		this.column = 1;
-		this.lastToken = null;
-
-		this.tokenBuffer = [];
+	public startStream(source: string) {
+		this.currentStream = {
+			source,
+			pos: 0,
+			line: 1,
+			column: 1,
+			length: source.length,
+			lastToken: null,
+			tokenBuffer: [],
+		};
+		this.streamStack.push(this.currentStream);
 	}
 
-	private resetStream(): void {
-		this.tokenBuffer = [];
-	}
+	// private resetStream(): void {
+	// 	this.tokenBuffer = [];
+	// }
 
 	public setEndMarker(endMarker: string | undefined): void {
 		this.endMarker = endMarker;
@@ -136,49 +133,55 @@ export class AssemblyLexer {
 	 */
 	public ensureBuffered(index: number): Token | null {
 		// Generate tokens until we have the requested index or reach EOF
-		while (this.tokenBuffer.length <= index) {
+		while (this.currentStream.tokenBuffer.length <= index) {
 			// If we've already consumed the whole source, stop
-			if (this.pos >= this.length) {
+			if (this.currentStream.pos >= this.currentStream.length) {
 				// If EOF not yet buffered, push it
-				if (this.tokenBuffer.length === 0 || this.tokenBuffer[this.tokenBuffer.length - 1].type !== "EOF") {
-					const eof = this.makeToken("EOF", "", this.line, this.column);
-					this.tokenBuffer.push(eof);
+				if (this.currentStream.tokenBuffer.length === 0 || this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1].type !== "EOF") {
+					const eof = this.makeToken("EOF", "", this.currentStream.line, this.currentStream.column);
+					this.currentStream.tokenBuffer.push(eof);
 				}
 				break;
 			}
 
 			const t = this.nextToken({ endMarker: this.endMarker });
 			if (!t) continue; // skip null tokens (e.g., newlines)
-			this.lastToken = t;
-			this.tokenBuffer.push(t);
+			this.currentStream.lastToken = t;
+			this.currentStream.tokenBuffer.push(t);
 			if (t.type === "EOF") break;
 		}
 
-		return this.tokenBuffer[index] ?? null;
+		const token = this.currentStream.tokenBuffer[index];
+		if (!token) return null;
+		if (token.type === "EOF" && this.streamStack.length > 1) {
+			this.streamStack.pop();
+			this.currentStream = this.streamStack[this.streamStack.length - 1];
+		}
+		return token;
 	}
 
 	/** Returns the buffered tokens (may grow as ensureBuffered is called). */
 	public getBufferedTokens(): Token[] {
-		return this.tokenBuffer;
+		return this.currentStream.tokenBuffer;
 	}
 
 	public rewind(offset: number, pos: { line: number; column: number; pos: number }) {
-		this.tokenBuffer.length -= offset;
-		this.line = pos.line;
-		this.column = pos.column;
-		this.pos = pos.pos;
-		this.lastToken = this.tokenBuffer[this.tokenBuffer.length - 1];
+		this.currentStream.tokenBuffer.length -= offset;
+		this.currentStream.line = pos.line;
+		this.currentStream.column = pos.column;
+		this.currentStream.pos = pos.pos;
+		this.currentStream.lastToken = this.currentStream.tokenBuffer[this.currentStream.tokenBuffer.length - 1];
 	}
 
 	/** Consume and return the next token from the stream (or null at EOF). */
 	public nextFromStream(): Token | null {
 		// Ensure at least one token is buffered
-		const token = this.ensureBuffered(this.tokenBuffer.length);
+		const token = this.ensureBuffered(this.currentStream.tokenBuffer.length);
 		if (!token) return null;
 		// Pop the next token off the buffer front
-		const next = this.tokenBuffer.shift() as Token;
+		const next = this.currentStream.tokenBuffer.shift() as Token;
 		// Keep lastToken updated
-		this.lastToken = next;
+		this.currentStream.lastToken = next;
 		return next;
 	}
 
@@ -191,13 +194,13 @@ export class AssemblyLexer {
 	public nextToken(options?: { endMarker?: string }): Token | null {
 		this.skipWhitespace();
 
-		if (this.pos >= this.length) return this.makeToken("EOF", "");
+		if (this.currentStream.pos >= this.currentStream.length) return this.makeToken("EOF", "");
 
-		if (options?.endMarker) return this.scanRawTextBlock(this.line, this.column, options.endMarker);
+		if (options?.endMarker) return this.scanRawTextBlock(this.currentStream.line, this.currentStream.column, options.endMarker);
 
-		const ch = this.source[this.pos];
-		const startLine = this.line;
-		const startColumn = this.column;
+		const ch = this.currentStream.source[this.currentStream.pos];
+		const startLine = this.currentStream.line;
+		const startColumn = this.currentStream.column;
 
 		// Comment - fast path for semicolon
 		if (ch === ";") return this.scanComment(startLine, startColumn);
@@ -340,8 +343,8 @@ export class AssemblyLexer {
 				return this.makeToken("RBRACE", "}", startLine, startColumn);
 			case "\n":
 				this.advance();
-				this.line++;
-				this.column = 1;
+				this.currentStream.line++;
+				this.currentStream.column = 1;
 				// return this.makeToken("NEWLINE", "\n", startLine, startColumn);
 				return null;
 		}
@@ -352,11 +355,11 @@ export class AssemblyLexer {
 			// A minus is a negative number if it's at the start of an expression
 			// (no previous token) or follows an operator, comma, or parenthesis.
 			const isUnary =
-				!this.lastToken || // Start of expression
-				this.lastToken.type === "COMMA" || // After a comma
-				(this.lastToken.type === "OPERATOR" &&
-					this.lastToken.value !== ")" && // Not after a closing parenthesis
-					this.lastToken.value !== "]"); // Not after a closing bracket
+				!this.currentStream.lastToken || // Start of expression
+				this.currentStream.lastToken.type === "COMMA" || // After a comma
+				(this.currentStream.lastToken.type === "OPERATOR" &&
+					this.currentStream.lastToken.value !== ")" && // Not after a closing parenthesis
+					this.currentStream.lastToken.value !== "]"); // Not after a closing bracket
 			if (isUnary && this.isDigit(this.peek())) {
 				return this.scanNumber(startLine, startColumn, true);
 			}
@@ -400,21 +403,21 @@ export class AssemblyLexer {
 	}
 
 	private scanComment(_line: number, _column: number) {
-		const start = this.pos;
+		const start = this.currentStream.pos;
 
 		// Skip comment starter (either ';' or '//')
 		this.advance();
-		if (this.source[this.pos - 1] === "/" && this.peek() === "/") {
+		if (this.currentStream.source[this.currentStream.pos - 1] === "/" && this.peek() === "/") {
 			this.advance(); // skip second '/'
 		}
 
 		// Fast scan to end of line using indexOf
-		let end = this.source.indexOf("\n", this.pos);
-		if (end === -1) end = this.length;
+		let end = this.currentStream.source.indexOf("\n", this.currentStream.pos);
+		if (end === -1) end = this.currentStream.length;
 
 		// const value = this.source.slice(start, end);
-		this.pos = end;
-		this.column += end - start;
+		this.currentStream.pos = end;
+		this.currentStream.column += end - start;
 
 		return null; // this.makeToken("COMMENT", value, line, column);
 	}
@@ -426,7 +429,7 @@ export class AssemblyLexer {
 		this.advance(); // skip '*'
 
 		// Scan until we find '*/'
-		while (this.pos < this.length - 1) {
+		while (this.currentStream.pos < this.currentStream.length - 1) {
 			if (this.peek() === "*" && this.peekAhead(1) === "/") {
 				this.advance(); // skip '*'
 				this.advance(); // skip '/'
@@ -435,8 +438,8 @@ export class AssemblyLexer {
 
 			// Track line numbers within the comment
 			if (this.peek() === "\n") {
-				this.line++;
-				this.column = 0; // will be incremented by advance()
+				this.currentStream.line++;
+				this.currentStream.column = 0; // will be incremented by advance()
 			}
 
 			this.advance();
@@ -450,7 +453,7 @@ export class AssemblyLexer {
 		let value = "";
 		this.advance(); // skip opening "
 
-		while (this.peek() !== '"' && this.peek() !== "\n" && this.pos < this.length) {
+		while (this.peek() !== '"' && this.peek() !== "\n" && this.currentStream.pos < this.currentStream.length) {
 			if (this.peek() === "\\") {
 				this.advance(); // skip escape char
 				const escaped = this.peek();
@@ -481,7 +484,7 @@ export class AssemblyLexer {
 						value += "\\";
 						break;
 					case "x": {
-						const hexCode = this.source.substring(this.pos, this.pos + 2);
+						const hexCode = this.currentStream.source.substring(this.currentStream.pos, this.currentStream.pos + 2);
 						if (hexCode.length === 2 && /^[0-9a-fA-F]+$/.test(hexCode)) {
 							value += String.fromCharCode(Number.parseInt(hexCode, 16));
 							this.advance();
@@ -525,17 +528,17 @@ export class AssemblyLexer {
 			radix = 10;
 		}
 
-		const start = this.pos;
+		const start = this.currentStream.pos;
 		while (this.isValidDigitForRadix(this.peek(), radix) || this.peek() === "_") {
 			this.advance();
 		}
 
-		const numberString = this.source.slice(start, this.pos).replace(/_/g, "");
+		const numberString = this.currentStream.source.slice(start, this.currentStream.pos).replace(/_/g, "");
 		if (numberString === "") {
 			// This can happen if a prefix is not followed by any digits (e.g., just '$')
 			// We can treat it as an operator or throw an error. For now, let's assume it's not a number.
 			// We need to rewind the position to before the prefix was scanned.
-			this.pos = start - (radix === 10 ? 0 : radix === 16 && secondChar === "x" ? 2 : 1);
+			this.currentStream.pos = start - (radix === 10 ? 0 : radix === 16 && secondChar === "x" ? 2 : 1);
 			return this.scanIdentifier(line, column); // Re-evaluate as something else
 		}
 
@@ -551,16 +554,16 @@ export class AssemblyLexer {
 
 		if (this.isAlpha(nextChar)) {
 			// Named local label like ':loop'
-			const start = this.pos;
+			const start = this.currentStream.pos;
 			while (this.isIdentifierPart(this.peek())) {
 				this.advance();
 			}
-			const value = this.source.slice(start, this.pos);
+			const value = this.currentStream.source.slice(start, this.currentStream.pos);
 			return this.makeToken("LOCAL_LABEL", value.toUpperCase(), line, column);
 		}
 		if (nextChar === "+" || nextChar === "-") {
 			// Nameless reference like ':-' or ':++' or ':+3'
-			const _start = this.pos;
+			const _start = this.currentStream.pos;
 			const sign = nextChar;
 			let count = 0;
 			while (this.peek() === sign) {
@@ -570,11 +573,11 @@ export class AssemblyLexer {
 
 			// Check for an optional numeric count like ':-3'
 			if (this.isDigit(this.peek())) {
-				const numStart = this.pos;
+				const numStart = this.currentStream.pos;
 				while (this.isDigit(this.peek())) {
 					this.advance();
 				}
-				const numStr = this.source.slice(numStart, this.pos);
+				const numStr = this.currentStream.source.slice(numStart, this.currentStream.pos);
 				count = Number.parseInt(numStr, 10);
 			}
 
@@ -590,7 +593,7 @@ export class AssemblyLexer {
 
 	private scanRawTextBlock(line: number, column: number, endMarker: string): Token | null {
 		// The raw data starts after the current line.
-		const endOfLine = this.source.indexOf("\n", this.pos);
+		const endOfLine = this.currentStream.source.indexOf("\n", this.currentStream.pos);
 		// No newline after the directive, so no raw data.
 		if (endOfLine === -1) return null;
 
@@ -603,35 +606,35 @@ export class AssemblyLexer {
 		do {
 			let lineStart = currentPos + 1;
 			// Skip leading whitespace on the line
-			while (lineStart < this.length && (this.source[lineStart] === " " || this.source[lineStart] === "\t")) {
+			while (lineStart < this.currentStream.length && (this.currentStream.source[lineStart] === " " || this.currentStream.source[lineStart] === "\t")) {
 				lineStart++;
 			}
 
-			if (this.source.startsWith(endMarker, lineStart)) {
+			if (this.currentStream.source.startsWith(endMarker, lineStart)) {
 				endOfRawData = currentPos; // The raw data ends at the newline before the end marker line.
-				this.pos = lineStart + endMarker.length; // Move position past the end marker
+				this.currentStream.pos = lineStart + endMarker.length; // Move position past the end marker
 				break;
 			}
 			currentPos++; // Move to the next character to continue searching
 			// biome-ignore lint/suspicious/noAssignInExpressions: easier that way
-		} while ((currentPos = this.source.indexOf("\n", currentPos)) !== -1);
+		} while ((currentPos = this.currentStream.source.indexOf("\n", currentPos)) !== -1);
 
 		if (endOfRawData === -1) {
-			endOfRawData = this.length; // Read to the end if marker not found
-			this.pos = this.length;
+			endOfRawData = this.currentStream.length; // Read to the end if marker not found
+			this.currentStream.pos = this.currentStream.length;
 		}
 
-		const rawValue = this.source.slice(rawDataStart, endOfRawData);
+		const rawValue = this.currentStream.source.slice(rawDataStart, endOfRawData);
 		return this.makeToken("RAW_TEXT", rawValue, line, column);
 	}
 
 	private scanIdentifier(line: number, column: number): Token {
-		let start = this.pos;
+		let start = this.currentStream.pos;
 
 		// Scan identifier: letters, digits, underscore, and dot (for addressing modes like LDA.W)
 		while (this.isIdentifierPart(this.peek())) this.advance();
 
-		let value = this.source.slice(start, this.pos);
+		let value = this.currentStream.source.slice(start, this.currentStream.pos);
 
 		// Check if followed by : - that makes it a label
 		if (this.peek() === ":") {
@@ -643,10 +646,10 @@ export class AssemblyLexer {
 			if (this.peek() === ":") {
 				this.advance(); // consume ':'
 
-				start = this.pos;
-				const ch = this.source[this.pos];
+				start = this.currentStream.pos;
+				const ch = this.currentStream.source[this.currentStream.pos];
 				if (this.isIdentifierStart(ch)) while (this.isIdentifierPart(this.peek())) this.advance();
-				const symbolName = this.source.slice(start, this.pos);
+				const symbolName = this.currentStream.source.slice(start, this.currentStream.pos);
 
 				return this.makeToken("IDENTIFIER", `${value}::${symbolName.toUpperCase()}`, line, column, symbolName);
 			}
@@ -692,8 +695,8 @@ export class AssemblyLexer {
 
 	private skipWhitespace(): void {
 		// V8 optimizes simple loops with bounds checks
-		while (this.pos < this.length) {
-			const ch = this.source[this.pos];
+		while (this.currentStream.pos < this.currentStream.length) {
+			const ch = this.currentStream.source[this.currentStream.pos];
 			if (ch !== " " && ch !== "\t" && ch !== "\r") break;
 			this.advance();
 		}
@@ -701,22 +704,22 @@ export class AssemblyLexer {
 
 	// Hot path methods - inline candidates
 	private peek(): string {
-		return this.pos < this.length ? this.source[this.pos] : "";
+		return this.currentStream.pos < this.currentStream.length ? this.currentStream.source[this.currentStream.pos] : "";
 	}
 
 	private peekAhead(offset: number): string {
-		const pos = this.pos + offset;
-		return pos < this.length ? this.source[pos] : "";
+		const pos = this.currentStream.pos + offset;
+		return pos < this.currentStream.length ? this.currentStream.source[pos] : "";
 	}
 	private advance(): void {
-		this.pos++;
-		this.column++;
+		this.currentStream.pos++;
+		this.currentStream.column++;
 	}
 	public getPosition() {
-		return { line: this.line, column: this.column, pos: this.pos };
+		return { line: this.currentStream.line, column: this.currentStream.column, pos: this.currentStream.pos };
 	}
 
-	private makeToken(type: Exclude<TokenType, "ARRAY">, value: string, line = this.line, column = this.column, raw?: string): Token {
+	private makeToken(type: Exclude<TokenType, "ARRAY">, value: string, line = this.currentStream.line, column = this.currentStream.column, raw?: string): Token {
 		return { type, value, line, column, raw } as Token;
 	}
 }

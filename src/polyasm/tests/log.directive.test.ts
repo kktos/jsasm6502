@@ -65,7 +65,7 @@ describe("Logging directives", () => {
 			const src = '.LOG 10, "HELLO", [1,2]';
 			asm.assemble(src);
 
-			const found = logger.lines.find((l) => l === "10, HELLO, [1, 2]");
+			const found = logger.lines.find((l) => l === "10	HELLO	[1, 2]");
 			expect(found).toBeDefined();
 		});
 	});

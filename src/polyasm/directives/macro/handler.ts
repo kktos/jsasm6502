@@ -20,9 +20,9 @@ export class MacroHandler {
 		const macroName = macroToken.value;
 		const definition = this.assembler.macroDefinitions.get(macroName);
 
-		if (!definition) throw new Error(`[PASS 2] ERROR: Macro '${macroName}' not defined.`);
+		if (!definition) throw new Error(`ERROR: Macro '${macroName}' not defined.`);
 
-		this.logger.log(`[PASS 2] Expanding macro: ${macroName}`);
+		this.logger.log(`Expanding macro: ${macroName}`);
 
 		const passedArgsArray = this.parseMacroArguments(macroToken.line);
 		const argMap = new Map<string, Token[]>();
@@ -34,7 +34,7 @@ export class MacroHandler {
 		if (definition.restParameter) {
 			if (passedArgsArray.length < definition.parameters.length)
 				throw new Error(
-					`[PASS 2] Not enough arguments for macro '${macroName}' on line ${macroToken.line}. Expected at least ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+					`Not enough arguments for macro '${macroName}' on line ${macroToken.line}. Expected at least ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
 				);
 
 			// Map regular parameters
@@ -86,7 +86,7 @@ export class MacroHandler {
 			// Original logic for fixed arguments
 			if (passedArgsArray.length > definition.parameters.length)
 				throw new Error(
-					`[PASS 2] Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
+					`Too many arguments for macro '${macroName}' on line ${macroToken.line}. Expected ${definition.parameters.length}, but got ${passedArgsArray.length}.`,
 				);
 
 			definition.parameters.forEach((param, index) => {
@@ -102,7 +102,7 @@ export class MacroHandler {
 		}));
 
 		// Advance the current stream past the macro call line and push the new stream.
-		this.assembler.pushTokenStream(expandedTokens, argMap);
+		this.assembler.pushTokenStream({ newTokens: expandedTokens, macroArgs: argMap });
 	}
 
 	/**

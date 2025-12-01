@@ -3,7 +3,6 @@ import { Cpu6502Handler } from "../cpu/cpu6502.class";
 import { Logger } from "../logger";
 import { Assembler } from "../polyasm";
 import type { FileHandler } from "../polyasm.types";
-import { hexDump } from "../utils/hexdump.util";
 
 const _TEMP = `
 	; Macro with optional and rest parameters
@@ -121,49 +120,8 @@ describe("PolyAsm", () => {
 		assembler6502.assemble(source6502);
 		const machineCode6502 = assembler6502.link();
 
-		console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);
+		// console.log(`\n6502 Machine Code Bytes (Hex):\n${hexDump(0, machineCode6502)}`);
 
 		expect(machineCode6502).toBeDefined();
 	});
 });
-
-/*
-const tokensARM: Token[] = [
-	// 1. Constant & Label
-	{ type: "IDENTIFIER", value: "START_ADDR", line: 1, col: 1 },
-	{ type: "DIRECTIVE", value: ".EQU", line: 1, col: 12 },
-	{ type: "NUMBER", value: "$8000", line: 1, col: 17 },
-
-	{ type: "DIRECTIVE", value: ".ORG", line: 3, col: 1 },
-	{ type: "NUMBER", value: "START_ADDR", line: 3, col: 5 },
-
-	// 2. Data Processing (MOV R0, #$12)
-	// Expected: E3A00012 (MOV, R0, #12)
-	{ type: "IDENTIFIER", value: "MOV", line: 5, col: 1 },
-	{ type: "IDENTIFIER", value: "R0", line: 5, col: 5 },
-	{ type: "OPERATOR", value: ",", line: 5, col: 7 },
-	{ type: "OPERATOR", value: "#", line: 5, col: 9 },
-	{ type: "NUMBER", value: "$12", line: 5, col: 10 },
-
-	// 3. Branch (B MyLoop)
-	// Expected: EALLXXXX (Branch Always)
-	{ type: "IDENTIFIER", value: "B", line: 6, col: 1 },
-	{ type: "IDENTIFIER", value: "MyLoop", line: 6, col: 3 },
-
-	// 4. Target Label
-	{ type: "IDENTIFIER", value: "MyLoop", line: 8, col: 1 },
-
-	// 5. Data Processing (MOV R1, #4)
-	// Expected: E3A01004 (MOV, R1, #4)
-	{ type: "IDENTIFIER", value: "MOV", line: 9, col: 1 },
-	{ type: "IDENTIFIER", value: "R1", line: 9, col: 5 },
-	{ type: "OPERATOR", value: ",", line: 9, col: 7 },
-	{ type: "OPERATOR", value: "#", line: 9, col: 9 },
-	{ type: "NUMBER", value: "4", line: 9, col: 10 },
-
-	// 6. Return (Implied, not supported in this mock, but consumes 4 bytes)
-	{ type: "IDENTIFIER", value: "BX", line: 10, col: 1 }, // Using BX as a placeholder for a 4-byte instruction
-	{ type: "IDENTIFIER", value: "LR", line: 10, col: 4 },
-];
-
- */

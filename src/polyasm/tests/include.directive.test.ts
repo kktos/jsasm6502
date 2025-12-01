@@ -19,7 +19,7 @@ const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, si
 describe("File Directives (.INCLUDE, .INCBIN)", () => {
 	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
 		const mockFileHandler = new MockFileHandler();
-		const logger = new Logger(false);
+		const logger = new Logger(true);
 		const cpuHandler = new Cpu6502Handler();
 		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments });
 		return { assembler, mockFileHandler, logger };
@@ -44,25 +44,21 @@ describe("File Directives (.INCLUDE, .INCBIN)", () => {
 		});
 
 		it("should log an error if the file to include is not found", () => {
-			const { assembler, mockFileHandler, logger } = createAssembler();
+			const { assembler, mockFileHandler } = createAssembler();
 			const source = `.INCLUDE "nonexistent.asm"`;
 
-			const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(() => {
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(() => {
 				throw new Error("File not found");
 			});
-			const loggerErrorSpy = vi.spyOn(logger, "error");
 
-			assembler.assemble(source);
-
-			expect(readSourceFileSpy).toHaveBeenCalledWith("nonexistent.asm");
-			expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining("ERROR including file"));
+			expect(() => assembler.assemble(source)).toThrow("ERROR including file nonexistent.asm on line 1: Error: File not found");
 		});
 
 		it("should log an error if .INCLUDE is missing a filename argument", () => {
 			const { assembler } = createAssembler();
 			const source = ".INCLUDE";
 
-			expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: .INCLUDE requires a string argument");
+			expect(() => assembler.assemble(source)).toThrow("ERROR: .INCLUDE requires a string argument on line 1.");
 		});
 	});
 

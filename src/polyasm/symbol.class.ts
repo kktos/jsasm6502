@@ -87,6 +87,11 @@ export class PASymbolTable {
 		return current;
 	}
 
+	getCurrentScope() {
+		const current = this.scopeStack[this.scopeStack.length - 1];
+		return this.symbols.get(current);
+	}
+
 	/**
 	 * Adds a symbol (label or constant). Handles local labels starting with '.'
 	 * @param name The symbol name.
@@ -108,8 +113,8 @@ export class PASymbolTable {
 
 		const scope = this.symbols.get(namespaceKey);
 
-		if (!scope) throw `[PASS 1] ERROR: PASymbol ${namespace} doesn't exist.`;
-		if (scope.has(name)) throw `[PASS 1] ERROR: PASymbol ${namespace}::${name} redefined.`;
+		if (!scope) throw `ERROR: PASymbol ${namespace} doesn't exist.`;
+		if (scope.has(name)) throw `ERROR: PASymbol ${namespace}::${name} redefined.`;
 
 		scope.set(name, {
 			name,
@@ -156,7 +161,7 @@ export class PASymbolTable {
 	}
 
 	/**
-	 * Attempts to look up a symbol. Searches current namespace first, then global.
+	 * Attempts to look up a symbol. Searches current namespace first, then the whole stack up to global.
 	 */
 	lookupSymbol(symbolName: string): SymbolValue | undefined {
 		const name = symbolName.toUpperCase();
@@ -178,6 +183,11 @@ export class PASymbolTable {
 		return undefined;
 	}
 
+	// test is a symbol is defined in the current NS
+	isDefined(symbolName: string) {
+		const currentScope = this.getCurrentScope();
+		return currentScope?.has(symbolName.toUpperCase());
+	}
 	/**
 	 * Gathers all unique symbol names from all scopes.
 	 * @returns An array of all defined symbol names.

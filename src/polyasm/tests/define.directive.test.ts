@@ -69,7 +69,7 @@ describe(".DEFINE Directive", () => {
 			.DEFINE MY_SYMBOL
 			.END
 		`;
-		expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: PASymbol global::MY_SYMBOL redefined.");
+		expect(() => assembler.assemble(source)).toThrow("ERROR: PASymbol global::MY_SYMBOL redefined.");
 	});
 
 	it("should throw an error for an unknown handler", () => {

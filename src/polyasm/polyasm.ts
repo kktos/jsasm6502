@@ -7,8 +7,9 @@ import { ExpressionEvaluator } from "./expression";
 import { AssemblyLexer, type IdentifierToken, type OperatorStackToken, type ScalarToken, type Token } from "./lexer/lexer.class";
 import { Linker, type Segment } from "./linker.class";
 import { Logger } from "./logger";
-import type { AssemblerOptions, DataProcessor, FileHandler, StreamState } from "./polyasm.types";
+import type { AssemblerOptions, DataProcessor, FileHandler, PushTokenStreamParams, StreamState } from "./polyasm.types";
 import { PASymbolTable } from "./symbol.class";
+import { getHex } from "./utils/hex.util";
 
 const DEFAULT_PC = 0x1000;
 
@@ -33,6 +34,7 @@ export class Assembler {
 	public logger: Logger;
 	public tokenStreamStack: StreamState[] = [];
 	private streamIdCounter = 0;
+	private tokenStreamCache: Map<string, StreamState> = new Map();
 
 	public pass: number;
 
@@ -141,7 +143,7 @@ export class Assembler {
 		this.passTwo();
 
 		this.logger.log(`\n--- Assembly Complete (${this.cpuHandler.cpuType}) ---`);
-		this.logger.log(`Final PC location: $${this.currentPC.toString(16).toUpperCase().padStart(4, "0")}`);
+		this.logger.log(`Final PC location: $${getHex(this.currentPC)}`);
 
 		// All emitted bytes are stored in the linker segments (a default segment was created if none existed).
 		return this.linker.segments;
@@ -161,12 +163,17 @@ export class Assembler {
 
 		if (this.linker.segments.length) this.currentPC = this.linker.segments.length ? this.linker.segments[0].start : DEFAULT_PC;
 
-		while (true) {
+		while (this.tokenStreamStack.length > 0) {
 			const token = this.nextToken();
-			if (!token || token.type === "EOF") break;
+			// If no token or EOF, pop the active stream
+			if (!token || token.type === "EOF") {
+				const poppedStream = this.popTokenStream(false); // Don't emit event yet
+				if (this.tokenStreamStack.length === 0) break;
+				if (poppedStream) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+				continue;
+			}
 
 			switch (token.type) {
-				// case "DIRECTIVE": {
 				case "DOT": {
 					const directiveToken = this.nextToken() as ScalarToken;
 					if (directiveToken?.type !== "IDENTIFIER") throw new Error(`Syntax error in line ${token.line}`);
@@ -176,6 +183,7 @@ export class Assembler {
 						allowForwardRef: true,
 						currentGlobalLabel: this.lastGlobalLabel,
 						options: this.options,
+						macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
 					};
 
 					this.directiveHandler.handlePassOneDirective(directiveToken, directiveContext);
@@ -195,17 +203,17 @@ export class Assembler {
 					throw new Error(`Syntax error in line ${token.line}`);
 				}
 
-				case "IDENTIFIER":
-				case "LABEL": {
+				case "IDENTIFIER": {
 					// PRIORITY 1: MACRO
 					if (this.macroHandler.isMacro(token.value)) {
-						this.setPosition(this.skipToEndOfLine(this.getPosition()));
+						// this.setPosition(this.skipToEndOfLine(this.getPosition()));
+						this.macroHandler.expandMacro(token);
 						break;
 					}
 
 					// PRIORITY 2: CPU INSTRUCTION OR ...
 					// A mnemonic must be a string. If it's an array, it's an error.
-					if (typeof token.value !== "string") throw new Error("Invalid instruction: Mnemonic cannot be an array.");
+					// if (typeof token.value !== "string") throw new Error("Invalid instruction: Mnemonic cannot be an array.");
 
 					// Check if the mnemonic is a known instruction for the current CPU.
 					if (this.cpuHandler.isInstruction(token.value)) {
@@ -216,20 +224,20 @@ export class Assembler {
 					// PRIORITY 3: ... OR LABEL
 					// It's not a known instruction, so treat it as a label definition.
 					this.lastGlobalLabel = token.value;
+					break;
+				}
+				case "LABEL": {
+					this.lastGlobalLabel = token.value;
 					this.symbolTable.addSymbol(token.value, this.currentPC);
-					this.logger.log(`[PASS 1] Defined label ${token.value} @ $${this.currentPC.toString(16).toUpperCase()}`);
-
+					this.logger.log(`Defined label ${token.value} @ $${getHex(this.currentPC)}`);
 					break;
 				}
 
 				case "LOCAL_LABEL": {
-					if (this.lastGlobalLabel) {
-						const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
-						this.symbolTable.addSymbol(qualifiedName, this.currentPC);
-						break;
-					}
+					if (!this.lastGlobalLabel) throw `ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`;
 
-					this.logger.error(`[PASS 1] ERROR on line ${token.line}: Local label ':${token.value}' defined without a preceding global label.`);
+					const qualifiedName = `${this.lastGlobalLabel}.${token.value}`;
+					this.symbolTable.addSymbol(qualifiedName, this.currentPC);
 					break;
 				}
 
@@ -261,8 +269,6 @@ export class Assembler {
 				continue;
 			}
 
-			// this.symbolTable.setSymbol("*", this.currentPC);
-
 			switch (token.type) {
 				case "OPERATOR": {
 					if (token.value === "*") {
@@ -284,57 +290,7 @@ export class Assembler {
 					}
 
 					if (this.cpuHandler.isInstruction(token.value)) {
-						const instructionPC = this.currentPC;
-						// It's an instruction.
-						const mnemonicToken = token as OperatorStackToken;
-						let operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
-
-						const currentStream = this.tokenStreamStack[this.tokenStreamStack.length - 1];
-						if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
-
-						if (this.isAssembling) {
-							try {
-								// 1. Resolve Mode & Address
-								const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
-									this.expressionEvaluator.evaluateAsNumber(exprTokens, {
-										pc: this.currentPC,
-										macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
-										assembler: this,
-										currentGlobalLabel: this.lastGlobalLabel,
-										options: this.options,
-									}),
-								);
-
-								// 2. Encode Bytes using resolved info
-								const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
-									...modeInfo,
-									pc: this.currentPC,
-								});
-
-								// 3. LOGGING (New location)
-								const hexBytes = encodedBytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
-								const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
-								const operandString = operandTokens.map((t) => t.value).join("");
-								this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${token.line}`);
-
-								this.linker.writeBytes(this.currentPC, encodedBytes);
-								this.currentPC += encodedBytes.length;
-
-								// Write each encoded byte into the segment that covers the current PC
-								// for (const b of encodedBytes) {
-								// 	this.linker.writeByte(this.currentPC, b);
-								// 	this.currentPC += 1;
-								// }
-							} catch (e) {
-								const errorMessage = e instanceof Error ? e.message : String(e);
-								this.logger.error(`\nFATAL ERROR on line ${token.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
-								throw new Error(`Assembly failed on line ${token.line}: ${errorMessage}`); // Stop execution
-							}
-						} else {
-							// Not assembling: just advance PC
-							this.currentPC += this.getInstructionSize();
-						}
-						// this.setPosition(this.skipToEndOfLine());
+						this.handleInstructionPassTwo(token as OperatorStackToken);
 						break;
 					}
 
@@ -373,6 +329,8 @@ export class Assembler {
 
 				case "LABEL":
 					this.lastGlobalLabel = token.value;
+					this.symbolTable.setSymbol(token.value, this.currentPC);
+					this.logger.log(`Defined label ${token.value} @ $${getHex(this.currentPC)}`);
 					break;
 
 				// case "LOCAL_LABEL":
@@ -494,22 +452,20 @@ export class Assembler {
 	public handleSymbolInPassOne(_nextToken: Token, labelToken: string) {
 		const expressionTokens = this.getInstructionTokens();
 
-		try {
-			const value = this.expressionEvaluator.evaluate(expressionTokens, {
-				pc: this.currentPC,
-				allowForwardRef: true,
-				currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
-				options: this.options,
-			});
+		const value = this.expressionEvaluator.evaluate(expressionTokens, {
+			pc: this.currentPC,
+			allowForwardRef: true,
+			currentGlobalLabel: this.lastGlobalLabel, // Added for .EQU
+			options: this.options,
+			macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+		});
 
-			if (Array.isArray(value)) this.logger.log(`[PASS 1] Defined array symbol ${labelToken} with ${value.length} elements.`);
-			else this.logger.log(`[PASS 1] Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
+		if (Array.isArray(value)) this.logger.log(`Defined array symbol ${labelToken} with ${value.length} elements.`);
+		else this.logger.log(`Defined symbol ${labelToken} = $${value.toString(16).toUpperCase()}`);
 
-			if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
-			else this.symbolTable.addSymbol(labelToken, value);
-		} catch (e) {
-			this.logger.error(`[PASS 1] ERROR defining .EQU for ${labelToken}: ${e}`);
-		}
+		// if (this.symbolTable.lookupSymbol(labelToken) !== undefined) this.symbolTable.setSymbol(labelToken, value);
+		if (this.symbolTable.isDefined(labelToken)) this.symbolTable.setSymbol(labelToken, value);
+		else this.symbolTable.addSymbol(labelToken, value);
 	}
 
 	public handleSymbolInPassTwo(label: string, token: ScalarToken) {
@@ -530,28 +486,43 @@ export class Assembler {
 
 			// If evaluation produced undefined, treat as an error in Pass 2
 			if (value === undefined) {
-				this.logger.error(`[PASS 2] ERROR defining .EQU for ${label}: unresolved expression`);
+				this.logger.error(`ERROR defining .EQU for ${label}: unresolved expression`);
 				throw new Error(`Pass 2: Unresolved assignment for ${label} on line ${token.line}`);
 			}
 
-			if (Array.isArray(value)) this.logger.log(`[PASS 2] Defined array symbol ${label} with ${value.length} elements.`);
-			else this.logger.log(`[PASS 2] Defined symbol ${label} = $${(value as number).toString(16).toUpperCase()}`);
+			let logLine = `${label}`;
+			switch (typeof value) {
+				case "object":
+					if (Array.isArray(value)) logLine += `= [${value.map((v) => v.value).join(",")}]`;
+					else logLine += `= ${value}`;
+					break;
+				case "number":
+					logLine += `= $${getHex(value)}`;
+					break;
+				case "string":
+					logLine += `= "${value}"`;
+					break;
+			}
+			this.logger.log(logLine);
 
 			// If symbol exists already, update it; otherwise add it as a constant.
 			if (this.symbolTable.lookupSymbol(label) !== undefined) this.symbolTable.setSymbol(label, value);
 			else this.symbolTable.addSymbol(label, value);
 		} catch (e) {
-			this.logger.error(`[PASS 2] ERROR defining .EQU for ${label}: ${e}`);
+			this.logger.error(`ERROR defining .EQU for ${label}: ${e}`);
 			throw e instanceof Error ? e : new Error(String(e));
 		}
 	}
 
 	private handleInstructionPassOne(mnemonicToken: ScalarToken): void {
-		const operandTokens = this.getInstructionTokens(mnemonicToken);
+		let operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
+
+		const currentStream = this.tokenStreamStack[this.tokenStreamStack.length - 1];
+		if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
 
 		// It's an instruction. Resolve its size and advance the PC.
 		try {
-			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens as OperatorStackToken[], (exprTokens) =>
+			const sizeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
 				this.expressionEvaluator.evaluateAsNumber(exprTokens, {
 					pc: this.currentPC,
 					allowForwardRef: true,
@@ -563,10 +534,55 @@ export class Assembler {
 			this.currentPC += sizeInfo.bytes;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : String(e);
-			this.logger.error(`[PASS 1] ERROR on line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`);
-			// In case of error, assume a default size to prevent cascading PC errors.
-			// A better approach might be to halt or use a more intelligent guess.
-			this.currentPC += 1;
+			throw `ERROR on line ${mnemonicToken.line}: Could not determine size of instruction '${mnemonicToken.value}'. ${errorMessage}`;
+		}
+	}
+
+	private handleInstructionPassTwo(mnemonicToken: OperatorStackToken): void {
+		{
+			const instructionPC = this.currentPC;
+			// It's an instruction.
+			let operandTokens = this.getInstructionTokens(mnemonicToken) as OperatorStackToken[];
+
+			const currentStream = this.tokenStreamStack[this.tokenStreamStack.length - 1];
+			if (currentStream.macroArgs) operandTokens = this.substituteTokens(operandTokens, currentStream.macroArgs) as OperatorStackToken[];
+
+			if (this.isAssembling) {
+				try {
+					// 1. Resolve Mode & Address
+					const modeInfo = this.cpuHandler.resolveAddressingMode(mnemonicToken.value, operandTokens, (exprTokens) =>
+						this.expressionEvaluator.evaluateAsNumber(exprTokens, {
+							pc: this.currentPC,
+							macroArgs: this.tokenStreamStack[this.tokenStreamStack.length - 1].macroArgs,
+							assembler: this,
+							currentGlobalLabel: this.lastGlobalLabel,
+							options: this.options,
+						}),
+					);
+
+					// 2. Encode Bytes using resolved info
+					const encodedBytes = this.cpuHandler.encodeInstruction([mnemonicToken, ...operandTokens], {
+						...modeInfo,
+						pc: this.currentPC,
+					});
+
+					// 3. LOGGING (New location)
+					const hexBytes = encodedBytes.map((b) => getHex(b)).join(" ");
+					const addressHex = instructionPC.toString(16).padStart(4, "0").toUpperCase();
+					const operandString = operandTokens.map((t) => (t.type === "NUMBER" ? `$${getHex(Number(t.value))}` : t.value)).join("");
+					this.logger.log(`${addressHex}: ${hexBytes.padEnd(8)} | ${mnemonicToken.value} ${operandString} ; Line ${mnemonicToken.line}`);
+
+					this.linker.writeBytes(this.currentPC, encodedBytes);
+					this.currentPC += encodedBytes.length;
+				} catch (e) {
+					const errorMessage = e instanceof Error ? e.message : String(e);
+					this.logger.error(`\nFATAL ERROR on line ${mnemonicToken.line}: Invalid instruction syntax or unresolved symbol. Error: ${errorMessage}`);
+					throw new Error(`Assembly failed on line ${mnemonicToken.line}: ${errorMessage}`);
+				}
+			} else {
+				// Not assembling: just advance PC
+				this.currentPC += this.getInstructionSize();
+			}
 		}
 	}
 
@@ -576,9 +592,19 @@ export class Assembler {
 	}
 
 	/** Pushes the current stream state and activates a new stream (macro/loop body). */
-	public pushTokenStream(newTokens: Token[], macroArgs?: Map<string, Token[]>, streamId?: number): number {
+	public pushTokenStream({ newTokens, macroArgs, streamId, cacheName }: PushTokenStreamParams): number {
 		// Save current position and arguments
 		this.tokenStreamStack[this.tokenStreamStack.length - 1].index = this.getPosition();
+
+		if (cacheName) {
+			const cachedStream = this.tokenStreamCache.get(cacheName);
+			if (cachedStream) {
+				this.tokenStreamStack.push(cachedStream);
+				this.activeTokens = cachedStream.tokens;
+				this.setPosition(0);
+				return cachedStream.id;
+			}
+		}
 
 		const newStreamId = streamId ?? ++this.streamIdCounter;
 		if (streamId) this.streamIdCounter = Math.max(this.streamIdCounter, streamId);
@@ -588,7 +614,8 @@ export class Assembler {
 			id: newStreamId,
 			tokens: newTokens,
 			index: 0,
-			macroArgs: macroArgs,
+			macroArgs,
+			cacheName,
 		});
 
 		// Activate new stream
@@ -601,6 +628,8 @@ export class Assembler {
 	private popTokenStream(emitEvent = true): StreamState | undefined {
 		const poppedStream = this.tokenStreamStack.pop();
 		if (poppedStream && emitEvent) this.emitter.emit(`endOfStream:${poppedStream.id}`);
+
+		if (poppedStream?.cacheName) this.tokenStreamCache.set(poppedStream.cacheName, poppedStream);
 
 		// If the popped stream was a macro, its scope name will start with __MACRO_.
 		// This is our cue to pop the symbol scope as well.
@@ -683,36 +712,79 @@ export class Assembler {
 			token = this.peekToken(0);
 			if (!token || token.type === "EOF") throw new Error(`[Assembler] Unterminated '${startDirective}' block.`);
 
-			if (token.type === "DOT") {
-				const nextToken = this.peekToken(1);
-				if (nextToken?.type === "IDENTIFIER") {
-					this.consume(2);
-					const directiveName = nextToken.value;
-					if (blockDirectives.has(directiveName)) {
-						depth++;
-					} else if (directiveName === "END") {
-						depth--;
-						if (depth === 0) return tokens;
-					}
-					tokens.push(token);
-					tokens.push(nextToken);
-					continue;
-				}
-			} else if (token.value === "{") {
-				depth++;
-				this.consume(1); // consume { but do not add to body
-				continue;
-			} else if (token.value === "}") {
-				depth--;
-				this.consume(1); // consume } but do not add to body
-				if (depth === 0) return tokens;
+			tokens.push(token);
+			this.consume(1);
 
-				continue;
+			switch (token.type) {
+				case "DOT": {
+					const nextToken = this.peekToken();
+					if (nextToken?.type === "IDENTIFIER") {
+						tokens.push(nextToken);
+						this.consume(1);
+						const directiveName = nextToken.value;
+						if (blockDirectives.has(directiveName)) {
+							const lineTokens = this.getInstructionTokens(nextToken);
+							const blockToken = this.peekToken();
+							if (blockToken?.type !== "LBRACE") depth++;
+							tokens.push(...lineTokens);
+							continue;
+						}
+						if (directiveName === "END") {
+							depth--;
+							if (depth === 0) return tokens.slice(0, -2);
+						}
+						continue;
+					}
+					break;
+				}
+
+				case "LBRACE":
+					if (depth === 0) tokens.pop();
+					depth++;
+					break;
+				case "RBRACE":
+					depth--;
+					if (depth === 0) return tokens.slice(0, -1);
+					break;
 			}
 
+			// if (token.type === "DOT") {
+			// 	const nextToken = this.peekToken(1);
+			// 	if (nextToken?.type === "IDENTIFIER") {
+			// 		this.consume(2);
+			// 		const directiveName = nextToken.value;
+			// 		if (blockDirectives.has(directiveName)) {
+			// 			const lineTokens = this.getInstructionTokens(nextToken);
+			// 			const blockToken = this.peekToken();
+			// 			if (blockToken?.type !== "LBRACE") depth++;
+			// 			tokens.push(token);
+			// 			tokens.push(nextToken);
+			// 			tokens.push(...lineTokens);
+			// 			continue;
+			// 		}
+			// 		if (directiveName === "END") {
+			// 			depth--;
+			// 			if (depth === 0) return tokens;
+			// 		}
+			// 		tokens.push(token);
+			// 		tokens.push(nextToken);
+			// 		continue;
+			// 	}
+			// } else if (token.type === "LBRACE") {
+			// 	depth++;
+			// 	this.consume(1); // consume { but do not add to body
+			// 	continue;
+			// } else if (token.type === "RBRACE") {
+			// 	depth--;
+			// 	this.consume(1); // consume } but do not add to body
+			// 	if (depth === 0) return tokens;
+
+			// 	continue;
+			// }
+
 			// It's a regular token, part of the body. Consume and add to list.
-			this.consume(1);
-			tokens.push(token);
+			// this.consume(1);
+			// tokens.push(token);
 		}
 	}
 
@@ -737,44 +809,46 @@ export class Assembler {
 	 * and plain '{' / '}' operator tokens emitted by the tokenizer.
 	 */
 	public skipToDirectiveEnd(startDirective: string): void {
-		let depth = 1;
-		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
+		this.getDirectiveBlockTokens(startDirective);
 
-		while (true) {
-			const token = this.peekToken(0);
-			if (!token || token.type === "EOF") {
-				this.logger.error(`[Assembler] Unterminated '${startDirective}' block while skipping.`);
-				return;
-			}
+		// let depth = 1;
+		// const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
 
-			if (token.type === "DOT") {
-				const nextToken = this.peekToken(1);
-				if (nextToken?.type === "IDENTIFIER") {
-					this.consume(1);
-					const directiveName = nextToken.value;
-					if (blockDirectives.has(directiveName)) {
-						depth++;
-					} else if (directiveName === "END") {
-						depth--;
-						if (depth === 0) {
-							this.consume(1); // Consume . and END
-							return;
-						}
-					}
-				}
-			} else if (token.value === "{") {
-				depth++;
-			} else if (token.value === "}") {
-				depth--;
-				if (depth === 0) {
-					this.consume(1); // consume }
-					return;
-				}
-			}
+		// while (true) {
+		// 	const token = this.peekToken(0);
+		// 	if (!token || token.type === "EOF") {
+		// 		this.logger.error(`[Assembler] Unterminated '${startDirective}' block while skipping.`);
+		// 		return;
+		// 	}
 
-			// Consume token to advance the stream
-			this.consume(1);
-		}
+		// 	if (token.type === "DOT") {
+		// 		const nextToken = this.peekToken(1);
+		// 		if (nextToken?.type === "IDENTIFIER") {
+		// 			this.consume(1);
+		// 			const directiveName = nextToken.value;
+		// 			if (blockDirectives.has(directiveName)) {
+		// 				depth++;
+		// 			} else if (directiveName === "END") {
+		// 				depth--;
+		// 				if (depth === 0) {
+		// 					this.consume(1); // Consume . and END
+		// 					return;
+		// 				}
+		// 			}
+		// 		}
+		// 	} else if (token.value === "{") {
+		// 		depth++;
+		// 	} else if (token.value === "}") {
+		// 		depth--;
+		// 		if (depth === 0) {
+		// 			this.consume(1); // consume }
+		// 			return;
+		// 		}
+		// 	}
+
+		// 	// Consume token to advance the stream
+		// 	this.consume(1);
+		// }
 	}
 
 	public getInstructionSize(): number {
@@ -797,30 +871,30 @@ export class Assembler {
 		}
 	}
 
-	private extractExpressionArrayTokens(tokens: Token[]) {
-		const result: Token[][] = [];
-		let current: Token[] = [];
-		let parenDepth = 0;
+	// private extractExpressionArrayTokens(tokens: Token[]) {
+	// 	const result: Token[][] = [];
+	// 	let current: Token[] = [];
+	// 	let parenDepth = 0;
 
-		if (tokens.length < 2) return result;
-		if (tokens[0].value !== "[" || tokens[tokens.length - 1].value !== "]") return result;
+	// 	if (tokens.length < 2) return result;
+	// 	if (tokens[0].value !== "[" || tokens[tokens.length - 1].value !== "]") return result;
 
-		// for (const token of tokens) {
-		for (let idx = 1; idx < tokens.length - 1; idx++) {
-			const token = tokens[idx];
-			if (token.type === "OPERATOR" && token.value === "(") parenDepth++;
-			if (token.type === "OPERATOR" && token.value === ")") parenDepth--;
-			if (token.type === "COMMA" && parenDepth === 0) {
-				result.push(current);
-				current = [];
-			} else {
-				current.push(token);
-			}
-		}
-		if (current.length > 0) result.push(current);
+	// 	// for (const token of tokens) {
+	// 	for (let idx = 1; idx < tokens.length - 1; idx++) {
+	// 		const token = tokens[idx];
+	// 		if (token.type === "OPERATOR" && token.value === "(") parenDepth++;
+	// 		if (token.type === "OPERATOR" && token.value === ")") parenDepth--;
+	// 		if (token.type === "COMMA" && parenDepth === 0) {
+	// 			result.push(current);
+	// 			current = [];
+	// 		} else {
+	// 			current.push(token);
+	// 		}
+	// 	}
+	// 	if (current.length > 0) result.push(current);
 
-		return result;
-	}
+	// 	return result;
+	// }
 
 	private substituteTokens(tokens: Token[], macroArgs: Map<string, Token[]>): Token[] {
 		const result: Token[] = [];

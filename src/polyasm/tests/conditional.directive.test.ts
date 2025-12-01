@@ -85,14 +85,14 @@ describe("Conditional Directives", () => {
 			const assembler = createAssembler();
 			const source = `
       .if 1
-        .db $AA
+        .db 10
       .else
-        .db $BB
+        .db 20
       .end
     `;
 			assembler.assemble(source);
 			const machineCode = assembler.link();
-			expect(machineCode).toEqual([0xaa]);
+			expect(machineCode).toEqual([10]);
 		});
 
 		it("should handle .IF/.ELSE, with .IF being false", () => {

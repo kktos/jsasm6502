@@ -59,21 +59,21 @@ export class LogDirective implements IDirective {
 		const outputs: string[] = [];
 
 		for (const exprTokens of exprs) {
-			try {
-				const value = assembler.expressionEvaluator.evaluate(exprTokens, {
-					pc: context.pc,
-					assembler: assembler,
-					allowForwardRef: context.allowForwardRef ?? false,
-					macroArgs: context.macroArgs,
-					currentGlobalLabel: context.currentGlobalLabel,
-					options: context.options,
-				});
+			// try {
+			const value = assembler.expressionEvaluator.evaluate(exprTokens, {
+				pc: context.pc,
+				assembler: assembler,
+				allowForwardRef: context.allowForwardRef ?? false,
+				macroArgs: context.macroArgs,
+				currentGlobalLabel: context.currentGlobalLabel,
+				options: context.options,
+			});
 
-				outputs.push(this.formatValue(value));
-			} catch (e) {
-				assembler.logger.error(`[LOG] ERROR on line ${directive.line}: ${e}`);
-				outputs.push("<ERROR>");
-			}
+			outputs.push(this.formatValue(value));
+			// } catch (e) {
+			// 	assembler.logger.error(`[LOG] ERROR on line ${directive.line}: ${e}`);
+			// 	outputs.push("<ERROR>");
+			// }
 		}
 
 		this.emitLog(assembler, outputs.join("\t"));

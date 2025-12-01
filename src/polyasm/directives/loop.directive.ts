@@ -19,8 +19,8 @@ export class LoopDirective implements IDirective {
 	private loopStates: Map<string, LoopState> = new Map();
 
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
+		assembler.getInstructionTokens();
 		assembler.skipToDirectiveEnd(directive.value);
-		return undefined;
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
@@ -112,13 +112,13 @@ export class LoopDirective implements IDirective {
 		};
 
 		const count = assembler.expressionEvaluator.evaluateAsNumber(exprTokens, evaluationContext);
+		if (count <= 0) throw new Error("Repeat count must be a positive integer.");
 
 		// 2. Find loop body
-		const startIndex = assembler.getPosition();
-		const endTokenIndex = assembler.skipToDirectiveEnd(directive.value);
-		const bodyTokens = assembler.sliceTokens(startIndex, endTokenIndex);
-
-		if (count <= 0) throw new Error("Repeat count must be a positive integer.");
+		// const startIndex = assembler.getPosition();
+		// const endTokenIndex = assembler.skipToDirectiveEnd(directive.value);
+		// const bodyTokens = assembler.sliceTokens(startIndex, endTokenIndex);
+		const bodyTokens = assembler.getDirectiveBlockTokens(directive.value);
 
 		// 3. Setup scope and state
 		assembler.symbolTable.pushScope();
@@ -168,7 +168,7 @@ export class LoopDirective implements IDirective {
 	private pushLoopBody(assembler: Assembler, loopId: string, body: Token[]): void {
 		const streamId = assembler.getNextStreamId();
 		assembler.emitter.once(`endOfStream:${streamId}`, () => this.runNextLoopIteration(assembler, loopId));
-		assembler.pushTokenStream(body, undefined, streamId);
+		assembler.pushTokenStream({ newTokens: body, streamId });
 	}
 
 	private endLoop(assembler: Assembler, loopId: string): void {

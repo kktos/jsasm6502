@@ -9,8 +9,8 @@ export interface StreamState {
 	tokens: Token[];
 	index: number;
 	macroArgs?: Map<string, Token[]>;
+	cacheName?: string;
 }
-// Segment moved to `linker.class.ts`.
 
 export interface FileHandler {
 	/** Reads raw source content and returns the string content for .INCLUDE. */
@@ -30,6 +30,13 @@ export interface SegmentDefinition {
 }
 
 export type DataProcessor = (rawData: string, context: DirectiveContext) => SymbolValue;
+
+export interface PushTokenStreamParams {
+	newTokens: Token[];
+	macroArgs?: Map<string, Token[]>;
+	streamId?: number;
+	cacheName?: string;
+}
 
 export interface AssemblerOptions {
 	segments?: SegmentDefinition[];

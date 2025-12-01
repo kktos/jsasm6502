@@ -127,7 +127,7 @@ describe("Macro Handling", () => {
 				start:
 					nopnopnop 98
 			`;
-			expect(() => assembler.assemble(src)).toThrow("[PASS 2] Too many arguments for macro 'NOPNOPNOP' on line 9. Expected 0, but got 1.");
+			expect(() => assembler.assemble(src)).toThrow("Too many arguments for macro 'NOPNOPNOP' on line 9. Expected 0, but got 1.");
 		});
 
 		it("tests macro with strings", () => {
@@ -155,13 +155,14 @@ describe("Macro Handling", () => {
 		it("should resolve a simple numeric macro argument in an expression", () => {
 			const { assembler } = setup();
 			const src = `
+				.macro log
+					.db test
+				.end
+
 				test = 1
 
 				.namespace earth
 					test = 2
-					.macro log
-						.db test
-					.end
 					log
 				.end namespace
 
@@ -215,17 +216,26 @@ describe("Macro Handling", () => {
 			const src2 = `
 				.macro ifx ...parms {
 
-					.echo "LEN=", .len(parms)
+					len= .len(parms)
 
-					.if .len(parms)<3
-						.error "Macro ifx : needs minimum 3 params"
+					.if len<3 && len>4
+						.error "Macro ifx : needs min 3 params and max 4"
 					.end
 
-					lda parms[2]
+					parmIdx= 0
+
+					.if len=4
+						ldx parms[parmIdx]
+						parmIdx= parmIdx + 1
+					.end
+
+					op= parms[parmIdx]
+					value= parms[parmIdx+1]
+					goto= parms[parmIdx+2]
 
 					isValidOp= 0
 
-					;cpx %(value)
+					cpx parms[parmIdx+1]
 
 					.if op="<" {
 						isValidOp= 1
@@ -254,8 +264,10 @@ describe("Macro Handling", () => {
 					.if !isValidOp
 						.error "Macro ifx : Invalid Operation ",op
 					.end
+
 				}
 
+				start:
 					ifx $300, "<", #10, end
 
 					nop
@@ -268,7 +280,7 @@ describe("Macro Handling", () => {
 			assembler.assemble(src2);
 			const machineCode6502 = assembler.link();
 
-			expect(machineCode6502).toEqual([0xa9, 0x0a, 0xea, 0x60]);
+			expect(machineCode6502).toEqual([0xae, 0x00, 0x03, 0xe0, 0x0a, 0x90, 0x01, 0xea, 0x60]);
 		});
 	});
 });

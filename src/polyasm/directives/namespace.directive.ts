@@ -28,6 +28,6 @@ export class NamespaceDirective implements IDirective {
 
 		const ns = token.value;
 		assembler.symbolTable.pushNamespace(ns);
-		assembler.logger.log(`[PASS] Entered namespace: ${ns}`);
+		assembler.logger.log(`Entered namespace: ${ns}`);
 	}
 }

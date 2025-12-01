@@ -30,10 +30,7 @@ export class ConditionalDirective implements IDirective {
 				const result = assembler.expressionEvaluator.evaluateAsNumber(expressionTokens, context);
 				return result !== 0;
 			} catch (e) {
-				assembler.logger.warn(
-					`[PASS ${assembler.pass}] Warning on line ${directive.line}: Failed to evaluate conditional expression. Assuming false. Error: ${e}`,
-				);
-				return false;
+				throw `Error on line ${directive.line}: Failed to evaluate conditional expression. ${e}`;
 			}
 		};
 
@@ -76,6 +73,7 @@ export class ConditionalDirective implements IDirective {
 				if (topIf.hasPassed) {
 					topIf.isTrue = false;
 					assembler.skipToDirectiveEnd("IF");
+					this.conditionalStack.pop();
 				} else {
 					topIf.isTrue = true;
 					topIf.hasPassed = true;
