@@ -675,11 +675,12 @@ export class Assembler {
 
 	public getDirectiveBlockTokens(startDirective: string) {
 		const tokens: Token[] = [];
-		let depth = 0;
 		const blockDirectives = new Set(["MACRO", "IF", "FOR", "REPEAT", "NAMESPACE", "SEGMENT", "WHILE", "PROC", "SCOPE"]);
+		let token = this.peekToken(0);
+		let depth = token?.value === "{" ? 0 : 1;
 
 		while (true) {
-			const token = this.peekToken(0);
+			token = this.peekToken(0);
 			if (!token || token.type === "EOF") throw new Error(`[Assembler] Unterminated '${startDirective}' block.`);
 
 			if (token.type === "DOT") {
@@ -691,10 +692,7 @@ export class Assembler {
 						depth++;
 					} else if (directiveName === "END") {
 						depth--;
-						if (depth <= 0) {
-							this.consume(1); // Consume . and END
-							return tokens;
-						}
+						if (depth === 0) return tokens;
 					}
 					tokens.push(token);
 					tokens.push(nextToken);
@@ -863,13 +861,17 @@ export class Assembler {
 						options: this.options,
 					});
 
+					// const argTokens = macroArgs.get(token.value) ?? [];
+					// const expressions = this.extractExpressionArrayTokens(argTokens);
 					const argTokens = macroArgs.get(token.value) ?? [];
-					const expressions = this.extractExpressionArrayTokens(argTokens);
-					// const expressions = this.splitTokensByComma(argTokens);
+
+					// if(expressions[0].type==="ARRAY") expressions = expressions[0].value;
+					const expressions = argTokens[0].value as Token[][];
 
 					if (indexValue < 0 || indexValue >= expressions.length)
 						throw new Error(`Macro argument index ${indexValue} out of bounds for argument '${token.value}' on line ${token.line}.`);
 
+					// result.push(...expressions[indexValue]);
 					result.push(...expressions[indexValue]);
 					i = j; // Advance main loop past `]`
 					continue;

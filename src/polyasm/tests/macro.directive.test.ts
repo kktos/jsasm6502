@@ -214,7 +214,46 @@ describe("Macro Handling", () => {
 			const { assembler } = setup();
 			const src2 = `
 				.macro ifx ...parms {
+
+					.echo "LEN=", .len(parms)
+
+					.if .len(parms)<3
+						.error "Macro ifx : needs minimum 3 params"
+					.end
+
 					lda parms[2]
+
+					isValidOp= 0
+
+					;cpx %(value)
+
+					.if op="<" {
+						isValidOp= 1
+						bcc goto
+					}
+
+					.if op="<="
+						isValidOp= 1
+						bcc goto
+						beq goto
+					.end
+
+					.if op=">"
+						isValidOp= 1
+						beq :+
+						bcs goto
+						:
+					.end
+
+					.if op=">="
+						isValidOp= 1
+						bcs goto
+						:
+					.end
+
+					.if !isValidOp
+						.error "Macro ifx : Invalid Operation ",op
+					.end
 				}
 
 					ifx $300, "<", #10, end
@@ -229,7 +268,7 @@ describe("Macro Handling", () => {
 			assembler.assemble(src2);
 			const machineCode6502 = assembler.link();
 
-			expect(machineCode6502).toEqual([0xea, 0x60]);
+			expect(machineCode6502).toEqual([0xa9, 0x0a, 0xea, 0x60]);
 		});
 	});
 });

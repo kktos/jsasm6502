@@ -45,34 +45,43 @@ export class MacroHandler {
 
 			// Map rest parameter
 			const restArgs = passedArgsArray.slice(definition.parameters.length);
-			const restTokens: Token[] = [
-				{
-					type: "OPERATOR",
-					value: "[",
-					line: macroToken.line,
-					column: macroToken.column,
-				},
-			];
+			// const restTokens: Token[] = [
+			// 	{
+			// 		type: "OPERATOR",
+			// 		value: "[",
+			// 		line: macroToken.line,
+			// 		column: macroToken.column,
+			// 	},
+			// ];
 
-			restArgs.forEach((arg, index) => {
-				restTokens.push(...arg);
-				if (index < restArgs.length - 1) {
-					restTokens.push({
-						type: "COMMA",
-						value: ",",
-						line: macroToken.line,
-						column: macroToken.column,
-					});
-				}
-			});
+			// restArgs.forEach((arg, index) => {
+			// 	restTokens.push(...arg);
+			// 	if (index < restArgs.length - 1) {
+			// 		restTokens.push({
+			// 			type: "COMMA",
+			// 			value: ",",
+			// 			line: macroToken.line,
+			// 			column: macroToken.column,
+			// 		});
+			// 	}
+			// });
 
-			restTokens.push({
-				type: "OPERATOR",
-				value: "]",
+			// restTokens.push({
+			// 	type: "OPERATOR",
+			// 	value: "]",
+			// 	line: macroToken.line,
+			// 	column: macroToken.column,
+			// });
+			// argMap.set(definition.restParameter.toUpperCase(), restTokens);
+
+			const arrayToken: Token = {
+				type: "ARRAY",
 				line: macroToken.line,
 				column: macroToken.column,
-			});
-			argMap.set(definition.restParameter.toUpperCase(), restTokens);
+				value: restArgs,
+			};
+
+			argMap.set(definition.restParameter, [arrayToken]);
 		} else {
 			// Original logic for fixed arguments
 			if (passedArgsArray.length > definition.parameters.length)

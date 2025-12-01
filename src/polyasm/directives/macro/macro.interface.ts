@@ -6,5 +6,5 @@ export interface MacroDefinition {
 	parameters: string[];
 	restParameter?: string;
 	body: Token[];
-	endPosition?: number;
+	endPosition: number;
 }
