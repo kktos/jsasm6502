@@ -5,7 +5,7 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class SegmentDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const tokens = assembler.getInstructionTokens();
+		const tokens = assembler.parser.getInstructionTokens();
 		if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
 
 		let name: SymbolValue;
@@ -13,7 +13,7 @@ export class SegmentDirective implements IDirective {
 		else name = assembler.expressionEvaluator.evaluate(tokens, context);
 		if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
 
-		if (assembler.peekToken()?.type === "LBRACE") {
+		if (assembler.parser.peekToken()?.type === "LBRACE") {
 			const params = this.parseBlockParameters(assembler, context, directive.line);
 
 			if (params.start === undefined || params.end === undefined)
@@ -32,7 +32,7 @@ export class SegmentDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const tokens = assembler.getInstructionTokens();
+		const tokens = assembler.parser.getInstructionTokens();
 		if (tokens.length === 0) throw new Error(`ERROR on line ${directive.line}: .SEGMENT requires a name expression.`);
 
 		let name: SymbolValue;
@@ -41,8 +41,8 @@ export class SegmentDirective implements IDirective {
 		if (typeof name !== "string") throw new Error(`ERROR on line ${directive.line}: .SEGMENT name must evaluate to a string.`);
 
 		// If it was a definition, the segment was already added in pass one.
-		if (assembler.peekToken()?.type === "LBRACE") {
-			assembler.getDirectiveBlockTokens("");
+		if (assembler.parser.peekToken()?.type === "LBRACE") {
+			assembler.parser.getDirectiveBlockTokens("");
 			return;
 		}
 
@@ -53,10 +53,10 @@ export class SegmentDirective implements IDirective {
 	private parseBlockParameters(assembler: Assembler, context: DirectiveContext, line: number | string): { start: number; end?: number; pad?: number } {
 		const params: { start: number; end?: number; pad?: number } = { start: 0 };
 
-		assembler.consume();
+		assembler.parser.consume();
 
 		while (true) {
-			const token = assembler.nextToken();
+			const token = assembler.parser.nextToken();
 			if (!token) break;
 			if (token.type === "RBRACE") break;
 
@@ -65,10 +65,10 @@ export class SegmentDirective implements IDirective {
 			const key = token.value.toLowerCase();
 			if (key !== "start" && key !== "end" && key !== "pad") throw new Error(`.SEGMENT definition syntax error on line ${line}: unknown property ${key}`);
 
-			const valueTokens = assembler.getExpressionTokens();
+			const valueTokens = assembler.parser.getExpressionTokens();
 			params[key] = assembler.expressionEvaluator.evaluateAsNumber(valueTokens, context);
 
-			if (assembler.peekToken()?.type === "COMMA") assembler.consume();
+			if (assembler.parser.peekToken()?.type === "COMMA") assembler.parser.consume();
 		}
 
 		return params;

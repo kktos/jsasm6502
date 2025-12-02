@@ -4,7 +4,7 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class OrgDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const orgExpressionTokens = assembler.getInstructionTokens();
+		const orgExpressionTokens = assembler.parser.getInstructionTokens();
 
 		try {
 			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
@@ -15,7 +15,7 @@ export class OrgDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
-		const orgExpressionTokens = assembler.getInstructionTokens();
+		const orgExpressionTokens = assembler.parser.getInstructionTokens();
 		try {
 			assembler.currentPC = assembler.expressionEvaluator.evaluateAsNumber(orgExpressionTokens, context);
 		} catch (e) {

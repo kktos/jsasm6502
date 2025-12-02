@@ -102,7 +102,12 @@ export class MacroHandler {
 		}));
 
 		// Advance the current stream past the macro call line and push the new stream.
-		this.assembler.pushTokenStream({ newTokens: expandedTokens, macroArgs: argMap });
+		const streamId = this.assembler.parser.getNextStreamId();
+		this.assembler.emitter.once(`endOfStream:${streamId}`, () => {
+			this.assembler.symbolTable.popScope();
+		});
+
+		this.assembler.parser.pushTokenStream({ newTokens: expandedTokens, macroArgs: argMap, streamId });
 	}
 
 	/**
@@ -115,19 +120,19 @@ export class MacroHandler {
 		let currentArgTokens: Token[] = [];
 		let parenDepth = 0;
 
-		const firstPeek = this.assembler.peekToken();
+		const firstPeek = this.assembler.parser.peekToken();
 		if (!firstPeek || firstPeek.type === "EOF") return [];
 		const hasParens = firstPeek.value === "(";
 		const callLineNum = callLine ?? firstPeek.line;
 
 		if (hasParens) {
 			// consume opening '('
-			this.assembler.consume(1);
+			this.assembler.parser.consume(1);
 			parenDepth = 1;
 			while (true) {
-				const token = this.assembler.peekToken();
+				const token = this.assembler.parser.peekToken();
 				if (!token || token.type === "EOF") break;
-				this.assembler.consume(1);
+				this.assembler.parser.consume(1);
 
 				if (token.value === "(") {
 					parenDepth++;
@@ -157,9 +162,9 @@ export class MacroHandler {
 		} else {
 			// No parentheses: only take tokens on the same line as the macro call
 			while (true) {
-				const token = this.assembler.peekToken();
+				const token = this.assembler.parser.peekToken();
 				if (!token || token.type === "EOF" || token.line !== callLineNum) break;
-				this.assembler.consume(1);
+				this.assembler.parser.consume(1);
 				if (token.type === "COMMA") {
 					argsArray.push(currentArgTokens);
 					currentArgTokens = [];

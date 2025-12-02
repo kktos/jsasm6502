@@ -37,7 +37,7 @@ export class ConditionalDirective implements IDirective {
 		switch (directive.value) {
 			case "IF": {
 				const parentIsTrue = this.conditionalStack.every((block) => block.isTrue);
-				const expressionTokens = assembler.getInstructionTokens(directive);
+				const expressionTokens = assembler.parser.getInstructionTokens(directive);
 				const isTrue = parentIsTrue ? checkCondition(expressionTokens) : false;
 
 				this.conditionalStack.push({ isTrue, hasPassed: isTrue });
@@ -56,7 +56,7 @@ export class ConditionalDirective implements IDirective {
 					this.skipToNextConditionalBoundary(assembler);
 				} else {
 					const parentIsTrue = this.conditionalStack.slice(0, -1).every((block) => block.isTrue);
-					const expressionTokens = assembler.getInstructionTokens(directive);
+					const expressionTokens = assembler.parser.getInstructionTokens(directive);
 					const isTrue = parentIsTrue ? checkCondition(expressionTokens) : false;
 
 					topIf.isTrue = isTrue;
@@ -72,7 +72,7 @@ export class ConditionalDirective implements IDirective {
 
 				if (topIf.hasPassed) {
 					topIf.isTrue = false;
-					assembler.skipToDirectiveEnd("IF");
+					assembler.parser.skipToDirectiveEnd("IF");
 					this.conditionalStack.pop();
 				} else {
 					topIf.isTrue = true;
@@ -82,14 +82,14 @@ export class ConditionalDirective implements IDirective {
 			}
 
 			case "END": {
-				const next = assembler.peekToken(0);
+				const next = assembler.parser.peekToken(0);
 				if (next && next.type === "IDENTIFIER" && String(next.value).toUpperCase() === "NAMESPACE") {
-					assembler.consume(1);
-					try {
-						assembler.symbolTable.popNamespace();
-					} catch (e) {
-						assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
-					}
+					assembler.parser.consume(1);
+					// try {
+					assembler.symbolTable.popNamespace();
+					// } catch (e) {
+					// 	assembler.logger.error(`Error popping namespace on line ${directive.line}: ${e}`);
+					// }
 				}
 				if (this.conditionalStack.length > 0) {
 					// const topIf = this.conditionalStack[this.conditionalStack.length - 1];
@@ -107,11 +107,11 @@ export class ConditionalDirective implements IDirective {
 		let depth = 0;
 
 		while (true) {
-			const token = assembler.peekToken(0);
+			const token = assembler.parser.peekToken(0);
 			if (!token || token.type === "EOF") break;
 
 			if (token.type === "DOT") {
-				const nextToken = assembler.peekToken(1);
+				const nextToken = assembler.parser.peekToken(1);
 				if (nextToken?.type === "IDENTIFIER") {
 					const directiveName = nextToken.value;
 
@@ -127,7 +127,7 @@ export class ConditionalDirective implements IDirective {
 					}
 				}
 			}
-			assembler.consume(1);
+			assembler.parser.consume(1);
 		}
 	}
 }

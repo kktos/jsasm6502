@@ -4,13 +4,13 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class IncbinDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const expressionTokens = assembler.getInstructionTokens();
+		const expressionTokens = assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
 			pc: assembler.currentPC,
-			macroArgs: assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1]?.macroArgs,
+			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
 			options: assembler.options,
@@ -31,13 +31,13 @@ export class IncbinDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const expressionTokens = assembler.getInstructionTokens();
+		const expressionTokens = assembler.parser.getInstructionTokens();
 		if (expressionTokens.length === 0) throw new Error(`[PASS 1] ERROR: .INCBIN requires a string argument on line ${directive.line}.`);
 
 		// 2. Resolve the array from the symbol table
 		const evaluationContext = {
 			pc: assembler.currentPC,
-			macroArgs: assembler.tokenStreamStack[assembler.tokenStreamStack.length - 1]?.macroArgs,
+			macroArgs: assembler.parser.tokenStreamStack[assembler.parser.tokenStreamStack.length - 1]?.macroArgs,
 			assembler,
 			currentGlobalLabel: assembler.getLastGlobalLabel?.() ?? undefined,
 			options: assembler.options,

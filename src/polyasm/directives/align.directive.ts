@@ -4,7 +4,7 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class AlignDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const alignExpressionTokens = assembler.getInstructionTokens();
+		const alignExpressionTokens = assembler.parser.getInstructionTokens();
 		const [boundaryTokens] = this.parseArguments(alignExpressionTokens);
 
 		try {
@@ -24,7 +24,7 @@ export class AlignDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const alignExpressionTokens = assembler.getInstructionTokens();
+		const alignExpressionTokens = assembler.parser.getInstructionTokens();
 		const [boundaryTokens, valueTokens] = this.parseArguments(alignExpressionTokens);
 
 		try {

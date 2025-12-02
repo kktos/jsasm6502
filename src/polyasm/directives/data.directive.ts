@@ -25,7 +25,7 @@ export class DataDirective implements IDirective {
 			// Special case for .TEXT or similar string-only directives
 		}
 
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 		if (argTokens.length === 0) return 0;
 
 		let totalSize = 0;
@@ -55,7 +55,7 @@ export class DataDirective implements IDirective {
 	}
 
 	private encodeDataDirective(assembler: Assembler, context: DirectiveContext): number[] {
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 		const outputBytes: number[] = [];
 		let currentExpression: Token[] = [];
 

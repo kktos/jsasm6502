@@ -19,7 +19,7 @@ export class ListDirective implements IDirective {
 	}
 
 	private setListing(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const argsToken = assembler.getInstructionTokens();
+		const argsToken = assembler.parser.getInstructionTokens();
 
 		if (argsToken.length !== 1) {
 			this.logger.warn(`[LIST] Invalid .LIST syntax on line ${directive.line}. Expected ON or OFF.`);

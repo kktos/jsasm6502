@@ -5,13 +5,13 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class DefineDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const symbolNameToken = assembler.nextIdentifierToken();
+		const symbolNameToken = assembler.parser.nextIdentifierToken();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
 
-		let token = assembler.peekTokenUnbuffered();
+		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
-			assembler.consume();
-			token = assembler.nextIdentifierToken();
+			assembler.parser.consume();
+			token = assembler.parser.nextIdentifierToken();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
 			const processor = assembler.getDataProcessor(token?.value);
 			if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${token.value}'.`);
@@ -19,26 +19,26 @@ export class DefineDirective implements IDirective {
 
 		assembler.symbolTable.addSymbol(symbolNameToken.value, 0);
 
-		assembler.nextToken({ endMarker: ".END" });
+		assembler.parser.nextToken({ endMarker: ".END" });
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, context: DirectiveContext) {
 		// Parse the directive arguments: .DEFINE <symbolName> <handlerName>
-		const symbolNameToken = assembler.nextIdentifierToken();
+		const symbolNameToken = assembler.parser.nextIdentifierToken();
 		if (!symbolNameToken) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a symbol name.`);
 
 		let processor: DataProcessor | undefined;
-		let token = assembler.peekTokenUnbuffered();
+		let token = assembler.parser.peekTokenUnbuffered();
 		if (token?.type === "IDENTIFIER" && token.value === "AS") {
-			assembler.consume();
-			token = assembler.nextIdentifierToken();
+			assembler.parser.consume();
+			token = assembler.parser.nextIdentifierToken();
 			if (!token) throw new Error(`'.DEFINE' directive on line ${directive.line} requires a Data Processor name.`);
 			processor = assembler.getDataProcessor(token?.value);
 			if (!processor) throw new Error(`'.DEFINE' directive on line ${directive.line}; unknown Data Processor '${token.value}'.`);
 		}
 
 		// Extract the raw block content
-		const blockToken = assembler.nextToken({ endMarker: ".END" });
+		const blockToken = assembler.parser.nextToken({ endMarker: ".END" });
 
 		// Join the raw text of the tokens inside the block.
 		const blockContent = (blockToken?.value as string) ?? "";

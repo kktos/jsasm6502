@@ -13,7 +13,7 @@ export class OptionDirective implements IDirective {
 	}
 
 	private setOption(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 
 		if (argTokens.length < 2) throw new Error(`Invalid .OPTION syntax on line ${directive.line}. Expected: .OPTION <name> <value>`);
 

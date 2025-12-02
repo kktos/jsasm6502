@@ -27,7 +27,7 @@ export class StringDirective implements IDirective {
 
 	private getStrings(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): string[] {
 		// const startIndex = typeof context.tokenIndex === "number" ? context.tokenIndex : assembler.getPosition();
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 		const strings: string[] = [];
 		let currentExpression: Token[] = [];
 

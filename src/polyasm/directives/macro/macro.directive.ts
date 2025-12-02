@@ -8,18 +8,18 @@ export class MacroDirective implements IDirective {
 	}
 
 	public handlePassTwo(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext) {
-		const nameToken = assembler.nextIdentifierToken();
+		const nameToken = assembler.parser.nextIdentifierToken();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const definition = assembler.macroDefinitions.get(nameToken.value);
 		if (!definition) throw `ERROR: Unable to find macro definition for '${nameToken.value}' on line ${directive.line}.`;
 
-		assembler.setPosition(definition.endPosition);
+		assembler.parser.setPosition(definition.endPosition);
 	}
 
 	/** Pass 1: Parses and stores a macro definition. */
 	private handleMacroDefinition(directive: ScalarToken, assembler: Assembler) {
-		const nameToken = assembler.nextIdentifierToken();
+		const nameToken = assembler.parser.nextIdentifierToken();
 		if (!nameToken) throw `ERROR: Macro needs a name on line ${directive.line}.`;
 
 		const macroName = nameToken.value;
@@ -71,10 +71,10 @@ export class MacroDirective implements IDirective {
 
 		const { parameters, restParameter } = this.handleMacroParametersDefinition(directive, assembler);
 
-		const bodyTokens = assembler.getDirectiveBlockTokens(directive.value);
+		const bodyTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
 		if (!bodyTokens) throw `[PASS 1] ERROR: Unterminated macro body for '${macroName}' on line ${directive.line}.`;
 
-		const endPosition = assembler.getPosition();
+		const endPosition = assembler.parser.getPosition();
 
 		assembler.macroDefinitions.set(macroName, {
 			name: macroName,
@@ -91,7 +91,7 @@ export class MacroDirective implements IDirective {
 		const parameters: string[] = [];
 		let restParameter: string | undefined;
 
-		const parameterTokens = assembler.getInstructionTokens(directive);
+		const parameterTokens = assembler.parser.getInstructionTokens(directive);
 		if (parameterTokens.length > 0) {
 			let paramIndex = 0;
 			const hasParentheses = parameterTokens[0].value === "(";

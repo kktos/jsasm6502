@@ -4,7 +4,7 @@ import type { DirectiveContext, IDirective } from "./directive.interface";
 
 export class FillDirective implements IDirective {
 	public handlePassOne(directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 
 		const [countTokens] = this.parseArguments(argTokens);
 
@@ -20,7 +20,7 @@ export class FillDirective implements IDirective {
 	}
 
 	public handlePassTwo(_directive: ScalarToken, assembler: Assembler, context: DirectiveContext): void {
-		const argTokens = assembler.getInstructionTokens();
+		const argTokens = assembler.parser.getInstructionTokens();
 
 		const [countTokens, valueTokens] = this.parseArguments(argTokens);
 

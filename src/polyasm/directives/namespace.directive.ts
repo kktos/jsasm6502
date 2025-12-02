@@ -12,7 +12,7 @@ export class NamespaceDirective implements IDirective {
 	}
 
 	private setNamespace(directive: ScalarToken, assembler: Assembler, _context: DirectiveContext): void {
-		const tokens = assembler.getInstructionTokens(directive);
+		const tokens = assembler.parser.getInstructionTokens(directive);
 		// If no argument provided, reset to GLOBAL namespace (behave like `.NAMESPACE GLOBAL`)
 		if (tokens.length === 0) {
 			assembler.symbolTable.setNamespace("global");

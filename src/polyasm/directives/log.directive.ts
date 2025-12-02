@@ -21,7 +21,7 @@ export class LogDirective implements IDirective {
 
 	private handle(directive: ScalarToken, assembler: Assembler, context: DirectiveContext & { allowForwardRef?: boolean }): void {
 		// Retrieve tokens on the same line after the directive
-		const tokens = assembler.getInstructionTokens(directive);
+		const tokens = assembler.parser.getInstructionTokens(directive);
 
 		// Split tokens into comma-separated expressions, but respect nested
 		// parentheses/brackets/braces so commas inside arrays or function calls

@@ -40,7 +40,7 @@ export class HexDirective implements IDirective {
 	 * @returns A tuple of [hexDataString, endIndex].
 	 */
 	private extractHexData(directive: ScalarToken, assembler: Assembler) {
-		const hexTokens = assembler.getDirectiveBlockTokens(directive.value);
+		const hexTokens = assembler.parser.getDirectiveBlockTokens(directive.value);
 
 		// The lexer will tokenize '0E' as NUMBER '0' and IDENTIFIER 'E', and '60' as NUMBER '60'.
 		// We must join their values back together to form a single string of hex digits,
