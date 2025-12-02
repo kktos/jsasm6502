@@ -9,14 +9,7 @@ type TOperationBool = "BXOR" | "BAND" | "BOR";
 type TOperationAddr = "MSB" | "LSB";
 type TOperationShift = "SHL" | "SHR";
 type TOperationFn = "FN";
-export type TExprStackOperation =
-	| TOperationCmp
-	| TOperationLogical
-	| TOperationArithm
-	| TOperationBool
-	| TOperationAddr
-	| TOperationShift
-	| TOperationFn;
+export type TExprStackOperation = TOperationCmp | TOperationLogical | TOperationArithm | TOperationBool | TOperationAddr | TOperationShift | TOperationFn;
 
 export type TExprStack = Array<TExprStackItem | Array<TExprStackItem>>;
 

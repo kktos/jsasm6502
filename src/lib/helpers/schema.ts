@@ -15,8 +15,7 @@ export function validateSchema(conf: Dict, schema: SchemaDict) {
 			}
 
 			const type = typeof obj[key];
-			if (type !== schema[key].type)
-				throw new TypeError(`CONF.string: Invalid type for key ${key}:${schema[key].type} -> ${type} `);
+			if (type !== schema[key].type) throw new TypeError(`CONF.string: Invalid type for key ${key}:${schema[key].type} -> ${type} `);
 		}
 	};
 

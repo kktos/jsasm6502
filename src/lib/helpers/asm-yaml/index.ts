@@ -1,4 +1,4 @@
-import { load as yamlLoad, DEFAULT_SCHEMA } from "js-yaml";
+import { DEFAULT_SCHEMA, load as yamlLoad } from "js-yaml";
 import { intType } from "./int";
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>

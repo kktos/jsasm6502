@@ -77,7 +77,7 @@ export class Token implements TValue {
 }
 
 export function getTypeName(type: number) {
-	const t = TOKEN_TYPES_ENTRIES.find(([k, v]) => v === type);
+	const t = TOKEN_TYPES_ENTRIES.find(([_k, v]) => v === type);
 	return t?.[0] ?? "????";
 }
 

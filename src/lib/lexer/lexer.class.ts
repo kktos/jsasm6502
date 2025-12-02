@@ -3,7 +3,7 @@ import { VAParseError } from "../helpers/errors.class";
 import type { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import { TOKEN_TYPES, Token } from "./token.class";
 
-const log = console.log;
+const _log = console.log;
 
 const ALPHABET = [...Array(26)].map((_, i) => String.fromCharCode(i + 65));
 
@@ -243,12 +243,7 @@ export class Lexer {
 		const previousState = this.ctx.states.pop();
 		if (!previousState) throw new VAParseError("No Lexer Previous State");
 
-		({
-			lineIdx: this.ctx.lineIdx,
-			posInLine: this.ctx.posInLine,
-			currLine: this.ctx.currLine,
-			currChar: this.ctx.currChar,
-		} = previousState);
+		({ lineIdx: this.ctx.lineIdx, posInLine: this.ctx.posInLine, currLine: this.ctx.currLine, currChar: this.ctx.currChar } = previousState);
 	}
 
 	popState() {
@@ -312,9 +307,7 @@ export class Lexer {
 	}
 
 	isToken(tokenType: number) {
-		return this.ctx.curTokIdx < this.ctx.tokCount
-			? tokenType === this.ctx.pendingTokens[this.ctx.curTokIdx].type
-			: false;
+		return this.ctx.curTokIdx < this.ctx.tokCount ? tokenType === this.ctx.pendingTokens[this.ctx.curTokIdx].type : false;
 	}
 
 	match(tokens: Array<number | null>) {
@@ -375,10 +368,7 @@ export class Lexer {
 	_testLookaheadChars(chars: string) {
 		if (this.ctx.posInLine + chars.length >= this.ctx.currLine?.length) return false;
 		let charIdx = 0;
-		while (
-			charIdx < chars.length &&
-			chars[charIdx] === this.ctx.currLine?.[this.ctx.posInLine + charIdx].toUpperCase()
-		) {
+		while (charIdx < chars.length && chars[charIdx] === this.ctx.currLine?.[this.ctx.posInLine + charIdx].toUpperCase()) {
 			charIdx++;
 		}
 
@@ -401,18 +391,18 @@ export class Lexer {
 		let startPos: number = start + commentCharsLen;
 
 		if (isMultiLines) {
-			let comments = "";
-			comments = "";
+			let _comments = "";
+			_comments = "";
 			this.nextChar();
 			while (!this.eof()) {
 				while (this.nextChar()) {
 					if (this.ctx.currChar === "*" && this._lookaheadChar(0) === "/") {
-						comments += this.ctx.currLine.slice(startPos, -2);
+						_comments += this.ctx.currLine.slice(startPos, -2);
 						return false;
 					}
 				}
 
-				comments += this.ctx.currLine.slice(startPos);
+				_comments += this.ctx.currLine.slice(startPos);
 				this.ctx.newLine();
 				this.ctx.currLine = this.ctx.lines[this.ctx.lineIdx++];
 
@@ -510,7 +500,7 @@ export class Lexer {
 
 			this.ctx.currToken.type = TOKEN_TYPES.NUMBER;
 			this.ctx.currToken.text = this.ctx.currLine.slice(startPos, this.ctx.posInLine);
-			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text);
+			this.ctx.currToken.value = Number.parseInt(this.ctx.currToken.text, 10);
 			return true;
 		}
 

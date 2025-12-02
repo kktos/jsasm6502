@@ -1,13 +1,13 @@
 import type { Context } from "../context.class";
 import { VAParseError } from "../helpers/errors.class";
 import { EVENT_TYPES } from "../lexer/lexer.class";
-import { TOKEN_TYPES, type Token, tokenTypeOf } from "../lexer/token.class";
+import { TOKEN_TYPES, tokenTypeOf } from "../lexer/token.class";
 import { readBlock } from "../parsers/block.parser";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { TExprStackItem } from "../parsers/expression/TExprStackItem.class";
 import type { TValueType } from "../types/Value.type";
 
-const log = console.log;
+const _log = console.log;
 
 /*
 	.FOR <iterator> OF <array>

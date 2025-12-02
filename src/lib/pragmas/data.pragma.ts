@@ -4,7 +4,7 @@ import { TOKEN_TYPES } from "../lexer/token.class";
 import { parseExpression } from "../parsers/expression/expression.parser";
 import { makeString } from "./string.pragma";
 
-const log = console.log;
+const _log = console.log;
 
 const DATASIZE = {
 	DS: 1,

@@ -1,7 +1,7 @@
+import { chdir } from "node:process";
 import { readConfFile } from "./file";
 import { getParams } from "./params";
-import { SchemaDict, type TConf, confSchema } from "./types";
-import { chdir } from "node:process";
+import { confSchema, SchemaDict, type TConf } from "./types";
 
 export function readConf(args: string[]) {
 	const argv = getParams(args);
@@ -52,12 +52,10 @@ function validateSchema(conf: TConf, schema: Dict) {
 			const type = typeof obj[key];
 			switch (typeof schema[key]) {
 				case "string":
-					if (type !== schema[key])
-						throw new TypeError(`CONF.string: Invalid type for key ${key}:${schema[key]} -> ${type} `);
+					if (type !== schema[key]) throw new TypeError(`CONF.string: Invalid type for key ${key}:${schema[key]} -> ${type} `);
 					break;
 				case "object":
-					if (type !== "object")
-						throw new TypeError(`CONF.object: Invalid type for key ${key}:${schema[key]} -> ${type} `);
+					if (type !== "object") throw new TypeError(`CONF.object: Invalid type for key ${key}:${schema[key]} -> ${type} `);
 					if (schema[key] instanceof SchemaDict) {
 						// for symbols, we don't validate the content, just that it's an object
 						if (key === "symbols") continue;

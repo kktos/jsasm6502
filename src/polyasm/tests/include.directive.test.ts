@@ -1,0 +1,102 @@
+import { describe, expect, it, vi } from "vitest";
+import { Cpu6502Handler } from "../cpu/cpu6502.class";
+import { Logger } from "../logger";
+import { Assembler } from "../polyasm";
+import type { FileHandler, SegmentDefinition } from "../polyasm.types";
+
+class MockFileHandler implements FileHandler {
+	readSourceFile(filename: string): string {
+		throw new Error(`Mock file not found: "${filename}"`);
+	}
+
+	readBinaryFile(filename: string): number[] {
+		throw new Error(`Mock bin file not found: ${filename}`);
+	}
+}
+
+const DEFAULT_SEGMENTS: SegmentDefinition[] = [{ name: "CODE", start: 0x1000, size: 0, resizable: true }];
+
+describe("File Directives (.INCLUDE, .INCBIN)", () => {
+	const createAssembler = (segments: SegmentDefinition[] = DEFAULT_SEGMENTS) => {
+		const mockFileHandler = new MockFileHandler();
+		const logger = new Logger(true);
+		const cpuHandler = new Cpu6502Handler();
+		const assembler = new Assembler(cpuHandler, mockFileHandler, { logger, segments });
+		return { assembler, mockFileHandler, logger };
+	};
+
+	describe(".INCLUDE Directive", () => {
+		it("should include and assemble a source file", () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			const includedCode = "LDA #$10\nSTA $0200";
+			const source = `
+				.INCLUDE "included.asm" ; include this file
+				test = 0
+			`;
+
+			const readSourceFileSpy = vi.spyOn(mockFileHandler, "readSourceFile").mockReturnValue(includedCode);
+
+			assembler.assemble(source);
+			const result = assembler.link();
+
+			expect(readSourceFileSpy).toHaveBeenCalledWith("included.asm");
+			expect(result).toEqual([0xa9, 0x10, 0x8d, 0x00, 0x02]);
+		});
+
+		it("should log an error if the file to include is not found", () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			const source = `.INCLUDE "nonexistent.asm"`;
+
+			vi.spyOn(mockFileHandler, "readSourceFile").mockImplementation(() => {
+				throw new Error("File not found");
+			});
+
+			expect(() => assembler.assemble(source)).toThrow("ERROR including file nonexistent.asm on line 1: Error: File not found");
+		});
+
+		it("should log an error if .INCLUDE is missing a filename argument", () => {
+			const { assembler } = createAssembler();
+			const source = ".INCLUDE";
+
+			expect(() => assembler.assemble(source)).toThrow("ERROR: .INCLUDE requires a string argument on line 1.");
+		});
+	});
+
+	describe(".INCBIN Directive", () => {
+		it("should include a binary file", () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			const binaryData = [0x01, 0x02, 0x03, 0x04];
+			const source = `
+				* = $c000
+				.INCBIN "data.bin"
+			`;
+
+			const readBinaryFileSpy = vi.spyOn(mockFileHandler, "readBinaryFile").mockReturnValue(binaryData);
+
+			assembler.assemble(source);
+			const result = assembler.link();
+
+			expect(readBinaryFileSpy).toHaveBeenCalledWith("data.bin");
+			expect(result).toEqual(binaryData);
+		});
+
+		it("should throw an error if the binary file is not found", () => {
+			const { assembler, mockFileHandler } = createAssembler();
+			const source = `.INCBIN "nonexistent.bin"`;
+
+			const readBinaryFileSpy = vi.spyOn(mockFileHandler, "readBinaryFile").mockImplementation(() => {
+				throw new Error("File not found");
+			});
+
+			expect(() => assembler.assemble(source)).toThrow("Assembly failed on line 1: Binary include failed.");
+			expect(readBinaryFileSpy).toHaveBeenCalledWith("nonexistent.bin");
+		});
+
+		it("should log an error if .INCBIN is missing a filename argument", () => {
+			const { assembler } = createAssembler();
+			const source = ".INCBIN";
+
+			expect(() => assembler.assemble(source)).toThrow("[PASS 1] ERROR: .INCBIN requires a string argument on line 1.");
+		});
+	});
+});

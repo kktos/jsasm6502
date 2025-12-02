@@ -18,8 +18,7 @@ function interpolateString(ctx: Context) {
 	const res = parseExpression(ctx, undefined, TOKEN_TYPES.STRING);
 	if (!res) throw new VAParseError(`OPCODE: No value for %(<expr)"`);
 
-	if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT))
-		throw new VAParseError(`OPCODE: Missing Right Parenthesis for %(<expr)"`);
+	if (!ctx.lexer.isToken(TOKEN_TYPES.RIGHT_PARENT)) throw new VAParseError(`OPCODE: Missing Right Parenthesis for %(<expr)"`);
 	ctx.lexer.next();
 
 	// log("%() VALUE",ctx.pass, `\n${res} - ${JSON.stringify(res)}`);
@@ -70,8 +69,7 @@ export function parseOpcode(ctx: Context) {
 	// log("parseOpcode 1",token);
 
 	const opcodeTable = ctx.opcodes[opcode];
-	if (opcodeTable === null)
-		throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel?.name}`);
+	if (opcodeTable === null) throw new VAParseError(`OPCODE: Unknown ${ctx.cpu} opcode ${opcode} - ${ctx.lastLabel?.name}`);
 
 	let token = ctx.lexer.next();
 
@@ -231,8 +229,7 @@ export function parseOpcode(ctx: Context) {
 
 	// log("addr", ctx.pass, token, " -- ", JSON.stringify(addr), " -- ", addr);
 
-	if (ctx.pass === 2 && addr.number === undefined)
-		throw new VAParseError(`OPCODE(${ctx.pass}): Target Address is undefined for Opcode ${opcode}`);
+	if (ctx.pass === 2 && addr.number === undefined) throw new VAParseError(`OPCODE(${ctx.pass}): Target Address is undefined for Opcode ${opcode}`);
 
 	// log(ctx.pass, {opcode, addr});
 
@@ -265,8 +262,7 @@ export function parseOpcode(ctx: Context) {
 		ctx.lexer.next();
 		const reg = ctx.lexer.token();
 
-		if (!reg || reg.type !== TOKEN_TYPES.IDENTIFIER)
-			throw new VAParseError(`OPCODE: IAM3 Invalid Address Mode for Opcode ${opcode}`);
+		if (!reg || reg.type !== TOKEN_TYPES.IDENTIFIER) throw new VAParseError(`OPCODE: IAM3 Invalid Address Mode for Opcode ${opcode}`);
 
 		switch (reg.value) {
 			// LDA $1000,X

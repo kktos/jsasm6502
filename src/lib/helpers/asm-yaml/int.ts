@@ -1,11 +1,7 @@
 import { Type } from "js-yaml";
 
 function isHexCode(c: number) {
-	return (
-		(0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ ||
-		(0x41 /* A */ <= c && c <= 0x46) /* F */ ||
-		(0x61 /* a */ <= c && c <= 0x66) /* f */
-	);
+	return (0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ || (0x41 /* A */ <= c && c <= 0x46) /* F */ || (0x61 /* a */ <= c && c <= 0x66) /* f */;
 }
 
 function isOctCode(c: number) {
@@ -148,11 +144,7 @@ function constructYamlInteger(data: string) {
 }
 
 function isInteger(data: object) {
-	return (
-		Object.prototype.toString.call(data) === "[object Number]" &&
-		(data as unknown as number) % 1 === 0 &&
-		!isNegativeZero(data as unknown as number)
-	);
+	return Object.prototype.toString.call(data) === "[object Number]" && (data as unknown as number) % 1 === 0 && !isNegativeZero(data as unknown as number);
 }
 
 function isNegativeZero(number: number) {
@@ -166,13 +158,9 @@ export const intType = new Type("tag:yaml.org,2002:int", {
 	predicate: isInteger,
 	represent: {
 		binary: (obj: object) =>
-			(obj as unknown as number) >= 0
-				? `0b${(obj as unknown as number).toString(2)}`
-				: `-0b${(obj as unknown as number).toString(2).slice(1)}`,
+			(obj as unknown as number) >= 0 ? `0b${(obj as unknown as number).toString(2)}` : `-0b${(obj as unknown as number).toString(2).slice(1)}`,
 		octal: (obj: object) =>
-			(obj as unknown as number) >= 0
-				? `0o${(obj as unknown as number).toString(8)}`
-				: `-0o${(obj as unknown as number).toString(8).slice(1)}`,
+			(obj as unknown as number) >= 0 ? `0o${(obj as unknown as number).toString(8)}` : `-0o${(obj as unknown as number).toString(8).slice(1)}`,
 		decimal: (obj: object) => (obj as unknown as number).toString(10),
 		/* eslint-disable max-len */
 		hexadecimal: (obj: object) =>
